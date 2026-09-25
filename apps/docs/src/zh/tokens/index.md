@@ -4,6 +4,12 @@
 
 <TokenBoard />
 
+## 亲手试试
+
+改一个 token，看真实组件的反应（只影响下方预览区）：
+
+<TokenPlayground />
+
 ## 使用方式
 
 ```css

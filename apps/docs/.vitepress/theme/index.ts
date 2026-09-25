@@ -20,6 +20,7 @@ import MetaNotes from './components/MetaNotes.vue'
 import MetaStates from './components/MetaStates.vue'
 import SourceViewer from './components/SourceViewer.vue'
 import TokenBoard from './components/TokenBoard.vue'
+import TokenPlayground from './components/TokenPlayground.vue'
 
 export default {
   extends: DefaultTheme,
@@ -34,6 +35,7 @@ export default {
     app.component('AgentHints', AgentHints)
     app.component('SourceViewer', SourceViewer)
     app.component('TokenBoard', TokenBoard)
+    app.component('TokenPlayground', TokenPlayground)
     app.component('HomeCollage', HomeCollage)
   },
 } satisfies Theme
