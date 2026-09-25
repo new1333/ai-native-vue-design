@@ -45,6 +45,7 @@ async function copyImport(): Promise<void> {
       {{ copied ? '已复制' : '复制' }}
     </button>
   </div>
+  <p class="ui-docs-pagedoc__version">契约版本 v{{ props.meta.version }}</p>
 
   <h2 id="examples">示例</h2>
   <slot />
@@ -107,5 +108,11 @@ async function copyImport(): Promise<void> {
 .ui-docs-pagedoc__copy:hover {
   color: var(--ui-surface);
   border-color: var(--ui-color-paper);
+}
+
+.ui-docs-pagedoc__version {
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-3);
+  margin: var(--ui-space-1) 0 0;
 }
 </style>

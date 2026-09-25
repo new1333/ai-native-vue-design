@@ -16,8 +16,9 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
             <tr><th>属性</th><th>类型</th><th>默认值</th><th>说明</th></tr>
           </thead>
           <tbody>
-            <tr v-for="item in props.api.props" :key="item.name">
+            <tr v-for="item in props.api.props" :key="item.name" :id="`prop-${item.name}`">
               <td>
+                <a :href="`#prop-${item.name}`" class="ui-docs-api__anchor" :aria-label="`锚点 ${item.name}`">#</a>
                 <code>{{ item.name }}</code>
                 <span v-if="item.required" class="ui-docs-api__required">必填</span>
               </td>
@@ -41,8 +42,11 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
             <tr><th>插槽</th><th>作用域</th><th>说明</th></tr>
           </thead>
           <tbody>
-            <tr v-for="item in props.api.slots" :key="item.name">
-              <td><code>{{ item.name }}</code></td>
+            <tr v-for="item in props.api.slots" :key="item.name" :id="`slot-${item.name}`">
+              <td>
+                <a :href="`#slot-${item.name}`" class="ui-docs-api__anchor" :aria-label="`锚点 ${item.name}`">#</a>
+                <code>{{ item.name }}</code>
+              </td>
               <td><code class="ui-docs-api__type">{{ item.scope ?? '—' }}</code></td>
               <td>{{ item.description }}</td>
             </tr>
@@ -59,8 +63,11 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
             <tr><th>事件</th><th>载荷</th><th>说明</th></tr>
           </thead>
           <tbody>
-            <tr v-for="item in props.api.events" :key="item.name">
-              <td><code>{{ item.name }}</code></td>
+            <tr v-for="item in props.api.events" :key="item.name" :id="`event-${item.name}`">
+              <td>
+                <a :href="`#event-${item.name}`" class="ui-docs-api__anchor" :aria-label="`锚点 ${item.name}`">#</a>
+                <code>{{ item.name }}</code>
+              </td>
               <td><code class="ui-docs-api__type">{{ item.payload ?? '—' }}</code></td>
               <td>{{ item.description }}</td>
             </tr>
@@ -77,8 +84,11 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
             <tr><th>成员</th><th>类型</th><th>说明</th></tr>
           </thead>
           <tbody>
-            <tr v-for="item in props.api.exposes" :key="item.name">
-              <td><code>{{ item.name }}</code></td>
+            <tr v-for="item in props.api.exposes" :key="item.name" :id="`expose-${item.name}`">
+              <td>
+                <a :href="`#expose-${item.name}`" class="ui-docs-api__anchor" :aria-label="`锚点 ${item.name}`">#</a>
+                <code>{{ item.name }}</code>
+              </td>
               <td><code class="ui-docs-api__type">{{ item.type }}</code></td>
               <td>{{ item.description }}</td>
             </tr>
@@ -147,5 +157,20 @@ code {
 
 .ui-docs-api__dash {
   color: var(--ui-text-3);
+}
+
+.ui-docs-api__anchor {
+  margin-right: var(--ui-space-2);
+  color: var(--ui-text-3);
+  text-decoration: none;
+}
+
+.ui-docs-api__anchor:hover {
+  color: var(--ui-accent);
+}
+
+tr:target {
+  /* 命中锚点的行高亮一屏内可辨（id 挂在 tr 上，td 背景透明可透出行底色） */
+  background: var(--ui-accent-soft);
 }
 </style>
