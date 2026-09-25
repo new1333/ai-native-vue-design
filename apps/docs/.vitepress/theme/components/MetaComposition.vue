@@ -2,6 +2,39 @@
 import type { ComponentDefinition } from '@comp-src/shared/meta'
 
 const props = defineProps<{ composition: ComponentDefinition['composition'] }>()
+
+interface MetaModule { meta: ComponentDefinition }
+
+// 构建期静态扫描：全部组件 meta（identity.name/category）与已交付的文档页
+const metaModules = import.meta.glob<MetaModule>('@comp-src/**/*.meta.ts', { eager: true })
+const pageKeys = Object.keys(import.meta.glob('../../../src/zh/components/**/*.md'))
+
+/** 已有文档页的目录名集合（glob key 形态不保证前缀，统一用后缀匹配） */
+const documentedDirs = new Set(
+  pageKeys
+    .map(key => key.match(/\/components\/([a-z-]+)\/([a-z-]+)\.md$/))
+    .filter((m): m is RegExpMatchArray => !!m)
+    .map(m => m[2]),
+)
+
+/** 展示名 → 文档页路径；仅登记已有文档页的组件（避免死链：build 对内部死链直接失败） */
+const LINKS = new Map<string, string>()
+for (const [metaPath, mod] of Object.entries(metaModules)) {
+  const meta = mod.meta
+  if (!meta) continue
+  const dir = metaPath.split('/').at(-2) ?? ''
+  if (!documentedDirs.has(dir)) continue
+  LINKS.set(meta.identity.name, `/components/${meta.identity.category}/${dir}`)
+}
+
+/** 相关组件文案与 meta identity.name 不一致的别名（新增此类组件时在此登记） */
+const NAME_ALIASES: Record<string, string> = {
+  Toast: 'ToastHost',
+}
+
+function linkFor(name: string): string | undefined {
+  return LINKS.get(NAME_ALIASES[name] ?? name)
+}
 </script>
 
 <template>
@@ -12,7 +45,10 @@ const props = defineProps<{ composition: ComponentDefinition['composition'] }>()
     </ul>
     <div v-if="props.composition.related.length" class="ui-docs-comp__related">
       <span class="ui-docs-comp__label">相关组件</span>
-      <span v-for="name in props.composition.related" :key="name" class="ui-docs-comp__chip">{{ name }}</span>
+      <template v-for="name in props.composition.related" :key="name">
+        <a v-if="linkFor(name)" :href="linkFor(name)" class="ui-docs-comp__chip ui-docs-comp__chip--link">{{ name }}</a>
+        <span v-else class="ui-docs-comp__chip">{{ name }}</span>
+      </template>
     </div>
     <ul v-if="props.composition.preferred.length" class="ui-docs-comp__preferred">
       <li v-for="item in props.composition.preferred" :key="item">{{ item }}</li>
@@ -89,5 +125,17 @@ const props = defineProps<{ composition: ComponentDefinition['composition'] }>()
   position: absolute;
   left: 0;
   color: var(--ui-warning);
+}
+
+.ui-docs-comp__chip--link {
+  text-decoration: none;
+  color: var(--ui-accent);
+  border-color: var(--ui-accent-soft);
+  transition: border-color var(--ui-motion-fast) var(--ui-ease-out),
+    background var(--ui-motion-fast) var(--ui-ease-out);
+}
+
+.ui-docs-comp__chip--link:hover {
+  background: var(--ui-accent-soft);
 }
 </style>
