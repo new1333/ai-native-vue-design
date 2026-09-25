@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# test coverage
+coverage/
+
+# caches / logs / misc
+.vite/
+*.tsbuildinfo
+pnpm-debug.log*
+.DS_Store

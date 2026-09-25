@@ -1,0 +1,4635 @@
+{
+  "schemaVersion": 1,
+  "source": "packages/components/src",
+  "metaContract": "packages/components/src/shared/meta.ts",
+  "count": 25,
+  "components": [
+    {
+      "id": "ui-alert",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Alert",
+        "package": "@ui/components",
+        "export": "Alert",
+        "category": "feedback",
+        "description": "纸面页内警示条：柔底信息块（severity 语义图标 + 标题 + 正文 + 可选关闭按钮），danger 为 role=alert、其余为 role=status。"
+      },
+      "intent": {
+        "what": "在页面内容流中就地展示一条需要被注意的状态信息（结果反馈、风险提示、系统说明），带 severity 语义色与图标。",
+        "when": [
+          "操作结果就地反馈（保存成功、校验失败、额度不足等）",
+          "表单/区块顶部的风险或约束提示（warning/danger）",
+          "中性说明与公告（info，如功能灰度、维护计划）",
+          "需要用户主动关闭的驻留提示（closable）"
+        ],
+        "whenNot": [
+          "瞬时通知（自动消失、跨页面存在）用 Toast：Alert 驻留在内容流中，不浮层",
+          "模态阻塞确认用 Dialog：Alert 不拦截操作",
+          "数据为空占位用 EmptyState：Alert 表达状态信息而非空态",
+          "字段级校验错误用 FormField 的错误文案：Alert 承载区块级而非单字段信息"
+        ],
+        "userTask": "用户需要看到并理解一条就地呈现的状态信息，并可决定是否将其关闭"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "severity",
+            "type": "'info' | 'success' | 'warning' | 'danger'",
+            "default": "info",
+            "description": "语义档位：对应 --ui-{severity}/--ui-{severity}-soft 色与内建语义图标；同时决定 live region 角色（danger 为 alert，其余为 status）。"
+          },
+          {
+            "name": "title",
+            "type": "string",
+            "description": "一句话结论标题（text-1/medium）；详细说明放默认插槽正文。"
+          },
+          {
+            "name": "closable",
+            "type": "boolean",
+            "default": "false",
+            "description": "渲染关闭按钮（原生 button、aria-label=\"关闭\"）；点击仅 emit close，组件不自行隐藏。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "正文：详细说明、补充信息或富内容，渲染于标题之下（text-2）。"
+          },
+          {
+            "name": "icon",
+            "description": "左侧图标覆盖：缺省时按 severity 渲染内建图标（内联 SVG，viewBox 0 0 24 24、stroke-width 1.5、currentColor、20px，颜色随 severity 语义色）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "close",
+            "description": "点击关闭按钮后触发；显隐由使用方据此外理（如 v-if 移除）。"
+          }
+        ],
+        "exposes": []
+      },
+      "constraints": {
+        "conflicts": [
+          "Toast（瞬时浮层通知）",
+          "Dialog（模态阻塞）",
+          "EmptyState（空态占位）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "表单提交失败：severity=\"danger\" + 标题 + 正文错误清单",
+          "保存成功就地反馈：severity=\"success\" + closable，监听 close 后 v-if 移除",
+          "页面顶部系统公告：severity=\"info\" + closable"
+        ],
+        "related": [
+          "Toast",
+          "EmptyState",
+          "FormField",
+          "Button"
+        ],
+        "preferred": [
+          "danger 仅用于需要立即被注意的失败/风险（role=alert 会打断读屏）",
+          "标题写结论、正文写细节，避免大段文字堆在标题",
+          "closable 的显隐归使用方，勿假设组件自动消失"
+        ]
+      },
+      "states": {
+        "default": "柔底信息条：--ui-{severity}-soft 底、{severity} 色语义图标（20px）、text-1 标题（15px/medium）、text-2 正文（13px）；圆角 --ui-radius-md。",
+        "hover": "容器无 hover 反馈；closable 时关闭按钮图标 text-3 → text-1（--ui-motion-fast 过渡）。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline，唯一可焦元素是 closable 的关闭按钮。",
+        "active": "容器与关闭按钮均无按压位移/缩放反馈。",
+        "disabled": "不适用：Alert 为静态反馈容器，无 disabled 语义（closable=false 时直接不渲染关闭按钮）。"
+      },
+      "accessibility": "根为 live region：danger 用 role=\"alert\"（隐式 aria-live=assertive，读屏立即播报），info/success/warning 用 role=\"status\"（polite）。关闭按钮为原生 <button type=\"button\">（Enter/Space 平台原生激活、Tab 自然进入），aria-label=\"关闭\"，图标 svg aria-hidden=\"true\"；点击仅 emit close，不抢焦点、不自行隐藏。标题与正文为根内普通文本，读屏随 live region 语义播报。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；无 onMounted 副作用。severity 柔底类名、role、标题/正文、closable 关闭按钮与 aria-label、内建图标 svg 均随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生根 class、role 与图标 path。动效只有关闭按钮 color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：柔底 --ui-{severity}-soft、图标色 --ui-{severity}、文字 --ui-text-1/--ui-text-2、圆角 --ui-radius-md、间距 --ui-space-*、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入；根类 ui-alert + ui-alert--{severity} 可供使用方定向覆盖。",
+      "examples": [
+        "<Alert severity='success' title='已保存'>变更已同步到全部设备。</Alert>",
+        "<Alert severity='danger' title='保存失败'>网络中断，请重试；若持续失败请检查代理设置。</Alert>",
+        "<Alert severity='warning' title='额度即将用尽' closable @close='dismiss'>本月 API 额度已使用 90%。</Alert>",
+        "<Alert severity='info'>\n  正文说明，不带标题。\n  <template #icon><svg viewBox='0 0 24 24'><!-- … --></svg></template>\n</Alert>"
+      ],
+      "agent": {
+        "keywords": [
+          "alert",
+          "警示条",
+          "警告",
+          "提示条",
+          "横幅",
+          "banner",
+          "severity",
+          "info",
+          "success",
+          "warning",
+          "danger",
+          "closable",
+          "关闭",
+          "role=alert",
+          "role=status",
+          "页内通知",
+          "反馈"
+        ],
+        "selectionHints": [
+          "页内驻留反馈 → Alert；自动消失的浮层通知 → Toast；模态确认 → Dialog",
+          "失败/风险且需立即被读屏注意 → severity=\"danger\"（role=alert）；普通提示保持默认 info（role=status）",
+          "要有关闭入口 → closable 并监听 @close 自行移除"
+        ],
+        "commonTasks": [
+          "表单/操作结果的就地成败反馈",
+          "页面顶部系统公告（可关闭）",
+          "区块级风险提示（warning）"
+        ],
+        "generationNotes": [
+          "close 事件不改变组件渲染：显隐（v-if/动画）由使用方控制",
+          "role 由 severity 推导：danger→alert，其余→status，勿手工覆盖",
+          "标题与正文都可选；两者并存时间距为 --ui-space-1",
+          "自定义图标走 #icon 内联 SVG（viewBox 0 0 24 24、stroke-width 1.5、currentColor）"
+        ]
+      },
+      "source": {
+        "dir": "alert",
+        "metaFiles": [
+          "Alert.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-avatar",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Avatar",
+        "package": "@ui/components",
+        "export": "Avatar",
+        "category": "general",
+        "description": "纸面头像：src 图片 + 加载失败/缺省回退首字母（initials 优先，否则由 name 推导），全圆三档尺寸（24/32/40），alt 必填保证可读名称。"
+      },
+      "intent": {
+        "what": "以图片或首字母呈现一个人/团队/实体的身份标识：全圆小尺寸、必有可读名称（alt）、图片失败自动回退首字母。",
+        "when": [
+          "导航栏/评论/表格行的用户身份标识",
+          "协作成员列表、消息发送者标识",
+          "团队/组织等实体的图形标识（配图标图片）",
+          "无图片时以首字母占位（initials 或由 name 推导）"
+        ],
+        "whenNot": [
+          "可点击跳转到个人页的入口应外层包 a/RouterLink：Avatar 自身非交互",
+          "状态在线/离线标记需要叠加 Badge：Avatar 不承载状态语义",
+          "品牌 logo 等矩形展示图直接用 img：Avatar 强制全圆裁剪",
+          "替代用户名文本：Avatar 是图形补充，名字仍需文本呈现"
+        ],
+        "userTask": "用户需要快速识别一条内容归属的人或实体"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "src",
+            "type": "string",
+            "description": "图片地址：有效且未加载失败时渲染 <img>；缺省、空串或 onerror 后回退首字母。"
+          },
+          {
+            "name": "alt",
+            "type": "string",
+            "required": true,
+            "description": "替代文本（必填）：随 <img alt> 输出；回退态作为根元素 role=\"img\" 的 aria-label。"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "description": "名称：未显式给 initials 时按首个/末个空白分隔词的首字符推导回退首字母（大写）。"
+          },
+          {
+            "name": "initials",
+            "type": "string",
+            "description": "显式回退首字母，优先于 name 推导。"
+          },
+          {
+            "name": "size",
+            "type": "'sm' | 'md' | 'lg'",
+            "default": "'md'",
+            "description": "尺寸档位：sm 24px / md 32px / lg 40px；字号档随尺寸 12/13/15。"
+          }
+        ],
+        "slots": [],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {},
+      "composition": {
+        "patterns": [
+          "导航栏右侧 Avatar + 用户名",
+          "表格行内 Avatar + 名称（size=\"sm\"）",
+          "成员列表 Avatar + Badge 状态点"
+        ],
+        "related": [
+          "Card",
+          "Badge",
+          "Button"
+        ],
+        "preferred": [
+          "alt 始终填可读名称（人名/团队名），不要填\"头像\"这类泛称",
+          "有 name 时即使有 src 也传入，读屏与回退都受益"
+        ]
+      },
+      "states": {
+        "default": "图片态：全圆裁剪 <img>（object-fit: cover）；回退态：--ui-surface-muted 底 + --ui-text-2 首字母（字重 medium）。",
+        "hover": "无交互态：Avatar 为静态标识，不响应 hover。",
+        "focusVisible": "无聚焦语义：不可聚焦、不参与 Tab 序；外层为链接时焦点环由外层 :focus-visible 提供。",
+        "active": "无按压反馈：静态标识不承载 active 态。",
+        "disabled": "不适用：无禁用语义。",
+        "error": "图片加载失败（<img> error 事件）：立即切换为首字母回退态；src 变化时复位重试新图。"
+      },
+      "accessibility": "图片态由 <img alt>（必填）提供可读名称；回退态根元素 role=\"img\" + aria-label（同 alt），首字母文本 aria-hidden=\"true\" 不重复播报。组件自身非交互：无 tabindex、不捕获焦点。首字母是装饰性视觉，语义一律来自 alt。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；图片失败监听经模板 @error 挂载（服务端不触发、不序列化）；src/alt/尺寸类/回退首字母均随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅 failed 标记 + 两个 computed 派生 class 与回退文本。图片加载由浏览器原生处理，失败经原生 error 事件进入回退。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：全圆圆角由 calc(盒子/2) 组成（盒子取 --ui-space-5/--ui-space-6/--ui-space-6+--ui-space-2 映射 24/32/40）、字号 --ui-text-xs/sm/md、回退底 --ui-surface-muted、文字 --ui-text-2、字重 --ui-font-weight-medium。无全局 CSS 引入。",
+      "examples": [
+        "<Avatar src='/u/zhang.png' alt='张三' name='张三' />",
+        "<Avatar name='Zhang San' alt='张三' size='sm' />",
+        "<Avatar initials='AI' alt='AI 助手' size='lg' />",
+        "<a href='/profile'><Avatar :src='user.avatar' :alt='user.name' /></a>"
+      ],
+      "agent": {
+        "keywords": [
+          "avatar",
+          "头像",
+          "首字母",
+          "initials",
+          "用户标识",
+          "identity",
+          "alt",
+          "圆",
+          "round"
+        ],
+        "selectionHints": [
+          "身份标识 → Avatar；品牌矩形 logo → img；可点击入口外包 a/RouterLink",
+          "无图片或图片可能 404 → 只传 name/initials，组件自动首字母回退",
+          "行内紧凑场景用 size=\"sm\"，导航/正文用 md，展示页用 lg"
+        ],
+        "commonTasks": [
+          "导航栏用户头像",
+          "评论/消息列表发送者标识",
+          "成员列表首字母占位"
+        ],
+        "generationNotes": [
+          "alt 必填：填人名/团队名等可读名称，勿填\"头像\"",
+          "首字母回退规则：initials 优先，否则 name 首末词首字符大写；中文名取首字符",
+          "图片加载失败自动回退；src 更新会自动重试新图，无需手动复位",
+          "Avatar 非交互：需要点击跳转时外层包 a/RouterLink"
+        ]
+      },
+      "source": {
+        "dir": "avatar",
+        "metaFiles": [
+          "Avatar.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-badge",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Badge",
+        "package": "@ui/components",
+        "export": "Badge",
+        "category": "general",
+        "description": "纸面状态徽标：neutral/success/warning/danger/info 五档 soft 底 + 同系文字色，可选前置小圆点，纯展示无交互。"
+      },
+      "intent": {
+        "what": "以 soft 底色块标注对象的状态或属性（如\"进行中\"\"已失败\"\"Beta\"）的静态徽标。",
+        "when": [
+          "表格行、详情页、列表项的状态标注",
+          "版本/环境/渠道等属性标签（neutral）",
+          "配 dot 表达\"运行中/在线\"等轻量状态"
+        ],
+        "whenNot": [
+          "计数值/未读数等数字溢出场景（后续用 Badge max 或独立 CountBadge，见 generationNotes）",
+          "可点击的过滤/筛选标签（那是交互组件，Badge 不承载交互）",
+          "大段说明文字用 Text，不要塞进徽标"
+        ],
+        "userTask": "用户需要一眼识别对象的状态类别"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "variant",
+            "type": "'neutral' | 'success' | 'warning' | 'danger' | 'info'",
+            "default": "neutral",
+            "description": "状态语义档位：soft 底 --ui-*-soft + 同系文字色 --ui-*；neutral 取 surface-muted/text-2。"
+          },
+          {
+            "name": "dot",
+            "type": "boolean",
+            "default": "false",
+            "description": "前置小圆点（纯装饰 aria-hidden），颜色随同系文字色（currentColor）。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "徽标文本（建议 2–6 字的状态词）。"
+          }
+        ],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {
+        "conflicts": [
+          "可点击筛选标签（交互组件）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Table 状态列（variant + dot）",
+          "详情页标题旁的状态标注",
+          "列表项元信息行（Badge + Text muted）"
+        ],
+        "related": [
+          "Text",
+          "Heading",
+          "Table",
+          "Card"
+        ],
+        "preferred": [
+          "同屏状态色克制：强调色/状态色元素 ≤3 处",
+          "文字颜色即语义，不要为徽标引入第四种颜色"
+        ]
+      },
+      "states": {
+        "default": "静态徽标：12px/500 文字、--ui-space-1×--ui-space-2 内距、--ui-radius-xs 圆角；底色 --ui-*-soft、文字 --ui-*（同系）。",
+        "hover": "无交互，不响应 hover，无 hover 样式。",
+        "focusVisible": "不可聚焦（无 tabindex、非交互元素），不产生焦点环。",
+        "active": "无按压态，不响应 ：active。",
+        "disabled": "无禁用态。"
+      },
+      "accessibility": "纯文本语义，不加 role/aria-*、不设 tabindex；状态信息由徽标文本本身承载（不要只靠圆点传达状态）；dot 为 aria-hidden 装饰。无键盘路径（非交互元素）。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；variant 修饰类与 dot 圆点随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅一个 computed 派生 class，渲染成本可忽略。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：底色 --ui-*-soft、文字 --ui-* 同系、字号 --ui-text-xs、字重 --ui-font-weight-medium、间距 --ui-space-*、圆角 --ui-radius-xs；dot 尺寸为 em/50% 比例值（随字号缩放，非绝对设计维度）、颜色走 currentColor。无全局 CSS 引入。",
+      "examples": [
+        "<Badge variant=\"success\">已完成</Badge>",
+        "<Badge variant=\"danger\" dot>服务异常</Badge>",
+        "<Badge>Beta</Badge>",
+        "<Badge variant=\"warning\">待审核</Badge>\n<Badge variant=\"info\">同步中</Badge>"
+      ],
+      "agent": {
+        "keywords": [
+          "badge",
+          "徽标",
+          "标签",
+          "状态",
+          "status",
+          "dot",
+          "圆点",
+          "success",
+          "warning",
+          "danger",
+          "info",
+          "neutral"
+        ],
+        "selectionHints": [
+          "状态标注 → Badge（soft 底语义）；正文说明 → Text",
+          "\"运行中/在线\"等活状态配 dot；属性标签用 neutral",
+          "可点击的筛选标签不要用 Badge（无交互）"
+        ],
+        "commonTasks": [
+          "表格状态列",
+          "详情页状态标注",
+          "列表属性标签"
+        ],
+        "generationNotes": [
+          "状态不要只靠 dot 颜色传达，始终提供文本",
+          "max 数字溢出（如 99+）暂未实现，不要用 Badge 承载计数",
+          "文本保持 2–6 字，过长说明改用 Text"
+        ]
+      },
+      "source": {
+        "dir": "badge",
+        "metaFiles": [
+          "Badge.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-button",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Button",
+        "package": "@ui/components",
+        "export": "Button",
+        "category": "general",
+        "description": "纸面按钮：承载一次即时动作的原生 button，四档视觉（primary/secondary/ghost/danger）、三档尺寸，含 loading/disabled 语义。"
+      },
+      "intent": {
+        "what": "触发一次即时动作（提交、保存、取消、删除等）的按钮，视觉与交互语义齐全且无样式根可单独取用。",
+        "when": [
+          "表单提交 / 保存 / 取消等即时动作",
+          "对话框、卡片、工具栏中的确认与操作入口",
+          "需要 loading 挡截重复点击的异步动作",
+          "危险操作（删除、注销）用 variant=\"danger\""
+        ],
+        "whenNot": [
+          "仅图标、无文本的动作用 IconButton：Button 的默认插槽应始终有可读文本 label，不要清空文本只留 icon 插槽",
+          "站内导航或外链用 <a>/<RouterLink>：Button 不渲染 href，没有导航语义，链接应保持中键新开、右键菜单等原生行为",
+          "开/关或选中状态的持续表达用 Switch/Checkbox/Radio：Button 表达即时动作，不承载选中态",
+          "只读信息展示或富内容排版用 Typography/Card 类组件，不要用按钮包裹"
+        ],
+        "userTask": "用户需要触发一个动作并得到即时反馈"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "variant",
+            "type": "'primary' | 'secondary' | 'ghost' | 'danger'",
+            "default": "secondary",
+            "description": "视觉档位：primary 实底强调、secondary 描边常规、ghost 无底安静、danger 危险操作（柔底，hover 转实底）。"
+          },
+          {
+            "name": "size",
+            "type": "'sm' | 'md' | 'lg'",
+            "default": "md",
+            "description": "尺寸档位；ButtonGroup 内未显式声明时跟随组 size。"
+          },
+          {
+            "name": "type",
+            "type": "'button' | 'submit' | 'reset'",
+            "default": "button",
+            "description": "原生 button type；表单提交需显式传 \"submit\"。"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "default": "false",
+            "description": "加载中：显示旋转指示、置 aria-busy=\"true\"，点击与 Enter/Space 激活一律不触发 click，但保持可聚焦。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：原生 disabled 属性（移出 Tab 序）+ 拦截一切激活路径。"
+          },
+          {
+            "name": "block",
+            "type": "boolean",
+            "default": "false",
+            "description": "块级铺满容器宽度。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "按钮文本/内容；应始终提供可读 label（图标化操作改用 IconButton）。"
+          },
+          {
+            "name": "icon",
+            "description": "左侧图标；传内联 SVG（viewBox 0 0 24 24、stroke-width 1.5、currentColor），尺寸由组件按 size 统一约束为 16/20/24。loading 时让位于加载指示。"
+          },
+          {
+            "name": "iconRight",
+            "description": "右侧图标，约束同 icon。"
+          }
+        ],
+        "events": [
+          {
+            "name": "click",
+            "payload": "MouseEvent",
+            "description": "点击激活；仅在非 disabled/loading 时触发，键盘 Enter/Space 激活走同一路径。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦根按钮元素（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "IconButton（仅图标动作）",
+          "<a>/<RouterLink>（导航与链接语义）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "ButtonGroup 连排（组内共享 size、首尾圆角）",
+          "Dialog/Footer 动作区（确认 + 取消）",
+          "表单提交 + loading 挡截重复提交"
+        ],
+        "related": [
+          "IconButton",
+          "Form",
+          "Dialog",
+          "Toast"
+        ],
+        "preferred": [
+          "一屏 primary 强调动作 ≤1",
+          "危险动作用 danger 且需二次确认"
+        ]
+      },
+      "states": {
+        "default": "各 variant 静止态：primary 松绿实底/纸白文字；secondary 白底描边 ink 文字；ghost 透明底 text-2；danger clay 柔底 clay 文字。",
+        "hover": "primary 转 --ui-accent-hover；secondary 转 sand 底 + 深描边；ghost 转 sand 底 + text-1；danger 转实底 danger + 纸白文字。disabled 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline、不改 tabindex。",
+        "active": "在 hover 基础上 transform: scale(0.98)（≤2% 缩放，180ms 内 token 动效）；disabled 无按压反馈。",
+        "disabled": "统一灰化：sand 底 + line 描边 + text-3 文字 + not-allowed 光标，原生 disabled 属性使其移出 Tab 序。",
+        "loading": "左图标让位于旋转指示（16/20/24 随 size），aria-busy=\"true\"，点击与 Enter/Space 均不触发 click，元素保持可聚焦。"
+      },
+      "accessibility": "原生 <button>（隐式 role=button），Tab 自然进入/移出，Enter/Space 激活；keydown 阶段统一 preventDefault 后由元素 .click() 触发，保证各环境单次激活且 Space 不滚动页面。loading 时 aria-busy=\"true\" 且不置 disabled（保持焦点与读屏可达）；disabled 用原生 disabled 而非 aria-disabled。加载指示 svg aria-hidden=\"true\"。图标化使用必须有可读文本或改用 IconButton。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；.click()/focus() 仅出现在客户端事件回调与暴露方法内；aria-busy、disabled、type 均随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生 class 与 aria。加载动画为纯 CSS transform 旋转，prefers-reduced-motion 下随 --ui-motion-* 归零立即停止。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：颜色走 semantic/component 层、间距 --ui-space-*、圆角 --ui-button-radius、字号 --ui-text-*、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入；深层定制走 ButtonRoot（无样式交互根）+ 自行叠加 class。",
+      "examples": [
+        "<Button variant='primary' @click='save'>保存</Button>",
+        "<Button :loading='saving' :disabled='!dirty' @click='submit'>提交</Button>",
+        "<Button variant='danger' type='button' @click='remove'>删除</Button>\n<Button type='button' @click='cancel'>取消</Button>",
+        "<ButtonGroup size='sm'>\n  <Button>复制</Button>\n  <Button>编辑</Button>\n  <Button variant='danger'>删除</Button>\n</ButtonGroup>",
+        "<Button size='lg'>\n  <template #icon><svg viewBox='0 0 24 24'><!-- … --></svg></template>\n  开始分析\n  <template #iconRight><svg viewBox='0 0 24 24'><!-- … --></svg></template>\n</Button>"
+      ],
+      "agent": {
+        "keywords": [
+          "button",
+          "按钮",
+          "click",
+          "点击",
+          "loading",
+          "加载中",
+          "disabled",
+          "禁用",
+          "danger",
+          "危险操作",
+          "按钮组",
+          "button group",
+          "submit",
+          "提交"
+        ],
+        "selectionHints": [
+          "动作触发 → Button；仅图标 → IconButton；导航/链接 → a/RouterLink",
+          "异步动作配 :loading 防重复触发；破坏性动作用 variant=\"danger\"",
+          "多个并列操作 → ButtonGroup 包裹并统 size"
+        ],
+        "commonTasks": [
+          "表单提交按钮 + loading",
+          "对话框确认/取消对",
+          "工具栏动作组"
+        ],
+        "generationNotes": [
+          "type 默认 \"button\"，表单内提交须显式 type=\"submit\"",
+          "默认插槽始终写可读文本；图标走 #icon/#iconRight 内联 SVG",
+          "不要用 disabled 表达 loading（loading 保持可聚焦）",
+          "视觉定制优先换 variant/size；极端定制用 ButtonRoot + useButton"
+        ]
+      },
+      "source": {
+        "dir": "button",
+        "metaFiles": [
+          "Button.meta.ts",
+          "ButtonGroup.meta.ts"
+        ]
+      },
+      "subComponents": [
+        {
+          "id": "ui-button-group",
+          "version": "0.1.0",
+          "identity": {
+            "name": "ButtonGroup",
+            "package": "@ui/components",
+            "export": "ButtonGroup",
+            "category": "general",
+            "description": "按钮连排容器：组内共享 size，处理连排首尾圆角（中间方角），并给出 role=\"group\" 分组语义。"
+          },
+          "intent": {
+            "what": "把若干相关 Button 连排成一组：视觉上无缝相接、尺寸统一、语义上归为一个 group。",
+            "when": [
+              "同一操作的多个并列分支（复制/编辑/删除）",
+              "工具栏、表格行尾动作列",
+              "需要统一尺寸的一排动作按钮"
+            ],
+            "whenNot": [
+              "语义为单选/多选时（分段选择应使用专用选择类组件，ButtonGroup 不承载选中态）",
+              "主操作 + 次操作的对话框动作区（视觉重量不同，直接并排两个 Button 即可，无需连排）",
+              "仅一个按钮时无需包裹（连排圆角处理对其无意义）"
+            ],
+            "userTask": "用户在若干并列动作中触发其一"
+          },
+          "api": {
+            "props": [
+              {
+                "name": "size",
+                "type": "'sm' | 'md' | 'lg'",
+                "description": "组内共享尺寸；组内 Button 显式声明 size 时以自身为准。"
+              }
+            ],
+            "slots": [
+              {
+                "name": "default",
+                "description": "组内容，通常为若干 Button（直接 DOM 子元素才能享受首尾圆角处理）。"
+              }
+            ],
+            "events": [],
+            "exposes": []
+          },
+          "constraints": {
+            "conflicts": [
+              "分段选择/单选组件（选中态语义）"
+            ],
+            "dependsOn": [
+              "ui-button"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "工具栏动作组",
+              "表格行操作列",
+              "向导步骤的上一步/下一步"
+            ],
+            "related": [
+              "Button",
+              "IconButton"
+            ],
+            "preferred": [
+              "组内 Button 不单独声明 size，统一交给 ButtonGroup"
+            ]
+          },
+          "states": {
+            "default": "inline-flex 连排、stretch 等高；子按钮首尾保留外沿圆角（--ui-button-radius），中间方角。",
+            "hover": "子按钮各自的 hover 表现不变；连排边界不产生额外反馈。",
+            "focusVisible": "子按钮逐个以全局 :focus-visible 焦点环聚焦，Tab 顺序即 DOM 顺序。",
+            "active": "子按钮各自的 active 按压表现不变。",
+            "disabled": "容器不拦截子按钮；禁用由各 Button 的 disabled 决定。"
+          },
+          "accessibility": "容器 role=\"group\"，可用 aria-label（透传 attrs）命名分组；子按钮为原生 button，键盘路径与独立 Button 完全一致。",
+          "ssr": "renderToString 无异常；无浏览器 API 访问，size 共享走 provide/inject，SSR 期间即可解析。",
+          "performance": "纯容器：无监听、无测量，仅 provide 一个 computed。",
+          "styling": "连排圆角消费 --ui-button-radius；其余视觉完全由子 Button 自身 token 决定；容器不设间距（连排贴合）。",
+          "examples": [
+            "<ButtonGroup>\n  <Button>复制</Button>\n  <Button>编辑</Button>\n  <Button variant='danger'>删除</Button>\n</ButtonGroup>",
+            "<ButtonGroup size='sm' aria-label='行操作'>\n  <Button>查看</Button>\n  <Button>编辑</Button>\n</ButtonGroup>"
+          ],
+          "agent": {
+            "keywords": [
+              "button group",
+              "按钮组",
+              "连排",
+              "工具栏",
+              "toolbar actions",
+              "动作组"
+            ],
+            "selectionHints": [
+              "并列同级动作 → ButtonGroup；有选中态 → 选择类组件；对话框动作区 → 直接并排 Button"
+            ],
+            "commonTasks": [
+              "表格行操作列",
+              "工具栏动作组"
+            ],
+            "generationNotes": [
+              "子 Button 必须是直接子元素（首尾圆角依赖 DOM 相邻关系）",
+              "组内不再单独给 Button 传 size，统一用 ButtonGroup 的 size"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ui-card",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Card",
+        "package": "@ui/components",
+        "export": "Card",
+        "category": "general",
+        "description": "纸面卡片：surface 底 + radius-md + border 描边的复合容器（Card / CardHeader / CardBody / CardFooter），插槽驱动，静止面默认无阴影，可选 rest 一档静止阴影。"
+      },
+      "intent": {
+        "what": "把相关内容组织到一个有边界面上的静态容器：surface 底、1px 描边、12px 圆角，头部/主体/底部区块由插槽组件组成。",
+        "when": [
+          "仪表盘中的内容面板（统计、图表、摘要）",
+          "列表页/详情页的信息分组与排版容器",
+          "需要标题 + 正文 + 动作区的标准内容块",
+          "静止面需要可选一档轻微阴影（shadow=\"rest\"）做层次区分时"
+        ],
+        "whenNot": [
+          "弹出浮层 / 模态内容用 Dialog / Popover：Card 无层级行为与焦点管理",
+          "页面级布局分区（侧栏、顶栏）用 Navigation 家族组件：Card 是内容容器不是框架",
+          "纯文字排版流（文章正文）不需要卡片包裹时直接排版",
+          "需要悬浮交互反馈（hover 抬升等）的面板：Card 为静态面，不承载交互态"
+        ],
+        "userTask": "用户需要在一块有边界的纸面上阅读一组相关信息"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "shadow",
+            "type": "'none' | 'rest'",
+            "default": "'none'",
+            "description": "阴影档位：默认 'none'（静止面默认无阴影）；'rest' 应用 --ui-shadow-rest 一档静止阴影。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "卡片内容：通常为 CardHeader / CardBody / CardFooter 的组合（作为直接子元素享受区块间距），也可以是任意内容。"
+          }
+        ],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {},
+      "composition": {
+        "patterns": [
+          "Card > CardHeader(标题) + CardBody(正文) + CardFooter(Button 动作区)",
+          "DashboardCard：Card + KPI/图表组合",
+          "Card 内嵌 Form / Table 等任意内容（插槽驱动）"
+        ],
+        "related": [
+          "CardHeader",
+          "CardBody",
+          "CardFooter",
+          "Button",
+          "Badge",
+          "Avatar"
+        ],
+        "preferred": [
+          "标准三段式内容块优先用 CardHeader/CardBody/CardFooter 组合，而非裸写标题正文",
+          "静止面保持默认 shadow=\"none\"；仅在同一视图需要层次对比时对个别卡片用 shadow=\"rest\""
+        ]
+      },
+      "states": {
+        "default": "surface 底 + 1px border 描边 + radius-md 圆角 + 24px 内边距；无阴影（静止面默认无阴影）；子区块间 16px 纵向间距。",
+        "hover": "无交互态：Card 为静态容器，不响应 hover。",
+        "focusVisible": "无聚焦语义：Card 不可聚焦、不参与 Tab 序，焦点环只出现在其内部的可交互子元素上。",
+        "active": "无按压反馈：静态容器不承载 active 态。",
+        "disabled": "不适用：Card 无禁用语义；内部表单控件的禁用由各控件自身表达。"
+      },
+      "accessibility": "Card 为泛型容器（div，无 role、无 landmark）：不劫持语义，标题排版由 CardHeader 承担但语义层级（h1-h6）由使用方以原生标题元素放入插槽决定；内部可交互元素（button/a/input）保持原生键盘可达，Card 自身不可聚焦。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；无监听器、无测量；shadow 档位类与默认插槽内容随 SSR 输出。",
+      "performance": "纯静态容器：无监听器、无测量、无定时器、无动效；仅一个 computed 派生根 class。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：底 --ui-surface、描边 --ui-border、圆角 --ui-radius-md、阴影 --ui-shadow-rest（仅 shadow=\"rest\"）、内边距 --ui-space-5、区块间距 --ui-space-4、文字 --ui-text-1。无全局 CSS 引入；CardHeader/Body/Footer 只提供排版默认值（字号/字重/行高/颜色 token），深层定制由使用方在插槽内容上叠加。",
+      "examples": [
+        "<Card>\n  <CardHeader>部署概览</CardHeader>\n  <CardBody>最近一次部署于 2 小时前完成。</CardBody>\n  <CardFooter>\n    <Button size='sm'>查看日志</Button>\n  </CardFooter>\n</Card>",
+        "<Card shadow='rest'>层次对比中需要轻微抬升的面板</Card>",
+        "<Card>\n  <CardBody>\n    <h3>周报</h3>\n    <p>本周新增 12 个组件。</p>\n  </CardBody>\n</Card>"
+      ],
+      "agent": {
+        "keywords": [
+          "card",
+          "卡片",
+          "面板",
+          "panel",
+          "容器",
+          "container",
+          "surface",
+          "shadow",
+          "阴影",
+          "header",
+          "footer",
+          "body"
+        ],
+        "selectionHints": [
+          "静态内容分组/面板 → Card；弹出层 → Dialog/Popover；页面框架 → Navigation 家族",
+          "标题 + 正文 + 动作 → Card 内按 CardHeader/CardBody/CardFooter 顺序组合",
+          "只有正文时可以只用 Card + CardBody"
+        ],
+        "commonTasks": [
+          "仪表盘内容面板",
+          "详情页信息分组",
+          "列表卡片项"
+        ],
+        "generationNotes": [
+          "Card 是静态容器：不要在卡片根上做 hover/点击交互，交互放在内部 Button 等元素",
+          "shadow 保持默认 none，除非确需静止阴影层次（rest）",
+          "CardHeader 内放原生 h1-h6 决定标题语义层级，组件不替使用方选层级",
+          "三个区块组件作为 Card 的直接子元素渲染，区块间距由 Card 的 gap 提供"
+        ]
+      },
+      "source": {
+        "dir": "card",
+        "metaFiles": [
+          "Card.meta.ts",
+          "CardBody.meta.ts",
+          "CardFooter.meta.ts",
+          "CardHeader.meta.ts"
+        ]
+      },
+      "subComponents": [
+        {
+          "id": "ui-card-body",
+          "version": "0.1.0",
+          "identity": {
+            "name": "CardBody",
+            "package": "@ui/components",
+            "export": "CardBody",
+            "category": "general",
+            "description": "卡片主体区块：正文的排版默认值（text-md / body 行高 / text-1），插槽驱动，可承载任意内容。"
+          },
+          "intent": {
+            "what": "Card 的主体区块容器：为正文与嵌入内容提供一致的排版默认值。",
+            "when": [
+              "Card 内放正文段落、表单、表格、图表等主体内容",
+              "无标题卡片时作为唯一区块使用"
+            ],
+            "whenNot": [
+              "标题行（用 CardHeader）",
+              "动作按钮区/补充说明（用 CardFooter）"
+            ],
+            "userTask": "用户需要在卡片上阅读或操作主体内容"
+          },
+          "api": {
+            "props": [],
+            "slots": [
+              {
+                "name": "default",
+                "description": "主体内容：正文、表单、表格、图表等任意内容。"
+              }
+            ],
+            "events": [],
+            "exposes": []
+          },
+          "constraints": {
+            "dependsOn": [
+              "ui-card"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "CardBody 内放 Form",
+              "CardBody 内放 Table / KPI",
+              "CardBody 段落正文"
+            ],
+            "related": [
+              "Card",
+              "CardHeader",
+              "CardFooter"
+            ],
+            "preferred": [
+              "主体内容统一放 CardBody，保持三段式结构一致"
+            ]
+          },
+          "states": {
+            "default": "text-md / body 行高 / text-1 颜色；无内边距（由 Card 统一），区块间距由 Card 的 gap 提供。",
+            "hover": "无交互态：静态区块不响应 hover。",
+            "focusVisible": "无聚焦语义：不可聚焦；内部可交互元素保持各自焦点行为。",
+            "active": "无按压反馈。",
+            "disabled": "不适用：无禁用语义；内部表单控件禁用由各控件表达。"
+          },
+          "accessibility": "泛型 div 容器，无 role、不产生 landmark 语义；内容按文档流自然可读，内部可交互元素保持原生键盘可达。",
+          "ssr": "renderToString 无异常：无浏览器 API 访问，插槽内容随 SSR 输出。",
+          "performance": "纯静态容器：无监听器、无测量、无定时器。",
+          "styling": "只消费 --ui-* token：字号 --ui-text-md、行高 --ui-leading-body、颜色 --ui-text-1；自身不设边距（间距由 Card gap 统一）。",
+          "examples": [
+            "<CardBody>\n  <p>最近一次部署于 2 小时前完成。</p>\n</CardBody>"
+          ],
+          "agent": {
+            "keywords": [
+              "card body",
+              "卡片主体",
+              "正文",
+              "区块"
+            ],
+            "selectionHints": [
+              "Card 的主体内容一律放 CardBody，获得正文排版默认值"
+            ],
+            "commonTasks": [
+              "卡片正文段落",
+              "卡片内嵌表单/表格容器"
+            ],
+            "generationNotes": [
+              "不要在 CardBody 里再包一层自造边距（间距由 Card 统一提供）"
+            ]
+          }
+        },
+        {
+          "id": "ui-card-footer",
+          "version": "0.1.0",
+          "identity": {
+            "name": "CardFooter",
+            "package": "@ui/components",
+            "export": "CardFooter",
+            "category": "general",
+            "description": "卡片底部区块：动作区/补充说明的排版默认值（text-sm / text-2），插槽驱动，无自有交互。"
+          },
+          "intent": {
+            "what": "Card 的底部区块容器：为动作按钮组或补充说明提供次级排版默认值。",
+            "when": [
+              "Card 底部放确认/取消等 Button 动作区",
+              "放时间戳、来源等次级补充说明"
+            ],
+            "whenNot": [
+              "主体正文（用 CardBody）",
+              "标题行（用 CardHeader）"
+            ],
+            "userTask": "用户在读完卡片内容后执行动作或查看补充信息"
+          },
+          "api": {
+            "props": [],
+            "slots": [
+              {
+                "name": "default",
+                "description": "底部内容：通常为 Button 动作组或次级说明文字。"
+              }
+            ],
+            "events": [],
+            "exposes": []
+          },
+          "constraints": {
+            "dependsOn": [
+              "ui-card"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "CardFooter 内放 ButtonGroup",
+              "CardFooter 放时间戳/来源说明"
+            ],
+            "related": [
+              "Card",
+              "CardHeader",
+              "CardBody",
+              "Button"
+            ],
+            "preferred": [
+              "动作按钮用 Button/ButtonGroup 放入，不要塞与主体同权重的长正文"
+            ]
+          },
+          "states": {
+            "default": "text-sm / body 行高 / text-2 颜色；无内边距（由 Card 统一），区块间距由 Card 的 gap 提供。",
+            "hover": "无交互态：静态区块不响应 hover（内部 Button 保持各自 hover 表现）。",
+            "focusVisible": "无聚焦语义：不可聚焦；内部按钮以全局 :focus-visible 焦点环聚焦。",
+            "active": "无按压反馈（内部按钮保持各自 active 表现）。",
+            "disabled": "不适用：无禁用语义。"
+          },
+          "accessibility": "泛型 div 容器，无 role、不产生 landmark/contentinfo 语义；内部按钮为原生 button，键盘路径与独立 Button 一致。",
+          "ssr": "renderToString 无异常：无浏览器 API 访问，插槽内容随 SSR 输出。",
+          "performance": "纯静态容器：无监听器、无测量、无定时器。",
+          "styling": "只消费 --ui-* token：字号 --ui-text-sm、行高 --ui-leading-body、颜色 --ui-text-2；自身不设边距（间距由 Card gap 统一）。",
+          "examples": [
+            "<CardFooter>\n  <Button size='sm'>查看日志</Button>\n</CardFooter>"
+          ],
+          "agent": {
+            "keywords": [
+              "card footer",
+              "卡片底",
+              "动作区",
+              "区块"
+            ],
+            "selectionHints": [
+              "Card 需要动作区/次级说明时用它，获得次级排版默认值"
+            ],
+            "commonTasks": [
+              "卡片底部确认/取消动作"
+            ],
+            "generationNotes": [
+              "动作按钮放原生 Button/ButtonGroup；不要把主体正文塞进 footer"
+            ]
+          }
+        },
+        {
+          "id": "ui-card-header",
+          "version": "0.1.0",
+          "identity": {
+            "name": "CardHeader",
+            "package": "@ui/components",
+            "export": "CardHeader",
+            "category": "general",
+            "description": "卡片头部区块：标题层级的排版默认值（text-lg / semibold / heading 行高），插槽驱动，无自有交互。"
+          },
+          "intent": {
+            "what": "Card 的头部区块容器：为标题/元信息/操作区提供一致的排版默认值。",
+            "when": [
+              "Card 内放标题、副标题、右侧操作按钮组"
+            ],
+            "whenNot": [
+              "无标题的纯正文卡片（直接用 CardBody）",
+              "页面级标题排版（用 Typography/原生标题元素）"
+            ],
+            "userTask": "用户需要一眼识别卡片内容的主题"
+          },
+          "api": {
+            "props": [],
+            "slots": [
+              {
+                "name": "default",
+                "description": "头部内容：通常放原生 h1-h6 标题元素（语义层级由使用方决定）与可选操作区。"
+              }
+            ],
+            "events": [],
+            "exposes": []
+          },
+          "constraints": {
+            "dependsOn": [
+              "ui-card"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "CardHeader 内放 h3 + Badge",
+              "CardHeader 左标题右操作（使用方自行 flex 布局）"
+            ],
+            "related": [
+              "Card",
+              "CardBody",
+              "CardFooter"
+            ],
+            "preferred": [
+              "标题语义用原生 h1-h6 放入插槽，组件不代选层级"
+            ]
+          },
+          "states": {
+            "default": "text-lg / semibold / heading 行高 / text-1 颜色；不设边框与分隔线，区块间距由 Card 的 gap 提供。",
+            "hover": "无交互态：静态区块不响应 hover。",
+            "focusVisible": "无聚焦语义：不可聚焦、不参与 Tab 序。",
+            "active": "无按压反馈。",
+            "disabled": "不适用：无禁用语义。"
+          },
+          "accessibility": "泛型 div 容器，无 role、不产生 landmark/banner 语义；标题的可读名称与层级由插槽内的原生标题元素承担。",
+          "ssr": "renderToString 无异常：无浏览器 API 访问，插槽内容随 SSR 输出。",
+          "performance": "纯静态容器：无监听器、无测量、无定时器。",
+          "styling": "只消费 --ui-* token：字号 --ui-text-lg、字重 --ui-font-weight-semibold、行高 --ui-leading-heading、颜色 --ui-text-1；自身不设边距（间距由 Card gap 统一）。",
+          "examples": [
+            "<CardHeader>\n  <h3>部署概览</h3>\n</CardHeader>"
+          ],
+          "agent": {
+            "keywords": [
+              "card header",
+              "卡片头",
+              "标题区",
+              "区块"
+            ],
+            "selectionHints": [
+              "Card 有标题时用它包住标题行，排版默认值与 Card 家族一致"
+            ],
+            "commonTasks": [
+              "卡片标题 + 操作按钮行"
+            ],
+            "generationNotes": [
+              "在插槽内放原生 h1-h6 承担标题语义；不要塞大段正文（正文用 CardBody）"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ui-checkbox",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Checkbox",
+        "package": "@ui/components",
+        "export": "Checkbox",
+        "category": "inputs",
+        "description": "纸面勾选框：原生 input[type=checkbox] 语义 + 自绘方块视觉，支持半选（indeterminate）与禁用，label prop/插槽二选一。"
+      },
+      "intent": {
+        "what": "一组可多选中的「勾选」语义：受控 v-model(boolean)、半选态、可读名称与禁用；勾选即选中，不做即时提交。",
+        "when": [
+          "多选场景（列表批量选择、多项同意、多标签筛选）",
+          "「全选 + 子项」的级联勾选（父项用 indeterminate 表达部分选中）",
+          "表单中的布尔勾选项（同意协议等，随表单一起提交）",
+          "需要富文本 label（默认插槽承载链接等内联内容）"
+        ],
+        "whenNot": [
+          "即时生效的开/关设置用 Switch：Checkbox 表达「勾选/选中」，不表达「立即切换某状态」",
+          "多选一用 Radio / RadioGroup：Checkbox 允许全不选与多选",
+          "只有文本、无勾选语义的展示用 Badge / Typography",
+          "独立单个开关型动作用 Switch 或 Button：不要用无 label 的 Checkbox"
+        ],
+        "userTask": "用户需要把若干选项标记为「已选中/未选中」，并可看到部分选中的中间态"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "modelValue",
+            "type": "boolean",
+            "default": "false",
+            "description": "v-model 绑定值；受控，原生 change 事件路径更新。"
+          },
+          {
+            "name": "indeterminate",
+            "type": "boolean",
+            "default": "false",
+            "description": "半选态：视觉为 accent 实底短横线，并同步 DOM indeterminate property（SSR 无法表达，仅客户端 onMounted/watch 同步）；用户点击后浏览器自动清除，父层应随之复位为 false。"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "description": "可读名称；与默认插槽等价，插槽优先。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：原生 disabled 属性（移出 Tab 序）+ 灰化 + 拦截切换。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "label 内容（优先于 label prop），可承载链接等内联富文本；点击文本即切换（根为 label 元素）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "update:modelValue",
+            "payload": "boolean",
+            "description": "v-model 更新：原生 change 事件路径，载荷为勾选后的布尔值。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦原生 checkbox（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Switch（即时生效的开/关语义）",
+          "Radio / RadioGroup（多选一）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "父项 indeterminate + 子项列表做「全选/部分选中」级联",
+          "label 默认插槽内放「我已阅读并同意 <a>服务条款</a>」类富文本",
+          "FormField 外直接使用：Checkbox 自带可读名称，无需 FormField label"
+        ],
+        "related": [
+          "RadioGroup",
+          "Radio",
+          "Switch",
+          "FormField"
+        ],
+        "preferred": [
+          "必须提供可读名称（label prop 或默认插槽），无名称时由使用方经 attrs 提供 aria-label",
+          "级联勾选在子项变化时由使用方计算父项 modelValue 与 indeterminate"
+        ]
+      },
+      "states": {
+        "default": "未选：surface 方块 + line-strong 描边；选中/半选：accent 实底 + on-accent 对勾/短横线。",
+        "hover": "方块描边加深为 --ui-border-strong（未选态）；disabled 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），绘制在原生控件热区（与视觉方块重合）；组件不改写 outline 与 tabindex。",
+        "active": "无按压位移反馈；点击即切换（原生 checkbox 激活路径），视觉随受控值即时翻转。",
+        "disabled": "方块灰化（sand 底 + line 描边）、标记转 text-3、文本 text-3 + not-allowed 光标；原生 disabled 移出 Tab 序并拦截一切切换路径。",
+        "error": "无内建 error 态：校验反馈由外层 FormField 的错误文案与 aria-describedby 承担。"
+      },
+      "accessibility": "原生 <input type=\"checkbox\">：checked/disabled 均为原生语义（不使用 aria-checked / aria-disabled），Tab 自然进入、Space 原生切换；根为 label 元素，点击文本即切换，无需 id/for。indeterminate 通过 DOM property 暴露给读屏（客户端 onMounted/watch 同步，SSR 输出不含该属性）。对勾/短横线标记 svg 均 aria-hidden，不进入可读内容。无可见 label 时必须经 attrs 提供 aria-label。",
+      "ssr": "renderToString 无异常：indeterminate 为 DOM property，SSR 阶段不触碰（onMounted 后同步）；label / checked（true 时输出 checked）/ disabled / attrs（id、aria-label 等）均随 SSR 输出；自绘方块与标记为纯 CSS，SSR 即完整呈现。",
+      "performance": "无监听器、无测量、无定时器；仅一个 watch 同步 indeterminate property 与 computed 派生根类。动效只有 border-color / background-color / opacity 过渡（--ui-motion-fast token），prefers-reduced-motion 下随 token 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：方块描边 --ui-border-strong、选中底 --ui-accent、标记色 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、间距 --ui-space-2、圆角 --ui-radius-xs、字号 --ui-text-md、动效 --ui-motion-fast/--ui-ease-out。结构性例外：border-width: 1px（无 --ui-border-width token，与 Button/Input 同一缺口，已提出需求）；原生控件 opacity: 0 为结构性隐藏（非视觉取值），方块尺寸取 --ui-space-4（16px，图标最小档）。",
+      "examples": [
+        "<Checkbox v-model='agreed' label='我已阅读并同意服务条款' />",
+        "<Checkbox v-model='all' :indeterminate='isPart' @update:model-value='toggleAll'>全选</Checkbox>",
+        "<Checkbox v-model='ids' … disabled>仅管理员可见</Checkbox>",
+        "<Checkbox v-model='subscribe'>\n  订阅 <a href='/terms'>产品周报</a>\n</Checkbox>",
+        "<Checkbox :model-value='false' aria-label='选择第 1 行' />"
+      ],
+      "agent": {
+        "keywords": [
+          "checkbox",
+          "勾选",
+          "复选框",
+          "多选",
+          "选中",
+          "indeterminate",
+          "半选",
+          "部分选中",
+          "全选",
+          "checkAll",
+          "label",
+          "disabled",
+          "禁用",
+          "v-model",
+          "表单",
+          "同意协议"
+        ],
+        "selectionHints": [
+          "多选/可全不选 → Checkbox；多选一 → Radio；即时生效的开关 → Switch",
+          "「全选 + 子项」：父项传 indeterminate，子项变化由使用方汇总",
+          "label 含交互元素（链接/按钮）时用默认插槽；纯文本用 label prop"
+        ],
+        "commonTasks": [
+          "列表批量选择 + 全选级联",
+          "表单协议勾选 + 校验（aria-describedby 由外层提供）",
+          "多条件筛选的布尔开关集合"
+        ],
+        "generationNotes": [
+          "v-model 为 boolean；indeterminate 只表达视觉与读屏状态，不影响 v-model 的布尔载荷",
+          "用户点击后浏览器自动清除 DOM indeterminate：父层应在 onChange 时把 indeterminate 复位为 false",
+          "id / name / aria-label / aria-describedby 等原生属性经 attrs 直达原生 checkbox",
+          "不要用 aria-checked（原生 checked 语义已足够）；禁用态由原生 disabled 承担"
+        ]
+      },
+      "source": {
+        "dir": "checkbox",
+        "metaFiles": [
+          "Checkbox.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-dialog",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Dialog",
+        "package": "@ui/components",
+        "export": "Dialog",
+        "category": "overlay",
+        "description": "纸面模态对话框：Teleport 至 body 的遮罩浮层，受控 v-model，含焦点圈定/还原、body 滚动锁定与 Esc/遮罩关闭，footer 插槽缺省渲染本库 Button 的「关闭」按钮。"
+      },
+      "intent": {
+        "what": "在页面内容之上呈现一段需要用户处理才能继续的任务流（确认、表单、详情聚焦），遮罩阻断底层交互。",
+        "when": [
+          "需要用户明确确认/取消的破坏性或不可逆操作",
+          "短暂表单或子任务（重命名、过滤配置）在当前上下文内完成",
+          "聚焦阅读的详情/预览内容，不必离开当前页"
+        ],
+        "whenNot": [
+          "纯被动通知（保存成功、网络异常）用 Toast/Alert：Dialog 要求用户交互后才会消失",
+          "侧滑的导航或大面积工作区用 Drawer：Dialog 居中且宽度受 sm/md/lg 约束",
+          "轻量悬浮说明（目标元素附近的提示）用 Popover/Tooltip：Dialog 有遮罩、阻断底层交互"
+        ],
+        "userTask": "用户需要处理一个必须完成的模态任务后返回原上下文"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "modelValue",
+            "type": "boolean",
+            "default": "false",
+            "description": "受控可见性（v-model）：true 时 Teleport 浮层渲染至 body。"
+          },
+          {
+            "name": "title",
+            "type": "string",
+            "description": "标题文本；被 title 插槽覆盖，两者皆空则不渲染头部与 aria-labelledby。"
+          },
+          {
+            "name": "size",
+            "type": "'sm' | 'md' | 'lg'",
+            "default": "md",
+            "description": "尺寸档位：面板宽度 sm≈384 / md≈576 / lg≈704（由间距标尺推导），永不超出视口。"
+          },
+          {
+            "name": "closeOnScrim",
+            "type": "boolean",
+            "default": "true",
+            "description": "点击遮罩是否请求关闭；表单类对话框可置 false 强制走明确动作。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "对话框正文（可滚动区域）。"
+          },
+          {
+            "name": "title",
+            "description": "标题；覆盖 title prop，渲染进 aria-labelledby 指向的标题元素。"
+          },
+          {
+            "name": "footer",
+            "description": "底部动作区；缺省渲染默认「关闭」按钮（本库 Button），点击即请求关闭（reason=\"footer\"）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "update:modelValue",
+            "payload": "boolean",
+            "description": "v-model 更新：一切关闭路径（遮罩/Esc/默认按钮）发出 false。"
+          },
+          {
+            "name": "close",
+            "payload": "'scrim' | 'esc' | 'footer'",
+            "description": "请求关闭并附带来源；与 update:modelValue false 同步发出。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "() => void",
+            "description": "将焦点移入对话框（首个可聚焦元素，否则面板自身）；仅客户端有意义。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Toast/Alert（被动通知，无需交互即消失）",
+          "Drawer（侧滑大面积工作区）",
+          "Popover/Tooltip（无遮罩的轻量悬浮）"
+        ],
+        "dependsOn": [
+          "Button（footer 默认关闭按钮复用）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "确认/取消对（footer 插槽放 primary + secondary Button）",
+          "模态表单（closeOnScrim=false 强制显式提交）",
+          "危险操作二次确认（danger Button + 正文说明）"
+        ],
+        "related": [
+          "Button",
+          "Toast",
+          "Drawer",
+          "Form"
+        ],
+        "preferred": [
+          "一个 footer 只放一个 primary 动作",
+          "Esc 与遮罩关闭保持可用，除非会丢失用户输入"
+        ]
+      },
+      "states": {
+        "default": "关闭态不渲染浮层（仅 SSR/挂载前输出 hidden 占位）；打开态：scrim 遮罩 + surface 白底面板、lg 圆角、modal 阴影，居中呈现。",
+        "hover": "遮罩无 hover 反馈（非交互元素）；面板内容沿用内部元素（如 Button）各自的 hover 态。",
+        "focusVisible": "打开时焦点移入面板首个可聚焦元素，焦点环由全局 :focus-visible 约定提供（2px --ui-accent）；面板自身 tabindex=\"-1\" 仅作程序化聚焦锚点。",
+        "active": "按压反馈由 footer 内 Button 等交互元素自身承载，浮层层无按压态。",
+        "disabled": "组件级无 disabled；内部元素各自的 disabled 语义不受影响（disabled 元素自动移出焦点圈定候选集）。"
+      },
+      "accessibility": "role=\"dialog\" + aria-modal=\"true\"，标题元素 id 由 useId 生成并以 aria-labelledby 关联（title prop/插槽皆适用）。键盘契约：打开时焦点移入（首个可聚焦元素，否则面板），Tab/Shift+Tab 在面板内循环圈定（焦点逃逸即拉回），Esc 请求关闭；关闭后焦点还原到打开前的元素。遮罩为纯 div（无 role、不聚焦、无 tabindex），点击命中关闭逻辑；默认关闭按钮为原生 button。body 在打开期间挂 ui-dialog-scroll-lock class 并行内锁定 overflow。",
+      "ssr": "SSR-safe：setup 与模块顶层不访问浏览器 API；挂载前不渲染浮层，renderToString 仅输出 hidden 的 ui-dialog 占位（输出稳定、含根类），Teleport 与焦点/滚动锁副作用全部推迟到客户端 onMounted 之后；卸载时清理滚动锁并还原焦点。",
+      "performance": "无监听器/测量/定时器；焦点圈定仅在 keydown 时查询面板内可聚焦元素。入场动效为 token 时长的 opacity/transform 动画，prefers-reduced-motion 下随 --ui-motion-* 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：z-index 走 --ui-z-modal、阴影 --ui-shadow-modal、圆角 --ui-radius-lg、遮罩 --ui-scrim、颜色/字号/间距/动效全 token 化；面板宽度由 --ui-space-* 标尺推导（sm/md/lg），组件包不引入全局 CSS。",
+      "examples": [
+        "<Dialog v-model='open' title='删除确认'>\n  确定要删除这条记录吗？此操作不可撤销。\n</Dialog>",
+        "<Dialog v-model='open' title='重命名' size='sm' :close-on-scrim='false'>\n  <form>…</form>\n  <template #footer>\n    <Button @click='open = false'>取消</Button>\n    <Button variant='primary' @click='rename'>保存</Button>\n  </template>\n</Dialog>",
+        "<Dialog v-model='open' size='lg'>\n  <template #title>使用条款</template>\n  条款正文…\n</Dialog>"
+      ],
+      "agent": {
+        "keywords": [
+          "dialog",
+          "对话框",
+          "弹窗",
+          "modal",
+          "模态",
+          "overlay",
+          "浮层",
+          "遮罩",
+          "scrim",
+          "确认框",
+          "confirm",
+          "v-model",
+          "focus trap",
+          "焦点圈定"
+        ],
+        "selectionHints": [
+          "需要用户处理后才消失 → Dialog；被动通知 → Toast/Alert；侧滑工作区 → Drawer",
+          "表单内容或会丢失输入的场景置 :close-on-scrim=\"false\"",
+          "宽度档位不够用时换内容布局而不是强行改宽度"
+        ],
+        "commonTasks": [
+          "删除/危险操作二次确认",
+          "模态表单（重命名、新建）",
+          "条款/详情聚焦阅读"
+        ],
+        "generationNotes": [
+          "v-model 控制显隐；关闭只是发出 update:modelValue false，最终状态由使用方决定",
+          "footer 插槽不传时自带「关闭」按钮；自定义动作区会整体替换默认按钮",
+          "title prop 与 #title 插槽二选一即可获得 aria-labelledby 关联",
+          "不要用 Dialog 承载长任务进度（用 Progress/Toast 反馈）"
+        ]
+      },
+      "source": {
+        "dir": "dialog",
+        "metaFiles": [
+          "Dialog.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-divider",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Divider",
+        "package": "@ui/components",
+        "export": "Divider",
+        "category": "general",
+        "description": "纸面分隔线：水平（默认语义 hr，可选居中标签）/垂直方向，细线走 --ui-border、间距走 --ui-space-*。"
+      },
+      "intent": {
+        "what": "在内容区块之间建立视觉与语义分隔的水平/垂直细线，可选居中标签。",
+        "when": [
+          "表单分组、卡片内区块、页面章节之间需要分隔",
+          "带文字的分隔（如\"或\"、分组名）用 label 插槽（水平）",
+          "工具栏/并排内容之间的竖线用 direction=\"vertical\""
+        ],
+        "whenNot": [
+          "仅需要留白不需要线时用布局间距（--ui-space-*），不要滥用分隔线",
+          "列表项之间的分隔用列表自身的分隔样式，不要逐行插 Divider",
+          "承载交互（折叠分区）用 Accordion 类组件，Divider 纯展示"
+        ],
+        "userTask": "用户需要把相邻内容在视觉与语义上分成两块"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "direction",
+            "type": "'horizontal' | 'vertical'",
+            "default": "horizontal",
+            "description": "分隔方向；水平且无标签时渲染语义 <hr>，带标签或垂直时渲染 div[role=\"separator\"]。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "label",
+            "description": "分隔线标签（仅水平生效）：居中展示、两侧细线；提供后根元素由 <hr> 变为 div[role=\"separator\"]。"
+          }
+        ],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {},
+      "composition": {
+        "patterns": [
+          "表单分组之间（与 --ui-space-5 间距节奏一致）",
+          "Heading + Divider + Text 的区块结构",
+          "工具栏内 direction=\"vertical\" 竖线分组"
+        ],
+        "related": [
+          "Heading",
+          "Text",
+          "Card",
+          "Form"
+        ],
+        "preferred": [
+          "相邻区块优先靠布局间距分隔，确需线条再使用",
+          "带标签分隔线的标签用 2–4 个字的短词"
+        ]
+      },
+      "states": {
+        "default": "静态细线：--ui-border 色、结构性 1px；水平上下 --ui-space-5 间距，垂直左右 --ui-space-2；标签 text-2/13px/500。",
+        "hover": "无交互，不响应 hover，无 hover 样式。",
+        "focusVisible": "不可聚焦（无 tabindex、非交互元素），不产生焦点环。",
+        "active": "无按压态，不响应 ：active。",
+        "disabled": "无禁用态。"
+      },
+      "accessibility": "语义 separator：水平无标签为 <hr>（隐式 role=separator）；带标签与垂直形态显式 role=\"separator\"，垂直另置 aria-orientation=\"vertical\"（ARIA 默认水平）。纯展示不可聚焦，无键盘路径；两侧装饰细线 aria-hidden。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；方向分支（hr / 带标签 div / 垂直 div）在服务端即解析，role 与 aria-orientation 随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；形态与 class 按渲染求值（无缓存副作用），渲染成本可忽略。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：线色 --ui-border、间距 --ui-space-5/--ui-space-2/--ui-space-3、标签字号 --ui-text-sm、字重 --ui-font-weight-medium；描边宽度 1px 为结构性细线（无 --ui-border-width token，需求已提出）。无全局 CSS 引入。",
+      "examples": [
+        "<Divider />",
+        "<Divider direction=\"vertical\" />",
+        "<Divider><template #label>或</template></Divider>",
+        "<Divider><template #label>高级设置</template></Divider>"
+      ],
+      "agent": {
+        "keywords": [
+          "divider",
+          "分隔线",
+          "分割线",
+          "hr",
+          "separator",
+          "竖线",
+          "分组",
+          "标签分隔"
+        ],
+        "selectionHints": [
+          "区块分隔 → Divider（水平默认 hr）；工具栏竖线 → direction=\"vertical\"",
+          "需要文字说明的分隔 → label 插槽，标签保持简短",
+          "只要留白不要线 → 用布局间距，不用 Divider"
+        ],
+        "commonTasks": [
+          "表单分组分隔",
+          "卡片内章节分隔",
+          "工具栏竖线"
+        ],
+        "generationNotes": [
+          "水平带 label 后根元素是 div[role=separator]，不再是 hr，样式覆盖时注意",
+          "垂直用法假定置于 flex 行内（align-self: stretch 拉伸高度）",
+          "分隔线间距已内置（--ui-space-*），无需额外 margin"
+        ]
+      },
+      "source": {
+        "dir": "divider",
+        "metaFiles": [
+          "Divider.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-dropdown-menu",
+      "version": "0.1.0",
+      "identity": {
+        "name": "DropdownMenu",
+        "package": "@ui/components",
+        "export": "DropdownMenu",
+        "category": "overlay",
+        "description": "纸面下拉菜单：原生 button 触发器（默认插槽）+ items 数据驱动的 menu 浮层，Teleport 至 body、锚定触发器定位，WAI-ARIA menu 模式键盘契约（roving focus）与外点/Esc 关闭、焦点还原触发器。"
+      },
+      "intent": {
+        "what": "把一列动作（编辑/复制/删除等）收纳在触发器下方的浮层菜单中，点开选择其一后立即执行并关闭。",
+        "when": [
+          "一个入口需要收纳 3~8 个同族动作（行操作、卡片更多操作）",
+          "空间紧张、不适合平铺 ButtonGroup 的次要动作集",
+          "动作中混有危险项（删除）需要 danger 色区分"
+        ],
+        "whenNot": [
+          "在表单中选值（需要回显所选值）用 Select：DropdownMenu 是动作菜单，不承载选中态",
+          "两级以上的层级导航用 Nav/Tree：本组件为单层动作列表",
+          "需要用户必须处理的模态任务用 Dialog：菜单不阻断底层交互",
+          "纯悬浮说明用 Popover/Tooltip：菜单项是可执行动作而非内容"
+        ],
+        "userTask": "用户展开一个动作列表并选择其中一项立即执行"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "items",
+            "type": "DropdownMenuItem[]",
+            "required": true,
+            "description": "菜单项数据，按序渲染为 menuitem：{ key, label, icon?, danger?, disabled? }。icon 为内联 SVG 组件（统一约束 16px）。"
+          },
+          {
+            "name": "align",
+            "type": "'start' | 'end'",
+            "default": "start",
+            "description": "菜单面板与触发器的水平对齐：start 左缘对齐、end 右缘对齐（纯 CSS 实现，无需测量面板宽度）。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "触发器内容；应始终有可读 label（如「操作」「更多」）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "select",
+            "payload": "string",
+            "description": "选中菜单项（点击或菜单内 Enter），载荷为该项 key；disabled 项不触发。选中后菜单自动关闭且焦点还原触发器。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦触发器按钮（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除触发器焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Select（表单选值，回显选中态）",
+          "Dialog（模态任务）",
+          "Nav/Tree（层级导航）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "表格行/卡片「更多操作」收纳",
+          "危险动作以 danger 项区分并置于末位",
+          "与 Button/IconButton 组合：触发器文案描述这组动作的归属"
+        ],
+        "related": [
+          "Button",
+          "Dialog",
+          "Select"
+        ],
+        "preferred": [
+          "动作项保持同族（同层级粒度）",
+          "danger 项不超过一个且放末位",
+          "触发器 label 描述动作组而非单点动作"
+        ]
+      },
+      "states": {
+        "default": "关闭态仅渲染触发器（无浮层）；打开态：surface 底、sm 圆角、pop 阴影的面板自触发器下方弹出（start/end 对齐），项观感对齐 select/ 选项（text-md、ghost 底）。",
+        "hover": "项 hover 转 surface-muted 底；danger 项 hover 转 danger-soft 底并保持 danger 文本色；触发器 hover 同步弱化描边。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent）；菜单内 roving focus 当前项获得 surface-muted 底（DOM :focus 即高亮）与 tabindex=0。",
+        "active": "项点击即选中并关闭（无持续按压态）；触发器无按压态。",
+        "disabled": "项 disabled：原生 disabled（移出 Tab 序、roving 跳过）、text-3 弱化、hover 让位、不可选中。"
+      },
+      "accessibility": "WAI-ARIA menu button 模式：触发器为原生 button，带 aria-haspopup=\"menu\" 与 aria-expanded（打开时另以 aria-controls 关联菜单 id）；面板 role=\"menu\" 且 aria-labelledby 指向触发器；项为原生 button role=\"menuitem\"。键盘：触发器 ↓/↑ 打开并聚焦首/末启用项，Enter/Space 开合；菜单内 ↓/↑ 环绕移动（跳过 disabled）、Home/End 首尾、Enter 选中、Esc/Tab 关闭；roving tabindex（当前项 0、其余 -1，disabled 恒 -1）。一切键盘关闭与选中路径焦点还原触发器；外点（document click capture）关闭不抢焦点。",
+      "ssr": "SSR-safe：setup 与模块顶层不访问浏览器 API；浮层仅客户端渲染（mounted 门控 + Teleport，isOpen 初始 false），renderToString 只输出触发器（含 ui-dropdown-menu 根类与 aria-haspopup/aria-expanded），无浮层内容泄出；document/window 监听只在 onMounted 注册、onBeforeUnmount 移除。",
+      "performance": "onMounted 常驻绑定 document click/scroll（capture）与 window resize 三个监听（open 守卫短路），onBeforeUnmount 统一移除；roving focus 仅在按键时查询锚盒内 menuitem；定位为一次 getBoundingClientRect + inline style 写入；入场动效为 token 时长的 opacity/transform，prefers-reduced-motion 下随 --ui-motion-* 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：层级 --ui-z-dropdown、阴影 --ui-shadow-pop、圆角 --ui-radius-sm/--ui-radius-xs、危险色 --ui-danger/--ui-danger-soft、颜色/字号/间距/动效全 token 化；描边宽度 1px 为结构性细线（已提出 --ui-border-width token 需求）；组件包不引入全局 CSS。",
+      "examples": [
+        "<DropdownMenu\n  :items=\"[\n    { key: 'edit', label: '编辑', icon: EditIcon },\n    { key: 'copy', label: '复制' },\n    { key: 'delete', label: '删除', danger: true },\n  ]\"\n  @select=\"onSelect\"\n>\n  操作\n</DropdownMenu>",
+        "<DropdownMenu align=\"end\" :items=\"items\" @select=\"key => run(key)\">更多</DropdownMenu>",
+        "<DropdownMenu\n  :items=\"[\n    { key: 'rename', label: '重命名' },\n    { key: 'archive', label: '归档', disabled: true },\n    { key: 'delete', label: '删除', danger: true },\n  ]\"\n  @select=\"onSelect\"\n/>"
+      ],
+      "agent": {
+        "keywords": [
+          "dropdown",
+          "dropdown menu",
+          "下拉菜单",
+          "菜单",
+          "menu",
+          "menu button",
+          "动作菜单",
+          "action menu",
+          "更多操作",
+          "overflow menu",
+          "roving focus",
+          "Teleport",
+          "overlay",
+          "浮层"
+        ],
+        "selectionHints": [
+          "执行动作且无需回显选中态 → DropdownMenu；表单选值 → Select；模态任务 → Dialog",
+          "动作数量 3~8 为宜；更多应重组信息架构而非滚动菜单",
+          "需要 danger 视觉强调破坏性动作时用 item.danger"
+        ],
+        "commonTasks": [
+          "表格行「更多操作」",
+          "卡片角落动作收纳",
+          "账户/设置菜单（退出登录用 danger 项）"
+        ],
+        "generationNotes": [
+          "items 数据驱动：key 必填且应稳定（select 载荷即 key）；icon 传内联 SVG 组件（viewBox 0 0 24 24、stroke-width 1.5、currentColor），组件统一约束为 16px",
+          "开合状态为组件内部状态：触发器点击/Enter/Space/↓/↑ 打开，Esc/Tab/外点/选中后关闭，无需外部 v-model",
+          "触发器默认插槽应提供可读 label；如需自定义触发器视觉可包裹或替换插槽内容",
+          "选中即关闭并还原焦点到触发器；不要用它承载需要停留多步的任务流（用 Dialog）"
+        ]
+      },
+      "source": {
+        "dir": "dropdown-menu",
+        "metaFiles": [
+          "DropdownMenu.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-empty-state",
+      "version": "0.1.0",
+      "identity": {
+        "name": "EmptyState",
+        "package": "@ui/components",
+        "export": "EmptyState",
+        "category": "data",
+        "description": "纸面空态占位：居中的图标 + 标题 + 说明 + 下一步操作，文字克制（text-2/text-3），间距与视觉全走 --ui-* token。"
+      },
+      "intent": {
+        "what": "数据为空 / 无结果 / 尚未开始时的页面级占位：解释空态成因并给出下一步操作入口。",
+        "when": [
+          "列表、表格、搜索结果为空",
+          "用户尚未创建任何内容（首次进入）",
+          "筛选/检索无命中",
+          "模块未开通或暂无数据的占位说明"
+        ],
+        "whenNot": [
+          "加载中占位用 Skeleton：EmptyState 表达\"确定没有\"而非\"还没到\"",
+          "加载失败且可重试的错误态用 Error 类组件或 Alert：空态不是错误",
+          "单条状态提示（如保存失败）用 Alert：EmptyState 是区块/页面级占位",
+          "模态内的空选择列表若需操作面板，考虑 Dialog + EmptyState 组合而非复用为容器"
+        ],
+        "userTask": "用户需要明白\"这里为什么是空的\"以及\"接下来能做什么\""
+      },
+      "api": {
+        "props": [
+          {
+            "name": "title",
+            "type": "string",
+            "description": "空态标题（一句话，text-2/17px/medium）；缺省时仅渲染图标与可选描述。"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "description": "补充说明（text-3/13px），解释空态成因或引导下一步；限宽 ≈672px 阅读栏。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "icon",
+            "description": "图标覆盖；缺省渲染内建克制线稿图标（内联 SVG，viewBox 0 0 24 24、stroke-width 1.5、currentColor、24px，text-3 弱化）。"
+          },
+          {
+            "name": "action",
+            "description": "下一步操作区（通常放一个 Button），渲染于描述之下，随容器居中。"
+          }
+        ],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {
+        "conflicts": [
+          "Skeleton（加载中占位）",
+          "Alert（状态信息提示）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Table/列表空数据：<EmptyState title=\"暂无数据\" description=\"…\"><Button>新建</Button></EmptyState>",
+          "搜索无结果：icon 插槽换搜索图标 + action 放\"清除筛选\"按钮",
+          "首次使用引导：description 写引导文案 + action 放主行动按钮"
+        ],
+        "related": [
+          "Table",
+          "Button",
+          "Alert",
+          "Skeleton"
+        ],
+        "preferred": [
+          "一个空态只给一个主行动按钮（强调色白名单：单屏强调元素 ≤3）",
+          "标题写\"是什么空\"，描述写\"为什么/能做什么\"",
+          "勿在 action 之外再塞第二个操作入口"
+        ]
+      },
+      "states": {
+        "default": "居中静默占位：text-3 线稿图标（24px）、text-2 标题（17px/medium）、text-3 说明（13px，限宽 ≈672px）；上下留白 --ui-space-7、区块间距 --ui-space-4/1/5。",
+        "hover": "容器与文案无 hover 反馈；action 插槽内的使用方按钮按其自身组件的 hover 契约表现。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；空态自身无可焦元素，焦点路径只发生在 action 插槽的使用方控件上。",
+        "active": "容器无按压反馈。",
+        "disabled": "不适用：EmptyState 为静态占位组件，无 disabled/loading/error 语义。"
+      },
+      "accessibility": "静态内容区：根为普通 div，不设 role/tabindex/aria-live（空态出现由页面结构表达，不抢读屏注意力）。内建图标与 aria-hidden=\"true\" 的装饰性 svg 不进入可读内容；标题与说明为根内普通文本。键盘路径只在 action 插槽的使用方控件上（推荐原生 Button：Tab 可达、Enter/Space 原生激活，全局 :focus-visible 提供焦点环）。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；无 onMounted 副作用。根类、内建图标 svg、标题/说明、action 插槽内容均随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器、无动效；纯静态结构 + 条件渲染，无运行时成本。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：文字 --ui-text-2/--ui-text-3、字号 --ui-text-lg/--ui-text-sm、间距 --ui-space-*（7/5/4/1）、说明限宽由 --ui-space-8 推导（≈672px）。无全局 CSS 引入；根类 ui-empty-state 可供使用方定向覆盖。",
+      "examples": [
+        "<EmptyState title='暂无数据' description='创建第一条记录后，这里会展示你的数据。'>\n  <template #action><Button variant='primary'>新建记录</Button></template>\n</EmptyState>",
+        "<EmptyState title='没有找到匹配结果'>\n  <template #action><Button variant='ghost'>清除筛选</Button></template>\n</EmptyState>",
+        "<EmptyState>\n  <template #icon><svg viewBox='0 0 24 24'><!-- … --></svg></template>\n  <template #action><Button>连接数据源</Button></template>\n</EmptyState>"
+      ],
+      "agent": {
+        "keywords": [
+          "empty",
+          "empty state",
+          "空态",
+          "空状态",
+          "暂无数据",
+          "无结果",
+          "占位",
+          "placeholder",
+          "首次使用",
+          "引导",
+          "no data"
+        ],
+        "selectionHints": [
+          "\"确定没有数据\" → EmptyState；\"数据还在路上\" → Skeleton；\"出错了\" → Alert/Error",
+          "下一步操作放 #action 插槽（一个主按钮），标题/描述用 props",
+          "需要业务图标时用 #icon 插槽传内联 SVG，缺省图标为克制线稿"
+        ],
+        "commonTasks": [
+          "表格/列表空数据占位 + 新建按钮",
+          "搜索无结果 + 清除筛选",
+          "首次进入引导"
+        ],
+        "generationNotes": [
+          "title/description 均可选，缺哪个就不渲染对应行",
+          "空态自身无可焦元素：键盘交互只经由 #action 内的使用方控件",
+          "空态居中是设计文档允许的居中场景，不要在外层再包一层强制居中样式",
+          "图标缺省线稿（inbox），替换时保持 viewBox 0 0 24 24、stroke-width 1.5、currentColor"
+        ]
+      },
+      "source": {
+        "dir": "empty-state",
+        "metaFiles": [
+          "EmptyState.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-form",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Form",
+        "package": "@ui/components",
+        "export": "Form",
+        "category": "inputs",
+        "description": "纸面表单容器：原生 form 封装（novalidate），rules 声明式校验（同步/异步），全量通过才 emit submit，pending 拦截重复提交，并经 provide/inject 向 FormField 分发字段错误。"
+      },
+      "intent": {
+        "what": "把一组表单字段组织为一次受控提交：提交前按 rules 全量校验，失败错误分发到各 FormField 展示，通过才发出 submit；pending 期间拦截提交防重复。",
+        "when": [
+          "登录 / 注册 / 设置 / 创建等需要校验后提交的表单",
+          "异步校验（唯一性检查等，校验函数返回 Promise）",
+          "异步提交中需要以 pending 禁用提交按钮并拦截重复提交",
+          "需要主动触发校验或清空校验状态（expose validate / resetValidation）"
+        ],
+        "whenNot": [
+          "嵌套字段 / 数组字段 / 字段联动 / schema 驱动等 Form Engine 能力（设计文档第二阶段）暂不支持，请勿依赖",
+          "纯展示的数据详情区用 Typography/Card 组合，不要套 Form",
+          "即时搜索等无需提交语义的输入组合直接用 Input，不必包 Form"
+        ],
+        "userTask": "用户需要填写一组字段并提交，且在提交前获得逐字段的校验反馈"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "model",
+            "type": "Record<string, unknown>",
+            "required": true,
+            "description": "表单数据对象：校验时 rules 按字段名从此取值传给校验函数。"
+          },
+          {
+            "name": "rules",
+            "type": "FormRules（字段名 → 校验函数数组）",
+            "default": "{}",
+            "description": "校验规则：函数返回 true（通过）/ 错误文案（失败）/ Promise（异步）；字段内按序取首个失败文案，字段间并行。"
+          },
+          {
+            "name": "pending",
+            "type": "boolean",
+            "default": "false",
+            "description": "异步提交进行中（受控）：true 时拦截提交（不校验、不 emit submit），并并入插槽作用域 pending。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "scope": "{ valid: boolean, pending: boolean, errors: Readonly<FormErrors> }",
+            "description": "表单内容（通常为若干 FormField + 提交 Button）。valid=当前无校验错误；pending=异步校验中或 pending prop；errors=字段名→文案的浅拷贝。"
+          }
+        ],
+        "events": [
+          {
+            "name": "submit",
+            "payload": "SubmitEvent",
+            "description": "提交：仅当全量校验通过且非 pending 时触发；原生 submit 已 preventDefault（不会引发浏览器原生提交/刷新）。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "validate",
+            "type": "() => Promise<FormErrors>",
+            "description": "主动触发全量校验：更新内部 errors（同步驱动 FormField 展示）并返回错误集合，空对象即全部通过。"
+          },
+          {
+            "name": "resetValidation",
+            "type": "() => void",
+            "description": "清空全部校验错误（不改 model 值）。"
+          }
+        ]
+      },
+      "constraints": {
+        "dependsOn": [
+          "使用方在应用入口引入 @ui/tokens/paper.css 提供 --ui-* token"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Form + FormField + Input/Textarea/Select：字段错误经 provide/inject 自动流入 FormField",
+          "提交按钮 <Button type='submit' :loading='pending'>：经默认插槽作用域取得 pending",
+          "字段文案三件套：label + help（常驻提示）+ error（校验错误，出现时替代 help）"
+        ],
+        "related": [
+          "FormField",
+          "Input",
+          "Button",
+          "Dialog"
+        ],
+        "preferred": [
+          "提交按钮用 type=\"submit\" 以获得原生 Enter 隐式提交路径",
+          "校验文案要可行动（说明如何修正），不要只写\"格式错误\""
+        ]
+      },
+      "states": {
+        "default": "无错误的静止态：errors 为空，作用域 valid=true、pending=false。",
+        "hover": "容器自身无 hover 表现（交互态由内部控件承担）。",
+        "focusVisible": "容器自身不承载焦点；焦点环由内部控件的全局 :focus-visible 约定提供（paper.css）。",
+        "active": "容器自身无按压表现。",
+        "disabled": "容器自身无 disabled；字段禁用由各控件自身 disabled 承担。",
+        "loading": "pending（受控 prop 或异步校验进行中）：提交一律拦截（不校验、不 emit submit），插槽作用域 pending=true 供提交按钮置 loading。",
+        "error": "校验失败：errors 更新（字段名→文案），作用域 valid=false；各 FormField 按注入错误展示 danger 文案并联动控件 aria-invalid。"
+      },
+      "accessibility": "原生 <form novalidate>（自定义校验，关闭原生约束校验双轨）；Enter 隐式提交等键盘路径走浏览器原生行为，组件不改写 tabindex。提交语义统一收敛到原生 submit 事件（preventDefault 后校验网关）。错误反馈由 FormField 承担：label[for] 关联控件、aria-invalid/aria-describedby 落位控件、错误文案 danger 色可读。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API（无 window/document）。作用域 { valid, pending, errors } 初始值（true/false/{}）随 SSR 输出；useId 生成的控件 id 在 FormField 内 SSR 稳定。",
+      "performance": "无监听器、无测量、无定时器；仅提交/主动校验时按 rules 执行校验函数（字段间 Promise.all 并行）。容器无动效。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：字段间距 --ui-space-5（设计文档：表单字段间 24px）、字族 --ui-font-sans。容器不设底色/描边；字段级视觉由 FormField 与内部控件承担。",
+      "examples": [
+        "<Form :model='form' :rules='rules' :pending='saving' @submit='save'>\n  <FormField name='title' label='标题' required>\n    <template #default='{ controlAttrs }'><Input v-bind='controlAttrs' v-model='form.title' /></template>\n  </FormField>\n  <template #default='{ pending }'>\n    <Button type='submit' :loading='pending'>保存</Button>\n  </template>\n</Form>",
+        "const rules: FormRules = {\n  email: [(v) => (String(v).includes('@') ? true : '请输入合法邮箱')],\n  name: [async (v) => (await api.exists(String(v)) ? '名称已存在' : true)],\n}",
+        "const errors = await formRef.value?.validate()\nif (Object.keys(errors).length === 0) await submit()"
+      ],
+      "agent": {
+        "keywords": [
+          "form",
+          "表单",
+          "提交",
+          "submit",
+          "校验",
+          "验证",
+          "validation",
+          "rules",
+          "规则",
+          "pending",
+          "提交中",
+          "防重复提交",
+          "errors",
+          "错误信息",
+          "异步校验",
+          "async validation"
+        ],
+        "selectionHints": [
+          "提交 + 校验 + 字段错误展示 → Form + FormField；无提交语义的输入组合不必包 Form",
+          "异步提交期传 :pending 并把作用域 pending 接到提交按钮 loading",
+          "嵌套/数组字段/字段联动属第二阶段 Form Engine，当前不要生成"
+        ],
+        "commonTasks": [
+          "登录/注册/创建表单（校验 + 异步提交 + pending 拦截）",
+          "提交前异步唯一性校验",
+          "主动校验（失焦/下一步按钮）与重置校验状态"
+        ],
+        "generationNotes": [
+          "rules 的校验函数入参是 model[field] 的值，返回 true 或错误文案；首个失败的文案生效",
+          "submit 仅在全部通过且非 pending 时触发，原生 submit 已 preventDefault",
+          "作用域 errors 是浅拷贝，勿依赖其引用做变更",
+          "FormField 的控件必须 v-bind 插槽作用域 controlAttrs 才能获得 id/aria 关联"
+        ]
+      },
+      "source": {
+        "dir": "form",
+        "metaFiles": [
+          "Form.meta.ts",
+          "FormField.meta.ts"
+        ]
+      },
+      "subComponents": [
+        {
+          "id": "ui-form-field",
+          "version": "0.1.0",
+          "identity": {
+            "name": "FormField",
+            "package": "@ui/components",
+            "export": "FormField",
+            "category": "inputs",
+            "description": "纸面表单字段容器：label[for] 关联控件（useId 生成 SSR 稳定 id）、required 标记、help 与 danger 色错误文案，经插槽作用域 controlAttrs 把 aria-invalid/aria-describedby/aria-required 落位到控件；可独立使用（无 Form 时仅展示 error prop）。"
+          },
+          "intent": {
+            "what": "为一个表单控件补齐字段级语义：可读 label、必填标记、帮助文案与校验错误文案，并完成控件与文案的无障碍关联。",
+            "when": [
+              "表单字段需要 label / required / help / 错误文案的统一排版与 aria 关联",
+              "Form 内接收校验错误并联动控件 aria-invalid（provide/inject，按 name 匹配）",
+              "无 Form 的独立场景（搜索条、单字段设置项）用 error prop 自行展示错误"
+            ],
+            "whenNot": [
+              "只要控件不要字段语义时直接用控件本身，勿套空 FormField",
+              "复杂布局的字段组（栅格对齐、多列）由使用方自行组合，FormField 只做单字段纵向结构"
+            ],
+            "userTask": "用户需要知道字段含义、是否必填、如何填写，以及填错时错在哪里"
+          },
+          "api": {
+            "props": [
+              {
+                "name": "name",
+                "type": "string",
+                "required": true,
+                "description": "字段名：对应 Form 的 model 键与 rules 键，用于读取注入的校验错误。"
+              },
+              {
+                "name": "label",
+                "type": "string",
+                "description": "标签文本：渲染为 label[for=控件 id]；不传则不渲染 label。"
+              },
+              {
+                "name": "required",
+                "type": "boolean",
+                "default": "false",
+                "description": "必填标记：label 后红色 *（aria-hidden 纯视觉），controlAttrs 附带 aria-required=\"true\"。"
+              },
+              {
+                "name": "error",
+                "type": "string",
+                "description": "错误文案：优先于 Form 注入的校验错误，空串视为无错误；无 Form 时独立展示。"
+              },
+              {
+                "name": "help",
+                "type": "string",
+                "description": "帮助文案：无错误时展示于控件下方（aria-describedby 指向）；出现错误时让位。"
+              }
+            ],
+            "slots": [
+              {
+                "name": "default",
+                "scope": "{ id: string, invalid: boolean, controlAttrs: FormControlAttrs }",
+                "description": "表单控件；将 controlAttrs 直接 v-bind 到控件（或用 id/invalid 自行绑定），完成 label 关联与 aria 落位。"
+              },
+              {
+                "name": "error",
+                "scope": "{ error: string }",
+                "description": "错误文案内容；覆盖 error prop 的文本渲染（作用于错误文案元素内）。"
+              }
+            ],
+            "events": [],
+            "exposes": []
+          },
+          "constraints": {
+            "conflicts": [
+              "placeholder 不承担 label 职责（不要以占位文本替代 label）"
+            ],
+            "dependsOn": [
+              "使用方在应用入口引入 @ui/tokens/paper.css 提供 --ui-* token"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "Form > FormField(name) > 控件 v-bind controlAttrs：校验错误自动流入并联动 aria",
+              "FormField + Input：controlAttrs 经 Input 的 attrs 透传直达原生 input",
+              "help 常驻提示 + error 覆盖展示（出现错误时 help 让位）"
+            ],
+            "related": [
+              "Form",
+              "Input",
+              "Textarea",
+              "Select"
+            ],
+            "preferred": [
+              "控件必须接收插槽作用域的 controlAttrs（或至少 id），否则 label 关联与 aria 落位失效",
+              "错误文案说明修正方法，不只写\"格式错误\""
+            ]
+          },
+          "states": {
+            "default": "静止态：label（text-1，medium 字重）+ 控件 + help（text-3）纵向排布。",
+            "hover": "容器自身无 hover 表现（交互态由内部控件承担）。",
+            "focusVisible": "容器自身不承载焦点；焦点环由内部控件的全局 :focus-visible 约定提供（paper.css）。",
+            "active": "容器自身无按压表现。",
+            "disabled": "容器自身无 disabled；控件禁用由其自身 disabled 承担。",
+            "error": "error prop 或注入错误非空：错误文案 danger 色展示于控件下方并替代 help，控件经 controlAttrs 获得 aria-invalid=\"true\" 与 aria-describedby（指向错误文案 id）。"
+          },
+          "accessibility": "label[for] 与控件 id 严格关联（id = 固定前缀 + Vue useId，SSR 稳定且各字段唯一）。错误时 controlAttrs 提供 aria-invalid=\"true\"，aria-describedby 指向错误文案元素 id；无错误有 help 时指向 help 元素 id。required 提供 aria-required=\"true\" 并渲染 aria-hidden 的红色 * 视觉标记。文案元素为 <p>（不使用 role=\"alert\"，避免多字段同时失败时的重复打断朗读；状态变化经 aria-invalid 与描述关联传达）。",
+          "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；控件 id 由 Vue useId 生成（SSR/hydration 一致），label[for]、错误/帮助文案 id 与 controlAttrs 均随 SSR 输出。",
+          "performance": "无监听器、无测量、无定时器；仅 computed 派生错误文案与 controlAttrs。容器无动效。",
+          "styling": "视觉只消费 --ui-* token（paper.css）：label --ui-text-sm/--ui-text-1/--ui-font-weight-medium、错误文案 --ui-danger、帮助文案 --ui-text-3、间距 --ui-space-1。无全局 CSS 引入；容器不设底色/描边。",
+          "examples": [
+            "<FormField name='email' label='邮箱' required help='用于登录与找回密码'>\n  <template #default='{ controlAttrs }'>\n    <Input v-bind='controlAttrs' v-model='form.email' />\n  </template>\n</FormField>",
+            "<FormField name='invite' label='邀请码' error='邀请码已失效'>\n  <template #default='{ id, invalid }'>\n    <Input :id='id' :status='invalid ? \"error\" : \"default\"' v-model='code' />\n  </template>\n</FormField>",
+            "<FormField name='note' label='备注'>\n  <template #default='{ controlAttrs }'>\n    <Input v-bind='controlAttrs' v-model='note' />\n  </template>\n  <template #error='{ error }'>⚠ {{ error }}</template>\n</FormField>"
+          ],
+          "agent": {
+            "keywords": [
+              "form field",
+              "表单字段",
+              "label",
+              "标签",
+              "required",
+              "必填",
+              "help",
+              "帮助文案",
+              "提示",
+              "error",
+              "错误文案",
+              "aria-invalid",
+              "aria-describedby",
+              "aria-required",
+              "useId",
+              "id 关联"
+            ],
+            "selectionHints": [
+              "字段需要 label/提示/错误文案 → FormField 包住控件",
+              "控件务必 v-bind 作用域 controlAttrs（至少绑定 id）",
+              "独立使用（无 Form）时用 error prop 自行控制错误展示"
+            ],
+            "commonTasks": [
+              "带 label 与校验错误的文本字段",
+              "必填标记 + 帮助文案的字段",
+              "自定义错误文案渲染（#error 插槽）"
+            ],
+            "generationNotes": [
+              "name 必填且要与 Form 的 model/rules 键一致，错误才能注入",
+              "错误优先级：error prop > Form 校验错误；空串视为无错误",
+              "出现错误时 help 让位，aria-describedby 始终指向当前可见文案",
+              "aria-invalid/aria-describedby/aria-required 经 controlAttrs 落位控件，FormField 自身不渲染控件"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ui-icon-button",
+      "version": "0.1.0",
+      "identity": {
+        "name": "IconButton",
+        "package": "@ui/components",
+        "export": "IconButton",
+        "category": "general",
+        "description": "纸面仅图标按钮：单一图标触发的即时动作按钮，复用 Button 系交互语义（ButtonRoot/useButton），三档视觉（ghost/outline/primary）、三档尺寸（图标 16/20/24），含 loading/disabled。"
+      },
+      "intent": {
+        "what": "以单个内联 SVG 图标为全部内容的动作按钮，承载一次即时动作的触发。",
+        "when": [
+          "工具栏 / 表格行 / 卡片角落的空间受限动作（编辑、复制、删除、收起）",
+          "对话框、抽屉、标签页的关闭（关闭等约定图标 + aria-label）",
+          "折叠/展开、播放/暂停等图标语义强、约定俗成的动作",
+          "与 Button 混排的工具条（同尺寸档图标 16/20/24 对齐 Button sm/md/lg）"
+        ],
+        "whenNot": [
+          "动作能用文本表达时一律用 Button：IconButton 无可读文本，可发现性与可读性更差，icon-only 不是默认选择",
+          "站内导航或外链用 <a>/<RouterLink>：IconButton 不渲染 href，没有链接语义",
+          "开/关或选中状态的持续表达用 Switch/Checkbox/Radio：IconButton 表达即时动作，不承载选中态",
+          "需要图标 + 文本组合的按钮用 Button 的 #icon/#iconRight 插槽，不要用 IconButton 塞文本"
+        ],
+        "userTask": "用户需要通过一个约定俗成的图标，触发一个即时动作"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "variant",
+            "type": "'ghost' | 'outline' | 'primary'",
+            "default": "ghost",
+            "description": "视觉档位：ghost 无底安静（工具栏默认）、outline 描边常规、primary accent 实底强调。"
+          },
+          {
+            "name": "size",
+            "type": "'sm' | 'md' | 'lg'",
+            "default": "md",
+            "description": "尺寸档位，映射图标渲染尺寸 sm=16 / md=20 / lg=24（与 Button 三档对齐）。"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "default": "false",
+            "description": "加载中：图标让位于旋转指示、置 aria-busy=\"true\"，点击与 Enter/Space 激活一律不触发 click，保持可聚焦（同 Button）。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：原生 disabled 属性（移出 Tab 序）+ 拦截一切激活路径。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "图标内容：仅内联 SVG（viewBox=\"0 0 24 24\"、stroke-width 1.5、currentColor），渲染尺寸由组件按 size 统一约束为 16/20/24；loading 时让位于加载指示。"
+          }
+        ],
+        "events": [
+          {
+            "name": "click",
+            "payload": "MouseEvent",
+            "description": "点击激活；仅在非 disabled/loading 时触发，键盘 Enter/Space 激活走同一路径。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦根按钮元素（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "requires": [
+          "aria-label 或 aria-labelledby（经 attrs 透传到根 button，两者皆缺时开发环境 console.warn）"
+        ],
+        "conflicts": [
+          "Button（动作可用文本表达时用 Button，见 intent.whenNot）",
+          "<a>/<RouterLink>（导航与链接语义）"
+        ],
+        "dependsOn": [
+          "button/ 的 ButtonRoot（无样式交互根，内部为 useButton：点击网关 + Enter/Space 激活 + aria-busy）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "工具栏动作组（多个 IconButton 平铺，间距 --ui-space-*）",
+          "Dialog/Drawer 右上角关闭按钮（ghost + aria-label=\"关闭\"）",
+          "表格行内操作列（编辑/删除，danger 语义可配 Toast 二次确认）"
+        ],
+        "related": [
+          "Button",
+          "ButtonGroup",
+          "Dialog",
+          "Tooltip",
+          "Table"
+        ],
+        "preferred": [
+          "始终配 aria-label；约定图标（如 ×）也写明动作（\"关闭\"）而非形状（\"叉号\"）",
+          "IconButton 与文本 Button 混排时保持同 size 档，视觉重心一致",
+          "图标按钮-hover 可达性弱于文本按钮，重要低频动作建议叠加 Tooltip"
+        ]
+      },
+      "states": {
+        "default": "ghost 透明底 text-2 图标；outline 白底描边 text-1；primary accent 实底 on-accent 图标。",
+        "hover": "ghost 转 sand 底 + text-1；outline 转 sand 底 + 深描边；primary 转 --ui-accent-hover。disabled 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline、不改 tabindex。",
+        "active": "在 hover 基础上 transform: scale(0.98)（≤2% 缩放，150ms token 动效）；disabled 无按压反馈。",
+        "disabled": "统一灰化：sand 底 + line 描边 + text-3 图标 + not-allowed 光标，原生 disabled 属性使其移出 Tab 序。",
+        "loading": "图标让位于旋转指示（16/20/24 随 size），aria-busy=\"true\"，点击与 Enter/Space 均不触发 click，元素保持可聚焦（同 Button）。"
+      },
+      "accessibility": "原生 <button>（隐式 role=button），可访问名完全依赖 aria-label / aria-labelledby（经 attrs 透传到根 button；两者皆缺时开发环境 console.warn 提示，见 constraints.requires）。Tab 自然进入/移出，Enter/Space 激活（keydown 统一 preventDefault 后由元素 .click() 单次触发，复用 useButton 策略）。loading 时 aria-busy=\"true\" 且不置 disabled（保持焦点与读屏可达）；disabled 用原生 disabled。加载指示 svg aria-hidden=\"true\"。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API（aria-label 检查只读 attrs，console.warn 在服务端同样安全）；.click()/focus() 仅出现在客户端事件回调与暴露方法内；aria-busy、disabled、图标 SVG 均随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生 class。加载动画为纯 CSS transform 旋转（时长由 --ui-motion-* 推导），prefers-reduced-motion 下 token 归零立即停止。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：颜色走 semantic/component 层（含 --ui-button-primary-bg/--ui-button-primary-fg 别名）、间距 --ui-space-*、圆角 --ui-button-radius、动效 --ui-motion-*/--ui-ease-out。图标渲染尺寸 16/20/24 为 Icon Token 硬约束（无对应 size token）；描边 1px、scale(0.98) 与 Button.vue 同口径的结构例外。无全局 CSS 引入；深层定制走 ButtonRoot + 自行叠加 class。",
+      "examples": [
+        "<IconButton aria-label='关闭' @click='close'><svg viewBox='0 0 24 24'><!-- × --></svg></IconButton>",
+        "<IconButton variant='outline' size='sm' aria-label='编辑' @click='edit'><svg viewBox='0 0 24 24'><!-- 铅笔 --></svg></IconButton>",
+        "<IconButton variant='primary' :loading='saving' aria-label='保存' @click='save'><svg viewBox='0 0 24 24'><!-- 对勾 --></svg></IconButton>",
+        "<IconButton disabled aria-label='删除'><svg viewBox='0 0 24 24'><!-- 垃圾桶 --></svg></IconButton>",
+        "<!-- aria-labelledby 指向可见文本 -->\n<span id='zoom-in-hint'>放大</span>\n<IconButton aria-labelledby='zoom-in-hint'><svg viewBox='0 0 24 24'><!-- 放大镜 --></svg></IconButton>"
+      ],
+      "agent": {
+        "keywords": [
+          "icon button",
+          "图标按钮",
+          "icon",
+          "图标",
+          "工具栏",
+          "toolbar",
+          "关闭",
+          "close",
+          "aria-label",
+          "icon-only"
+        ],
+        "selectionHints": [
+          "仅图标动作 → IconButton（必须补 aria-label/aria-labelledby）；有文本动作 → Button；导航 → a/RouterLink",
+          "空间受限的工具栏/行操作/关闭按钮 → IconButton ghost 默认档",
+          "异步图标动作配 :loading 防重复触发"
+        ],
+        "commonTasks": [
+          "对话框关闭按钮",
+          "表格行操作列",
+          "工具栏图标动作组 + loading"
+        ],
+        "generationNotes": [
+          "生成时必须带上 aria-label 或 aria-labelledby，否则开发环境会 console.warn",
+          "默认插槽只放单个内联 SVG（viewBox=\"0 0 24 24\"、stroke-width 1.5、currentColor），不要放文本或位图",
+          "loading 用 aria-busy 表达，不要叠加 disabled（loading 保持可聚焦，同 Button）",
+          "图标颜色一律 currentColor，随档位态变色，不要写死 fill/stroke 颜色"
+        ]
+      },
+      "source": {
+        "dir": "icon-button",
+        "metaFiles": [
+          "IconButton.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-input",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Input",
+        "package": "@ui/components",
+        "export": "Input",
+        "category": "inputs",
+        "description": "纸面单行输入：原生 input 封装（text/password），带 prefix/suffix 插槽、可清空按钮与错误态（aria-invalid），attrs 全量透传到原生输入框。"
+      },
+      "intent": {
+        "what": "单行文本/密码的输入与编辑：受控 v-model(string)、前后缀内容、一键清空、校验错误态，原生属性经 attrs 直达输入框。",
+        "when": [
+          "表单中的单行文本字段（标题、名称、搜索词、用户名等）",
+          "密码输入（type=\"password\"）",
+          "需要前缀图标 / 后缀单位或图标的紧凑输入",
+          "需要一键清空的长文本快速重输（clearable）",
+          "FormField 内做校验反馈展示（status=\"error\" + aria-describedby）"
+        ],
+        "whenNot": [
+          "多行长文本用 Textarea：Input 不支持多行与换行",
+          "从候选项中选择用 Select / Combobox：自由输入不提供选项约束",
+          "数值步进、日期选择等专用输入用对应组件：Input 不做键盘步进与弹出面板",
+          "开/关或勾选语义用 Switch / Checkbox：Input 只承载自由文本",
+          "富文本/格式化编辑器：Input 仅纯文本"
+        ],
+        "userTask": "用户需要输入、编辑或清空一行文本，并感知其校验状态"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "modelValue",
+            "type": "string",
+            "default": "''",
+            "description": "v-model 绑定值；受控，清空按钮点击后以空串更新。"
+          },
+          {
+            "name": "type",
+            "type": "'text' | 'password'",
+            "default": "'text'",
+            "description": "原生输入类型子集；password 用于密码场景。"
+          },
+          {
+            "name": "placeholder",
+            "type": "string",
+            "description": "占位文本；不替代 label（label 由使用方或 FormField 提供）。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：原生 disabled 属性（移出 Tab 序）+ 灰化 + 不渲染清空按钮。"
+          },
+          {
+            "name": "readonly",
+            "type": "boolean",
+            "default": "false",
+            "description": "只读：原生 readonly 属性（可聚焦可选中、不可编辑）+ 不渲染清空按钮。"
+          },
+          {
+            "name": "maxlength",
+            "type": "number",
+            "description": "最大输入长度：透传原生 maxlength，由浏览器原生截断。"
+          },
+          {
+            "name": "status",
+            "type": "'default' | 'error'",
+            "default": "'default'",
+            "description": "校验状态：'error' 时容器描边转 danger 并推导 aria-invalid=\"true\"。"
+          },
+          {
+            "name": "clearable",
+            "type": "boolean",
+            "default": "false",
+            "description": "可清空：有值且非禁用/只读时渲染清空按钮（aria-label=\"清空\"，点击后焦点交还输入框）。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "prefix",
+            "description": "输入框前内容（通常是内联 SVG 图标：viewBox 0 0 24 24、stroke-width 1.5、currentColor，尺寸由组件约束为 20）。"
+          },
+          {
+            "name": "suffix",
+            "description": "输入框后内容（渲染于清空按钮之后，通常是单位或图标，约束同 prefix）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "update:modelValue",
+            "payload": "string",
+            "description": "v-model 更新：原生 input 事件路径，载荷为输入框最新值。"
+          },
+          {
+            "name": "clear",
+            "description": "点击清空按钮后触发（值已随 update:modelValue 置空）。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦原生 input（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Textarea（多行文本）",
+          "Select（选项选择）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "FormField 包裹获得 label / 描述 / 错误文案关联（aria-describedby 经 attrs 直达 input）",
+          "prefix 搜索图标 + clearable 快速检索框",
+          "type=\"password\" + #suffix 显隐切换按钮（由使用方实现）"
+        ],
+        "related": [
+          "FormField",
+          "Form",
+          "Textarea",
+          "Select"
+        ],
+        "preferred": [
+          "label 由 FormField 提供，勿以 placeholder 替代 label",
+          "错误态配 status=\"error\" 并以 aria-describedby 指向错误文案"
+        ]
+      },
+      "states": {
+        "default": "surface 底 + line 描边 + ink 文字；placeholder 为 text-3。",
+        "hover": "描边加深为 --ui-border-strong；disabled 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；容器描边同步转 --ui-input-border-focus（accent）。error 态保持 danger 优先。",
+        "active": "输入控件无按压反馈；清空按钮为原生 button，hover 图标色 text-3 → text-1。",
+        "disabled": "sand 底 + line 描边 + text-3 文字 + not-allowed 光标；原生 disabled 使其移出 Tab 序，不渲染清空按钮。",
+        "error": "danger 描边（hover/focus 均保持 danger 优先于 accent），原生 input 置 aria-invalid=\"true\"。"
+      },
+      "accessibility": "原生 <input>（隐式 role=textbox），Tab 自然进入、直接键入；不书写 role/tabindex，不设置 aria-label（label 由 label[for] 或 FormField 提供，placeholder 不承担 label 职责）。status=\"error\" 推导 aria-invalid=\"true\"；aria-describedby 等原生属性经 attrs 直达 input 供 FormField 接入。清空按钮为原生 <button type=\"button\">（Enter/Space 平台原生激活），aria-label=\"清空\"，图标 svg aria-hidden=\"true\"；点击清空后焦点交还输入框。disabled 用原生 disabled 而非 aria-disabled。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；focus()/blur() 仅出现在客户端事件回调与暴露方法内。placeholder / maxlength / disabled / readonly / type / aria-invalid / 清空按钮 / attrs（id 等）均随 SSR 输出且落位原生 input。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生容器 class 与清空按钮可见性。动效只有 border-color / background-color / color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：底 --ui-input-bg、圆角 --ui-input-radius、focus 描边 --ui-input-border-focus、error 描边 --ui-danger、间距 --ui-space-*、字号 --ui-text-md、占位/次级文字 --ui-text-2/--ui-text-3、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入；attrs/class 透传落在原生 input 上可做定向覆盖。",
+      "examples": [
+        "<Input v-model='title' placeholder='文档标题' />",
+        "<Input v-model='pwd' type='password' placeholder='密码' clearable />",
+        "<Input v-model='email' status='error' aria-describedby='email-error' />",
+        "<Input v-model='keyword' clearable>\n  <template #prefix><svg viewBox='0 0 24 24'><!-- … --></svg></template>\n  <template #suffix>项</template>\n</Input>",
+        "<Input :model-value='name' :maxlength='30' disabled />"
+      ],
+      "agent": {
+        "keywords": [
+          "input",
+          "输入框",
+          "文本框",
+          "text",
+          "password",
+          "密码",
+          "placeholder",
+          "占位",
+          "clearable",
+          "清空",
+          "清空按钮",
+          "maxlength",
+          "字数限制",
+          "disabled",
+          "禁用",
+          "readonly",
+          "只读",
+          "error",
+          "错误态",
+          "aria-invalid",
+          "prefix",
+          "suffix",
+          "前缀",
+          "后缀",
+          "v-model",
+          "表单输入"
+        ],
+        "selectionHints": [
+          "单行自由文本 → Input；多行 → Textarea；选项选择 → Select",
+          "需要 label 与校验文案时用 FormField 包裹，勿用 placeholder 替代 label",
+          "校验失败传 status=\"error\" 并配 aria-describedby 指向错误文案"
+        ],
+        "commonTasks": [
+          "表单文本字段 + 校验错误态",
+          "带搜索图标与清空的检索框",
+          "密码输入 + 后缀显隐切换"
+        ],
+        "generationNotes": [
+          "v-model 为 string；点击清空会发出 update:modelValue(\"\") 与 clear，并把焦点交还输入框",
+          "id / name / autocomplete / aria-describedby / aria-label 等原生属性经 attrs 直达原生 input",
+          "图标走 #prefix/#suffix 内联 SVG（viewBox 0 0 24 24、stroke-width 1.5、currentColor）",
+          "disabled/readonly 下不渲染清空按钮；maxlength 依赖浏览器原生截断"
+        ]
+      },
+      "source": {
+        "dir": "input",
+        "metaFiles": [
+          "Input.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-pagination",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Pagination",
+        "package": "@ui/components",
+        "export": "Pagination",
+        "category": "data",
+        "description": "纸面数据分页：v-model:page 受控的页码导航，总页数少时全显、多时首尾+滑动窗口+省略号，上一页/下一页边界禁用。"
+      },
+      "intent": {
+        "what": "把一组按 pageSize 切分的数据页暴露为可跳转的页码导航：v-model:page 受控、total/pageSize 推导总页数、siblingCount 控制当前页两侧窗口宽度。",
+        "when": [
+          "表格 / 列表 / 卡片流底部的分页条",
+          "数据总量已知（total）且服务端或前端按页取数",
+          "需要当前页语义暴露给读屏（aria-current=\"page\"）",
+          "长列表需要折叠页码（首尾 + 窗口 + 省略号）保持宽度稳定"
+        ],
+        "whenNot": [
+          "无限滚动 / 加载更多：没有离散页概念时用 Scroll 类方案",
+          "只有一页且不会增长的数据：Pagination 仍会渲染（可用 v-if 在使用方隐藏）",
+          "步骤向导（有先后依赖的流程）用 Steps：Pagination 只表达平等的数据页",
+          "面包屑 / 标签页等导航语义用 Breadcrumb / Tabs"
+        ],
+        "userTask": "用户需要知道数据有多少页、当前在哪页，并跳到目标页"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "page",
+            "type": "number",
+            "default": "1",
+            "description": "当前页（1 起始，v-model:page）；超出 [1, pageCount] 时展示层收敛（clamp）后渲染，组件自身不持有页状态。"
+          },
+          {
+            "name": "total",
+            "type": "number",
+            "default": "0",
+            "description": "数据总条数；与 pageSize 共同推导总页数（负值按 0 处理）。"
+          },
+          {
+            "name": "pageSize",
+            "type": "number",
+            "default": "10",
+            "description": "每页条数；≤0 按 1 处理避免除零。"
+          },
+          {
+            "name": "siblingCount",
+            "type": "number",
+            "default": "1",
+            "description": "当前页两侧保留的页码数；总页数 ≤ siblingCount*2+5（默认 7）时全量展开，否则首尾+窗口+省略号。"
+          }
+        ],
+        "slots": [],
+        "events": [
+          {
+            "name": "update:page",
+            "payload": "number",
+            "description": "v-model:page 更新：点击页码/上一页/下一页后发出，载荷为目标页码（已收敛进 [1, pageCount]；与当前页相同不发出）。"
+          }
+        ],
+        "exposes": []
+      },
+      "constraints": {
+        "conflicts": [
+          "无限滚动/加载更多（无离散页概念）",
+          "Steps（流程步骤语义）"
+        ],
+        "dependsOn": [
+          "@ui/tokens/paper.css（使用方在应用入口引入）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Table/DataTable 底部分页条",
+          "工具栏筛选 + 列表分页（筛选变化后重置 page=1）",
+          "与 EmptyState 配合：无数据时由使用方隐藏分页条"
+        ],
+        "related": [
+          "Table",
+          "DataTable",
+          "EmptyState",
+          "Select"
+        ],
+        "preferred": [
+          "受控使用 v-model:page，父层校验页码",
+          "页码变更后滚动回列表顶部由使用方处理",
+          "每页条数切换器（Select）与 Pagination 并排，切换后重置 page"
+        ]
+      },
+      "states": {
+        "default": "非当前页/翻页按钮透明底 + text-2（页码数字 tabular-nums 等宽对齐）；当前页 accent 实底 + on-accent 文字 medium 字重；省略号为 text-3 的 aria-hidden 占位；nav 携带 aria-label=\"分页\"。",
+        "hover": "非当前页/翻页按钮转 sand 底（--ui-surface-muted）+ text-1；当前页 hover 加深为 --ui-accent-hover；disabled（边界翻页钮）不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline、不设 tabindex；当前页按钮同样可聚焦。",
+        "active": "按压不引入缩放/位移；非当前页维持 hover 的 sand 底，当前页按压即随受控更新切换高亮；目标页与当前页相同（网关去重）不发出 update:page。",
+        "disabled": "上一页在第 1 页、下一页在末页为原生 disabled（text-3 + not-allowed，留在布局中但移出可交互状态）；省略号与页码按钮不使用 disabled 语义。"
+      },
+      "accessibility": "根为 <nav aria-label=\"分页\">，内为 <ul>/<li> 列表语义；上一页/下一页为原生 <button type=\"button\"> 且仅图标，必须携带 aria-label=\"上一页\"/\"下一页\"，chevron svg aria-hidden=\"true\"；当前页按钮 aria-current=\"page\"，其余页码按钮以自身数字为可读名，不额外写 role/tabindex；省略号为 <span aria-hidden=\"true\"> 的非聚焦占位；键盘 Tab 逐按钮可达，Enter/Space 走平台原生激活（组件不劫持 keydown/preventDefault）；边界禁用用原生 disabled 而非 aria-disabled。",
+      "ssr": "renderToString 无异常：窗口计算为纯函数，setup 与模块顶层不访问任何浏览器 API；page/total/pageSize/siblingCount 推导的页码序列、aria-label、aria-current、disabled、省略号占位全部随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生 pageCount/safePage/items/边界态（窗口算法 O(pageCount) 全显或 O(1) 窗口项）；动效仅 background-color/color 过渡（--ui-motion-fast + --ui-ease-out），prefers-reduced-motion 下随 token 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：数字 --ui-numeric（tabular-nums）、页码钮等宽 --ui-space-6（min-width，复用间距档）、圆角 --ui-radius-sm、字号 --ui-text-sm、间距 --ui-space-1/2、色 --ui-accent/--ui-on-accent/--ui-accent-hover/--ui-surface-muted/--ui-text-2/--ui-text-3、动效 --ui-motion-fast/--ui-ease-out。无全局 CSS 引入；结构性重置（border:none、background:transparent、列表盒模型清零）不承担视觉取值。",
+      "examples": [
+        "<Pagination v-model:page='page' :total='total' :page-size='20' />",
+        "<Pagination :page='page' :total='total' :page-size='size' :sibling-count='2' @update:page='page = $event' />",
+        "<Pagination v-model:page='page' :total='0' v-if='total > 0' />（无数据时由使用方隐藏）",
+        "<div class='toolbar'><Pagination v-model:page='page' :total='total' /></div>（表格底部：筛选变化后 page 置 1）"
+      ],
+      "agent": {
+        "keywords": [
+          "pagination",
+          "分页",
+          "页码",
+          "page",
+          "total",
+          "pageSize",
+          "每页条数",
+          "上一页",
+          "下一页",
+          "prev",
+          "next",
+          "siblingCount",
+          "省略号",
+          "ellipsis",
+          "aria-current",
+          "跳页"
+        ],
+        "selectionHints": [
+          "离散数据页导航 → Pagination；无限滚动 → 加载更多/滚动加载",
+          "已知 total 才能用 Pagination；total 未知时先改用游标/滚动方案",
+          "与 Select 组合实现「每页 N 条」：切换 pageSize 后把 page 重置为 1"
+        ],
+        "commonTasks": [
+          "表格底部分页条",
+          "列表/卡片流分页",
+          "大页数折叠（首尾+窗口+省略号）"
+        ],
+        "generationNotes": [
+          "v-model:page 为受控用法；组件不持有内部页状态，点击只发 update:page",
+          "总页数 ≤ siblingCount*2+5（默认 7）全显，省略号是非聚焦的 aria-hidden 占位",
+          "page 越界（如 total 变小）展示层自动 clamp，但需使用方自行把 page 修正回范围内",
+          "点击当前页不产生 update:page；上一页/下一页在首/尾页为原生 disabled"
+        ]
+      },
+      "source": {
+        "dir": "pagination",
+        "metaFiles": [
+          "Pagination.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-progress",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Progress",
+        "package": "@ui/components",
+        "export": "Progress",
+        "category": "data",
+        "description": "纸面进度条：确定进度（value 0-100 + aria-valuenow）与不确定进度（indeterminate 扫描，reduced-motion 降级静态半填充），accent 填充 + muted 轨道。"
+      },
+      "intent": {
+        "what": "任务/加载的进度反馈：确定态按 value 0-100 填充并可显示数值标签；不确定态以扫描动画表达\"进行中但进度未知\"。",
+        "when": [
+          "上传/下载、安装、批处理等可计算进度的任务（value + showLabel）",
+          "耗时未知但正在进行的过程（indeterminate）",
+          "分步向导的整体完成度展示"
+        ],
+        "whenNot": [
+          "未知时长的版面等待用 Skeleton：Progress 表达进度而非占位结构",
+          "可操作的控制条（音量/播放进度）需要交互语义，非只读 progressbar",
+          "操作结果反馈用 Toast / Alert：Progress 表达\"进行中\"",
+          "离散步骤的当前位置用 Steps：Progress 表达连续进度"
+        ],
+        "userTask": "用户需要感知某个过程进行到什么程度，或确认过程仍在进行"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "value",
+            "type": "number",
+            "default": "0",
+            "description": "确定进度值 0-100：越界钳制到 [0,100]、非有限数回退 0；透传为 aria-valuenow 与填充宽度；indeterminate=true 时忽略。"
+          },
+          {
+            "name": "indeterminate",
+            "type": "boolean",
+            "default": "false",
+            "description": "不确定进度：忽略 value、省略 aria-valuenow（进度未知）、填充转扫描动画；prefers-reduced-motion 时降级为静态 50% 半填充。"
+          },
+          {
+            "name": "showLabel",
+            "type": "boolean",
+            "default": "false",
+            "description": "显示数值标签（如 \"42%\"，tabular-nums）；仅确定进度渲染，indeterminate 无确定值不渲染。"
+          },
+          {
+            "name": "size",
+            "type": "'sm' | 'md'",
+            "default": "'md'",
+            "description": "条高档位：sm 4px、md 8px（--ui-space-1/--ui-space-2）。"
+          }
+        ],
+        "slots": [],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {},
+      "composition": {
+        "patterns": [
+          "上传场景：<Progress :value=\"percent\" show-label size=\"sm\" />",
+          "页面级加载：<Progress indeterminate />（不可知进度）",
+          "与文本组合：使用方在组件旁提供任务名说明（组件自身不带 label 文本）"
+        ],
+        "related": [
+          "Skeleton",
+          "Button",
+          "Table",
+          "EmptyState"
+        ],
+        "preferred": [
+          "能拿到确定进度时始终用 value（读屏依赖 aria-valuenow），indeterminate 仅作兜底",
+          "需要可读名称时由使用方以 aria-label/aria-labelledby 指向任务说明",
+          "细行内场景用 size=\"sm\"，页面级主进度用 size=\"md\""
+        ]
+      },
+      "states": {
+        "default": "muted 轨道（--ui-surface-muted）+ accent 填充（--ui-accent），端头 --ui-radius-xs（2px）；条高随 size 档。",
+        "hover": "不适用：非交互展示元素，无 hover 反馈。",
+        "focusVisible": "不适用：不可聚焦，不进入 Tab 序，永不获得焦点环。",
+        "active": "不适用：无交互。",
+        "disabled": "不适用：无 disabled 语义；进度结束由使用方卸载组件或置 value=100。",
+        "loading": "indeterminate 态即加载语义：50% 半填充 transform 扫描（≈2s 循环，加载态豁免）；prefers-reduced-motion 降级为静态半填充。"
+      },
+      "accessibility": "根元素 role=\"progressbar\"：aria-valuemin=\"0\"/aria-valuemax=\"100\" 恒在，确定态 aria-valuenow=钳制后的 value；indeterminate 按 WAI-ARIA 省略 aria-valuenow（进度未知）。showLabel 以 \"42%\" 文本提供视觉双通道。组件非交互、无 tabindex；任务名称（aria-label/aria-labelledby）由使用方提供。",
+      "ssr": "renderToString 无异常：组件不访问任何浏览器 API（无 effect/监听/测量），role/aria 值、修饰类、内联填充宽度与标签文本均在服务端输出；indeterminate 态 SSR 即省略 aria-valuenow。",
+      "performance": "无 JS 运行时开销（仅 computed class/style/aria 派生）；动效为 CSS transform 关键帧无限循环（仅 indeterminate，加载态豁免），prefers-reduced-motion 下显式 @media 停用；确定态无任何动画。",
+      "styling": "视觉只消费 --ui-* token：轨道 --ui-surface-muted、填充 --ui-accent、条高 --ui-space-1/--ui-space-2、端头 --ui-radius-xs（进度条端头为该 token 唯一合法用途）、标签字号 --ui-text-xs / 颜色 --ui-text-2 / 数字 --ui-numeric、间距 --ui-space-2。indeterminate 扫描时长由 --ui-motion-default calc 推导。",
+      "examples": [
+        "<Progress :value='42' show-label />",
+        "<Progress indeterminate size='sm' />",
+        "<div role='status' aria-label='上传中'>\n  <Progress :value='percent' show-label />\n</div>",
+        "<Progress :value='75' />"
+      ],
+      "agent": {
+        "keywords": [
+          "progress",
+          "进度条",
+          "进度",
+          "progressbar",
+          "indeterminate",
+          "不确定进度",
+          "加载进度",
+          "上传",
+          "下载",
+          "aria-valuenow",
+          "percent",
+          "百分比",
+          "loading"
+        ],
+        "selectionHints": [
+          "可计算进度 → value + showLabel；进度未知 → indeterminate",
+          "版面占位等待 → Skeleton；只读进度展示 → Progress",
+          "细行内进度用 size=\"sm\"，需要数值可读用 showLabel（aria-valuenow 同步提供）"
+        ],
+        "commonTasks": [
+          "文件上传/下载进度展示",
+          "批处理/安装类任务的完成度",
+          "未知耗时操作的\"进行中\"指示"
+        ],
+        "generationNotes": [
+          "value 自动钳制到 [0,100]，NaN/±Infinity 回退 0；aria-valuenow 与填充宽度同源",
+          "indeterminate=true 时忽略 value、省略 aria-valuenow、隐藏数值标签",
+          "端头 2px 来自 --ui-radius-xs；条高仅 sm/md 两档",
+          "无 emits/slots/exposes；确定态无动画，扫描动画仅在 indeterminate 出现"
+        ]
+      },
+      "source": {
+        "dir": "progress",
+        "metaFiles": [
+          "Progress.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-radio",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Radio",
+        "package": "@ui/components",
+        "export": "Radio",
+        "category": "inputs",
+        "description": "纸面单选项：原生 input[type=radio]，name/选中/整组禁用来自 RadioGroup 注入，键盘行为全原生（方向键移动、Space 选中）。"
+      },
+      "intent": {
+        "what": "互斥单选组中的一个选项：value + 可读 label，选中态由所在 RadioGroup 的受控值派生。",
+        "when": [
+          "作为 RadioGroup 的子项使用（推荐且唯一推荐用法）",
+          "label 需要富文本（默认插槽：链接、辅助说明）",
+          "个别选项需要单独禁用"
+        ],
+        "whenNot": [
+          "脱离 RadioGroup 独立使用：无 name 分组则原生互斥与方向键导航失效（独立开关语义请用 Switch/Checkbox）",
+          "可多选用 Checkbox：Radio 选中后不可取消（只能换选）",
+          "作为动作按钮用 Button：Radio 表达选中态，不触发动作"
+        ],
+        "userTask": "用户需要在单选组中选中一项，点文本或方向键即可换选"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "value",
+            "type": "string | number",
+            "required": true,
+            "description": "该选项对应的值（必填）；change 时经 RadioGroup 以 update:modelValue 发出。"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "description": "可读名称；与默认插槽等价，插槽优先。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "单项禁用（与组 disabled 取或）：原生 disabled 属性。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "label 内容（优先于 label prop）；点击文本即选中（根为 label 元素）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "change",
+            "payload": "Event",
+            "description": "原生 change 事件（经组件转发到组的选中路径；一般无需直接监听，改用 RadioGroup 的 update:modelValue）。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦原生 radio（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "requires": [
+          "RadioGroup（提供 name / 选中值 / select 注入）"
+        ],
+        "conflicts": [
+          "Checkbox（多选语义）",
+          "Switch（开关语义）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "RadioGroup 内平铺多个 Radio（纵向排布，渲染序即导航序）",
+          "默认插槽携带辅助说明或链接的富 label",
+          "单项 disabled 用于「不可选但有展示价值」的选项"
+        ],
+        "related": [
+          "RadioGroup",
+          "Checkbox",
+          "Switch",
+          "FormField"
+        ],
+        "preferred": [
+          "value 必须在组内唯一；label prop 或插槽必须提供其一，否则读屏无可读名称"
+        ]
+      },
+      "states": {
+        "default": "未选：surface 圆框 + line-strong 描边；选中：accent 实底 + on-accent 圆点。",
+        "hover": "未选且未禁用时圆框描边加深为 --ui-border-strong；选中/禁用不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），绘制在原生 radio 热区（与视觉圆框重合）；不改写 outline 与 tabindex。",
+        "active": "无按压位移反馈；选中视觉随受控值以 opacity 过渡切换（--ui-motion-fast）。",
+        "disabled": "圆框灰化（sand 底 + line 描边）、圆点转 text-3、文本 text-3 + not-allowed 光标；原生 disabled 移出 Tab 序、不参与方向键导航。",
+        "error": "无内建 error 态：校验反馈由外层 FormField 承担。"
+      },
+      "accessibility": "原生 <input type=\"radio\">：checked / disabled 原生表达（无 aria-checked / aria-disabled）；键盘 100% 原生——Tab 进入组、方向键在同 name 组内移动并选中、Space 选中，组件不绑定 keydown、不改写 tabindex。根为 label 元素关联控件，点击文本即选中。圆点为纯装饰（aria-hidden），不进入可读内容。",
+      "ssr": "renderToString 无异常：provide/inject 渲染期生效，选中态随组受控值输出（checked 属性）；name / disabled / label 随 SSR 输出；不访问任何浏览器 API，focus()/blur() 仅客户端暴露方法。",
+      "performance": "无监听器（仅原生 change 转发）、无测量、无定时器；仅 computed 派生选中/禁用/类名。动效只有 border-color / background-color / opacity 过渡（--ui-motion-fast token），prefers-reduced-motion 下随 token 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：圆框描边 --ui-border-strong、选中底 --ui-accent、圆点 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、间距 --ui-space-2、字号 --ui-text-md、动效 --ui-motion-fast/--ui-ease-out。结构性例外：border-width 1px（无 --ui-border-width token）；圆形半径取 calc(var(--ui-space-4) / 2)（无圆形半径 token，已在任务结果中提出需求）；原生控件 opacity: 0 为结构性隐藏（非视觉取值）。",
+      "examples": [
+        "<RadioGroup v-model='plan' name='plan'>\n  <Radio value='free' label='免费版' />\n  <Radio value='pro' label='专业版' />\n</RadioGroup>",
+        "<Radio value='beta'>\n  Beta 通道（<a href='/notes'>更新说明</a>）\n</Radio>",
+        "<Radio value='legacy' disabled>旧版接口（已下线）</Radio>"
+      ],
+      "agent": {
+        "keywords": [
+          "radio",
+          "单选",
+          "单选框",
+          "选项",
+          "option",
+          "value",
+          "label",
+          "disabled",
+          "禁用",
+          "checked",
+          "选中",
+          "表单"
+        ],
+        "selectionHints": [
+          "单选组的一个选项 → Radio（必须包在 RadioGroup 内）",
+          "可多选 → Checkbox；即时开关 → Switch",
+          "label 含链接等富文本用默认插槽；纯文本用 label prop"
+        ],
+        "commonTasks": [
+          "在 RadioGroup 中罗列互斥选项",
+          "带说明文案的单选项",
+          "禁用某个不可用选项"
+        ],
+        "generationNotes": [
+          "value 必填且组内唯一；类型与 RadioGroup modelValue 一致（string | number）",
+          "选中/取消由组受控值驱动：不要监听 Radio 的 change 来改自己的状态",
+          "id / aria-label 等原生属性经 attrs 直达原生 radio",
+          "不要单独给 Radio 传 name：组会下发统一 name（同名组互斥的原生依据）"
+        ]
+      },
+      "source": {
+        "dir": "radio",
+        "metaFiles": [
+          "Radio.meta.ts",
+          "RadioGroup.meta.ts"
+        ]
+      },
+      "subComponents": [
+        {
+          "id": "ui-radio-group",
+          "version": "0.1.0",
+          "identity": {
+            "name": "RadioGroup",
+            "package": "@ui/components",
+            "export": "RadioGroup",
+            "category": "inputs",
+            "description": "纸面单选组容器：受控 modelValue + 必填 name + 整组 disabled，provide/inject 下发组内 Radio；原生 radio 互斥与方向键导航。"
+          },
+          "intent": {
+            "what": "管理一组互斥单选：受控选中值、原生 name 分组与整组禁用，经 provide/inject 驱动组内 Radio。",
+            "when": [
+              "多个互斥选项中恰好选一个（配送方式、可见范围、排序策略等）",
+              "选项少于 5 个、无需搜索的场景（更多用 Select）",
+              "需要整组禁用或随表单提交单一值"
+            ],
+            "whenNot": [
+              "可多选（含全不选）用 Checkbox：radio 互斥且必有选中",
+              "开关/即时切换语义用 Switch：RadioGroup 表达「多选一」而非状态切换",
+              "选项很多或需输入过滤时用 Select / Combobox",
+              "不含 Radio 的静态分组用 fieldset/列表容器，不要套 radiogroup"
+            ],
+            "userTask": "用户需要在一组互斥选项中选中恰好一个，键盘方向键即可在选项间移动"
+          },
+          "api": {
+            "props": [
+              {
+                "name": "modelValue",
+                "type": "string | number",
+                "default": "undefined",
+                "description": "v-model 当前选中值（受控）；未选中为 undefined，选中某项后由 Radio 的 change 路径更新。"
+              },
+              {
+                "name": "name",
+                "type": "string",
+                "required": true,
+                "description": "原生 name（必填）：同组 radio 互斥与方向键导航的分组依据，务必保持组内唯一语义。"
+              },
+              {
+                "name": "disabled",
+                "type": "boolean",
+                "default": "false",
+                "description": "整组禁用：组内全部 Radio 原生 disabled（移出 Tab 序）。"
+              }
+            ],
+            "slots": [
+              {
+                "name": "default",
+                "description": "组内放置若干 Radio（渲染序即原生 Tab 序与方向键导航序）。"
+              }
+            ],
+            "events": [
+              {
+                "name": "update:modelValue",
+                "payload": "string | number",
+                "description": "组内任一 Radio 原生 change 时发出，载荷为该 Radio 的 value。"
+              }
+            ],
+            "exposes": []
+          },
+          "constraints": {
+            "requires": [
+              "Radio（组内必须放置至少一个 Radio，name 缺失时原生互斥失效）"
+            ],
+            "conflicts": [
+              "Checkbox（多选）",
+              "Switch（单一开关语义）"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "FormField 包裹获得 label 与校验文案（aria-describedby 经 attrs 落组容器）",
+              "RadioGroup v-model + 若干 Radio value 组成互斥选择",
+              "disabled 整组置灰用于只读态展示"
+            ],
+            "related": [
+              "Radio",
+              "Checkbox",
+              "Switch",
+              "FormField",
+              "Form"
+            ],
+            "preferred": [
+              "每组必须给唯一 name；value 建议用稳定业务标识（字符串/数字）",
+              "选项带辅助说明时把说明文案放进 Radio 默认插槽"
+            ]
+          },
+          "states": {
+            "default": "组容器只负责排布（纵向，间距 --ui-space-2）；选项视觉由 Radio 表达（未选 surface 底 + line-strong 圆描边）。",
+            "hover": "容器无 hover 态；选项 hover 描边加深为 --ui-border-strong（选中与禁用除外）。",
+            "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），绘制在原生 radio 热区上；组件不改写 outline 与 tabindex。",
+            "active": "无按压位移反馈；点击/方向键选中即以 accent 实底 + on-accent 圆点表达。",
+            "disabled": "整组禁用：选项圆框灰化（sand 底 + line 描边）、圆点转 text-3、文本 text-3 + not-allowed 光标；原生 disabled 移出 Tab 序。",
+            "error": "无内建 error 态：校验反馈由 FormField 错误文案与 aria-describedby 承担。"
+          },
+          "accessibility": "容器 role=\"radiogroup\"（attrs 的 aria-label 等落在容器）；选项为原生 <input type=\"radio\">：checked/disabled 原生表达，不使用 aria-checked。键盘 100% 原生：Tab 进入组、方向键在同名 radio 间移动并选中、Space 选中——组件不绑定 keydown、不改写 tabindex。根为 label 元素，点击文本即选中。",
+          "ssr": "renderToString 无异常：provide/inject 在 SSR 渲染期即生效（选中态随受控值输出）；name / checked / disabled / label 均随 SSR 输出；不访问任何浏览器 API。",
+          "performance": "无监听器、无测量、无定时器；上下文为 3 个 computed + 1 个函数。选项动效只有 border-color / background-color / opacity 过渡（--ui-motion-fast token），prefers-reduced-motion 下随 token 归零。",
+          "styling": "视觉只消费 --ui-* token（paper.css）：组间距 --ui-space-2、圆框描边 --ui-border-strong、选中底 --ui-accent、圆点 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、字号 --ui-text-md。结构性例外：border-width 1px（无 --ui-border-width token）；圆形半径取 calc(var(--ui-space-4) / 2)（无圆形半径 token）；原生控件 opacity: 0 为结构性隐藏。",
+          "examples": [
+            "<RadioGroup v-model='shipping' name='shipping'>\n  <Radio value='express' label='快递' />\n  <Radio value='pickup' label='自提' />\n</RadioGroup>",
+            "<RadioGroup v-model='scope' name='scope' disabled>\n  <Radio value='private' label='仅自己可见' />\n  <Radio value='public' label='所有人可见' />\n</RadioGroup>",
+            "<RadioGroup v-model='sort' name='sort' aria-label='排序方式'>\n  <Radio value='recent'>\n    最近更新\n    <template #label>…</template>\n  </Radio>\n</RadioGroup>"
+          ],
+          "agent": {
+            "keywords": [
+              "radio group",
+              "单选组",
+              "radio-group",
+              "radiogroup",
+              "name",
+              "互斥",
+              "单选",
+              "选择组",
+              "disabled",
+              "禁用",
+              "v-model",
+              "表单"
+            ],
+            "selectionHints": [
+              "多选一 → RadioGroup + Radio；可多选 → Checkbox；单一开关 → Switch",
+              "选项 > 5 个或需搜索 → Select；RadioGroup 只适合少量平铺选项",
+              "name 必填且同页唯一，否则原生互斥与方向键导航会被同名组干扰"
+            ],
+            "commonTasks": [
+              "表单单选字段（配送方式、可见范围）+ FormField 校验",
+              "设置面板的模式选择（整组 disabled 做只读展示）"
+            ],
+            "generationNotes": [
+              "modelValue 为 string | number；必须与所含 Radio 的 value 类型一致",
+              "选中态只由组受控值派生：改 v-model 即可编程式选中",
+              "aria-label 经 attrs 落在 role=radiogroup 容器上",
+              "不要给 Radio 单独传 name：分组与导航统一由组下发"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ui-select",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Select",
+        "package": "@ui/components",
+        "export": "Select",
+        "category": "inputs",
+        "description": "纸面单选下拉：combobox 触发器 + Teleport 弹层 listbox（aria-activedescendant 焦点模型），受控 v-model(string|number|null)、清空按钮与空态文案。"
+      },
+      "intent": {
+        "what": "从有限候选项中单选一个值：受控 v-model、键盘/指针双路径、可清空、空态兜底文案；选项为 {label, value, disabled?}[]。",
+        "when": [
+          "表单中从枚举值里选一项（状态、分类、负责人等）",
+          "候选项需要禁用个别选项（disabled）",
+          "需要一键清空已选值回到占位态（clearable）",
+          "选项较多需要键盘导航（↓/↑/Home/End/Enter/Esc）快速定位",
+          "选项为空/加载中时需要兜底文案（emptyText）"
+        ],
+        "whenNot": [
+          "自由文本输入用 Input：Select 只能从给定选项中选择",
+          "多选场景用多选组件：Select 严格单选",
+          "选项需要分组/搜索过滤的复杂场景：当前版本不提供分组与过滤",
+          "开/关语义用 Switch：Select 不是开关"
+        ],
+        "userTask": "用户需要从候选列表中选定（或清空）一个值，并能用键盘完成全程操作"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "modelValue",
+            "type": "SelectValue | null（string | number | null）",
+            "default": "null",
+            "description": "v-model 绑定值；受控，以 === 匹配选项 value，null 表示未选（清空后以 null 更新）。"
+          },
+          {
+            "name": "options",
+            "type": "SelectOption[]（{label: string; value: SelectValue; disabled?: boolean}）",
+            "default": "[]",
+            "description": "选项全集；value 应唯一，disabled 项不可被高亮/选中。"
+          },
+          {
+            "name": "placeholder",
+            "type": "string",
+            "default": "'请选择'",
+            "description": "占位文本（无已选值时显示在触发器内）；不替代 label。"
+          },
+          {
+            "name": "emptyText",
+            "type": "string",
+            "default": "'暂无选项'",
+            "description": "空态文案：options 为空数组时弹层内显示。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：触发器原生 disabled（移出 Tab 序）+ 拦截开合/键盘 + 不渲染清空按钮。"
+          },
+          {
+            "name": "clearable",
+            "type": "boolean",
+            "default": "false",
+            "description": "可清空：有已选值且非禁用时渲染清空按钮（aria-label=\"清空\"，与折叠箭标互换显示）。"
+          }
+        ],
+        "slots": [],
+        "events": [
+          {
+            "name": "update:modelValue",
+            "payload": "SelectValue | null",
+            "description": "v-model 更新：选项选中（载荷为选项 value）或清空（载荷为 null）。"
+          },
+          {
+            "name": "clear",
+            "description": "点击清空按钮后触发（值已随 update:modelValue 置 null，随后焦点交还触发器）。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦触发器按钮（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点（触发器 blur 会关闭已打开的弹层）。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Input（自由文本输入）",
+          "Switch（开/关语义）"
+        ],
+        "dependsOn": [
+          "使用方应用入口引入 @ui/tokens/paper.css（--ui-* token 来源）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "FormField 包裹获得 label / 描述 / 错误文案关联（aria-describedby 经 attrs 直达 combobox 触发器）",
+          "clearable + 受控 modelValue 实现可回退的选择",
+          "options 由异步数据源驱动，空数组时以 emptyText 兜底"
+        ],
+        "related": [
+          "FormField",
+          "Form",
+          "Input",
+          "Button"
+        ],
+        "preferred": [
+          "label 由 FormField 提供，勿以 placeholder 替代 label",
+          "选项 value 在全集内保持唯一"
+        ]
+      },
+      "states": {
+        "default": "触发器 surface 底 + line 描边 + ink 文字；未选时显示 placeholder（text-3）+ 折叠箭标。",
+        "hover": "触发器描边加深为 --ui-border-strong；disabled 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；触发器描边同步转 --ui-input-border-focus（accent）。",
+        "active": "打开后触发器箭标翻转 180°；弹层 surface 底 + line 描边 + shadow-pop，键盘高亮项 surface-muted 底，已选项 accent-soft 底 + accent 文字 + medium 字重。",
+        "disabled": "触发器 sand 底 + line 描边 + text-3 文字 + not-allowed 光标；原生 disabled 使其移出 Tab 序，不渲染清空按钮，弹层不可打开。",
+        "error": "未内建错误态；由使用方以 attrs（aria-describedby）配合 FormField 呈现。"
+      },
+      "accessibility": "触发器为原生 <button type=\"button\" role=\"combobox\">，携带 aria-haspopup=\"listbox\"、aria-expanded、aria-controls（指向弹层 id）与 aria-activedescendant（打开且有高亮时指向选项 id，否则不出现）。弹层 role=\"listbox\"，选项 role=\"option\" + aria-selected，禁用项 aria-disabled=\"true\"。焦点模型：焦点始终停留在触发器，选项不进 Tab 序；键盘 ↓/↑ 移动高亮（跳过禁用项）、Home/End 首尾、Enter/Space 打开或选中、Esc 关闭；受理键一律 preventDefault（含 Space 滚动与原生 button 二次激活）。Tab 离开（触发器 blur）与点击外部均关闭弹层；弹层与清空按钮 mousedown.prevent 保住触发器焦点。清空按钮为原生 <button type=\"button\">、aria-label=\"清空\"、图标 aria-hidden，点击后焦点交还触发器；disabled 用原生 disabled 而非 aria-disabled。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；弹层由 mounted 门控（Teleport 仅客户端渲染），SSR 输出只有触发器（含 role/aria-expanded/aria-controls 与 placeholder/已选 label），不出现 listbox/option。document 点击外部关闭监听只在 onMounted 注册、onBeforeUnmount 移除；弹层定位（getBoundingClientRect）只在打开后的 nextTick 内执行。",
+      "performance": "常态零监听：仅打开期间存在一个 watch 定位（打开后一次 nextTick 计算 rect）；无定时器、无 ResizeObserver。渲染为受控 computed 派生（选中项/占位/清空可见性）；动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长列表以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-dropdown；高亮项 --ui-surface-muted、已选项 --ui-accent-soft/--ui-accent、禁用项 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。",
+      "examples": [
+        "<Select v-model='status' :options=\"[{ label: '草稿', value: 'draft' }, { label: '已发布', value: 'published' }]\" />",
+        "<Select v-model='owner' :options='owners' placeholder='选择负责人' clearable />",
+        "<Select :model-value='null' :options='[]' empty-text='加载中…' disabled />",
+        "<Select v-model='size' :options=\"[{ label: '小', value: 1 }, { label: '大', value: 2, disabled: true }]\" aria-describedby='size-error' />"
+      ],
+      "agent": {
+        "keywords": [
+          "select",
+          "下拉",
+          "下拉框",
+          "下拉选择",
+          "单选",
+          "选择器",
+          "combobox",
+          "listbox",
+          "option",
+          "选项",
+          "placeholder",
+          "占位",
+          "empty",
+          "空态",
+          "clearable",
+          "清空",
+          "disabled",
+          "禁用",
+          "v-model",
+          "表单",
+          "键盘导航",
+          "aria-activedescendant"
+        ],
+        "selectionHints": [
+          "有限候选项中选一个 → Select；自由文本 → Input；开/关 → Switch",
+          "需要 label 与校验文案时用 FormField 包裹，勿用 placeholder 替代 label",
+          "个别选项不可选时用 option.disabled，而非整体 disabled"
+        ],
+        "commonTasks": [
+          "表单枚举字段（状态/分类/负责人）",
+          "可清空的回退选择（clearable）",
+          "异步加载选项 + 空态文案兜底"
+        ],
+        "generationNotes": [
+          "v-model 值类型为 string | number | null；清空发出 update:modelValue(null) 与 clear，并把焦点交还触发器",
+          "键盘路径：↓/↑ 移动高亮（跳过禁用项）、Home/End 首尾、Enter/Space 打开或选中、Esc/Tab/点击外部 关闭",
+          "id / aria-describedby / aria-label 等原生属性经 attrs 直达触发器 button",
+          "弹层 Teleport 到 body 且仅客户端渲染；定位在打开时按触发器 rect 计算，不做翻转/跟随滚动（需要时由使用方扩展）"
+        ]
+      },
+      "source": {
+        "dir": "select",
+        "metaFiles": [
+          "Select.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-skeleton",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Skeleton",
+        "package": "@ui/components",
+        "export": "Skeleton",
+        "category": "data",
+        "description": "纸面骨架占位：内容加载前的 line/circle/rect 形状占位（muted 面 + opacity shimmer），纯装饰 aria-hidden，加载状态由使用方容器声明。"
+      },
+      "intent": {
+        "what": "加载中的形状占位：多行文本（line，可配行数与末行短尾）、正圆（circle）、矩形（rect），以 opacity 呼吸表达\"正在加载\"。",
+        "when": [
+          "列表/卡片/详情页数据请求期间的版面占位，减少布局抖动",
+          "头像/媒体等已知形状的局部占位（variant=\"circle\"/\"rect\"）",
+          "多行文本区块占位（variant=\"line\" + lines，末行短尾模拟段落收尾）"
+        ],
+        "whenNot": [
+          "已知进度的任务用 Progress：Skeleton 表达\"未知时长的等待\"，不表达进度",
+          "操作反馈/结果提示用 Toast / Alert：Skeleton 不是反馈通道",
+          "空数据状态用 EmptyState：Skeleton 只服务\"加载中\"",
+          "不要用 Skeleton 承载可读文本或可交互元素（本体 aria-hidden）"
+        ],
+        "userTask": "用户在内容加载期间需要看到版面结构已就位的视觉反馈"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "variant",
+            "type": "'line' | 'circle' | 'rect'",
+            "default": "'line'",
+            "description": "骨架形状：line 多行文本占位（配 lines）、circle 正圆（头像）、rect 矩形（块面/媒体）。圆角随形状：line/rect 用 radius-sm，circle 全圆。"
+          },
+          {
+            "name": "lines",
+            "type": "number",
+            "default": "3",
+            "description": "variant=\"line\" 的行数：最小 1（0/负数回退 1）、小数向下取整；末行渲染短尾（max-width 60%）。其余形状忽略。"
+          },
+          {
+            "name": "width",
+            "type": "string | number",
+            "description": "宽度：数字按 px，字符串原样（如 \"50%\"）；三种形状均生效，circle 时优先作为正圆直径。"
+          },
+          {
+            "name": "height",
+            "type": "string | number",
+            "description": "高度：数字按 px，字符串原样；line 时为每行行高，rect 直接生效，circle 时仅在缺 width 时作为直径。"
+          }
+        ],
+        "slots": [],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {},
+      "composition": {
+        "patterns": [
+          "使用方容器声明加载语义：<div role=\"status\" aria-label=\"加载中\"><Skeleton :lines=\"3\" /></div>",
+          "列表占位：v-for 渲染多组 Skeleton（circle 头像 + line 文本行）",
+          "卡片占位：Skeleton rect（媒体区）+ Skeleton line ×3（文本区）"
+        ],
+        "related": [
+          "Progress",
+          "EmptyState",
+          "Button",
+          "Table"
+        ],
+        "preferred": [
+          "始终由使用方包裹并声明加载状态（role=\"status\"/aria-busy），组件本体保持 aria-hidden",
+          "形状/尺寸尽量贴近真实内容，减少加载完成后的布局跳动",
+          "已知进度时改用 Progress，不要用 Skeleton 模拟进度"
+        ]
+      },
+      "states": {
+        "default": "muted 面（--ui-surface-muted）形状占位 + opacity 呼吸 shimmer（时长由 --ui-motion-default 推导 ≈1.8s 循环；加载态无限循环豁免）。",
+        "hover": "不适用：纯装饰元素，无 hover 反馈。",
+        "focusVisible": "不适用：aria-hidden 且不可聚焦，不进入 Tab 序，永不获得焦点环。",
+        "active": "不适用：无交互。",
+        "disabled": "不适用：无 disabled 语义；停止加载时由使用方卸载本组件。",
+        "loading": "本体即加载占位：shimmer 常驻；prefers-reduced-motion 时停用动画，落为静态 muted 面。"
+      },
+      "accessibility": "纯装饰元素：根节点恒 aria-hidden=\"true\"，不书写 role/tabindex、不产生可读文本；读屏用户对加载状态的感知完全依赖使用方容器（如 role=\"status\" + aria-live、aria-busy=\"true\"）。组件不可聚焦、不进入 Tab 序。",
+      "ssr": "renderToString 无异常：组件不访问任何浏览器 API（无 effect/监听/测量/定时器），形状类名、行数、末行短尾类、内联宽高与 aria-hidden 均在服务端输出，无客户端 hydration 分支。",
+      "performance": "无 JS 运行时开销（仅 computed class/style 派生）；动效为 CSS opacity 关键帧无限循环（加载态豁免），prefers-reduced-motion 下经 token 归零 + 显式 @media 双通道停用；无监听器、无测量、无定时器。",
+      "styling": "视觉只消费 --ui-* token：占位面 --ui-surface-muted、默认尺寸/行高/行距 --ui-space-*、圆角 --ui-radius-sm（line/rect）。两处结构性相对值无对应 token、已在任务结果中提出需求：① circle 全圆使用相对半径 50%（建议新增 --ui-radius-full）；② line 末行短尾 max-width 60%（形状比例）。shimmer 时长由 --ui-motion-default calc 推导，prefers-reduced-motion 下显式 @media 停用。",
+      "examples": [
+        "<div role='status' aria-label='加载中'>\n  <Skeleton :lines='3' />\n</div>",
+        "<Skeleton variant='circle' :width='40' :height='40' />",
+        "<Skeleton variant='rect' width='100%' height='120px' />",
+        "<Skeleton variant='line' :lines='4' :height='16' />"
+      ],
+      "agent": {
+        "keywords": [
+          "skeleton",
+          "骨架屏",
+          "骨架",
+          "占位",
+          "加载占位",
+          "loading",
+          "placeholder",
+          "shimmer",
+          "闪烁",
+          "头像占位",
+          "line",
+          "circle",
+          "rect",
+          "aria-hidden",
+          "加载中"
+        ],
+        "selectionHints": [
+          "未知时长的加载等待 → Skeleton；已知进度 → Progress；空数据 → EmptyState",
+          "加载状态语义由使用方容器声明（role=\"status\"/aria-busy），Skeleton 本体仅 aria-hidden 装饰",
+          "文本区块用 variant=\"line\" + lines；头像/媒体分别用 circle / rect"
+        ],
+        "commonTasks": [
+          "页面/列表数据请求期间的版面占位",
+          "卡片媒体区与文本区的组合占位",
+          "头像等固定形状的局部占位"
+        ],
+        "generationNotes": [
+          "lines 仅对 variant=\"line\" 生效；末行自动短尾（max-width 60%），单行不短尾",
+          "circle 以 width 优先取正圆直径；宽高传数字按 px、字符串原样透传",
+          "组件恒 aria-hidden=\"true\"，务必由使用方声明加载状态",
+          "无 emits/slots/exposes；动画为纯 CSS，reduced-motion 自动停用"
+        ]
+      },
+      "source": {
+        "dir": "skeleton",
+        "metaFiles": [
+          "Skeleton.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-switch",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Switch",
+        "package": "@ui/components",
+        "export": "Switch",
+        "category": "inputs",
+        "description": "纸面开关：button[role=switch] + aria-checked 的即时生效控件，loading（aria-busy + 拦截切换、保持可聚焦）、disabled、sm/md 两档尺寸，选中转 accent 底 on-accent 圆点。"
+      },
+      "intent": {
+        "what": "表达「开/关」双态且切换即时生效的控件：受控 v-model(boolean)、loading 异步护栏、禁用与可读名称；一次点击立即改变状态。",
+        "when": [
+          "设置项的即时生效开关（通知、免打扰、自动保存等，无需提交按钮）",
+          "切换后立即触发副作用的场景（配 loading 表达进行中的异步）",
+          "两态且结果立即可见的功能启用/停用"
+        ],
+        "whenNot": [
+          "勾选语义（多选、批量选择、随表单提交）用 Checkbox：即时生效用 Switch，勾选用 Checkbox——Switch 表达状态开关，Checkbox 表达选中集合",
+          "多选一用 Radio / RadioGroup：Switch 只有两态",
+          "需要点「保存」才生效的偏好设置用 Checkbox/表单 + Button，不要用 Switch",
+          "触发一次动作（如「立即同步」）用 Button：Switch 表达持续状态，不是动作按钮"
+        ],
+        "userTask": "用户需要立刻开启或关闭某个功能，并看到当前处于哪一态"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "modelValue",
+            "type": "boolean",
+            "default": "false",
+            "description": "v-model 绑定值；受控，点击/键盘激活后以 !modelValue 发出 update:modelValue。"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "default": "false",
+            "description": "加载中：置 aria-busy=\"true\"、圆点让位旋转指示，点击与键盘激活一律不切换；保持可聚焦（不落原生 disabled）。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：原生 disabled 属性（移出 Tab 序），一切切换路径无效。"
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "description": "可读名称；与默认插槽等价，插槽优先（根为 label 元素，点击文本即切换）。"
+          },
+          {
+            "name": "size",
+            "type": "'sm' | 'md'",
+            "default": "'md'",
+            "description": "尺寸档位：sm（32×20）/ md（40×24），轨道与圆点尺寸全部由 --ui-space-* token 推导。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "可读名称内容（优先于 label prop）；也可承载带辅助说明的富文本。"
+          }
+        ],
+        "events": [
+          {
+            "name": "update:modelValue",
+            "payload": "boolean",
+            "description": "v-model 更新：仅非 disabled 且非 loading 时发出，载荷为切换后的布尔值。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦开关按钮（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Checkbox（勾选语义：即时生效用 Switch，勾选用 Checkbox）",
+          "RadioGroup（多选一）",
+          "Button（动作触发）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "设置列表行内：label 文案 + Switch，改动即保存（配 loading 反馈异步）",
+          "与 FormField 组合：字段级开关 + 描述/校验文案（attrs 透传 aria-describedby 到 button）",
+          "工具栏快速启停某能力（size=\"sm\" 紧凑档）"
+        ],
+        "related": [
+          "Checkbox",
+          "RadioGroup",
+          "Button",
+          "FormField"
+        ],
+        "preferred": [
+          "必须提供可读名称（label prop / 默认插槽 / attrs aria-label 至少其一）",
+          "异步切换：点击 → 置 loading → 完成后回写 modelValue，不要在 loading 中连续派发",
+          "即时生效才用 Switch；随表单一起提交的布尔项用 Checkbox"
+        ]
+      },
+      "states": {
+        "default": "未选：中性灰轨道（--ui-border-strong 底）+ surface 圆点；选中：accent 实底轨道 + on-accent 圆点（右移一档行程）。",
+        "hover": "未选轨道加深一档中性灰（--ui-text-3 灰阶 token）；选中轨道转 --ui-accent-hover；disabled/loading 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），落在原生 button 上；组件不改写 outline 与 tabindex。",
+        "active": "无按压位移/缩放反馈；切换即时生效——圆点以 translateX 平移一档行程（--ui-motion-default + --ui-ease-out）。",
+        "disabled": "轨道灰化（--ui-surface-muted）、圆点去投影、label 转 --ui-text-3 + not-allowed 光标；原生 disabled 移出 Tab 序，一切切换路径无效。",
+        "loading": "圆点内腔让位旋转指示（aria-hidden svg，时长由 --ui-motion-* token 推导）；aria-busy=\"true\" 且不落 disabled（保持可聚焦），点击/键盘激活一律不切换，label 提示进行中。"
+      },
+      "accessibility": "原生 <button type=\"button\"> 承载 role=\"switch\"（恒定）与 aria-checked=\"true\"/\"false\"（常驻，不缺省）；键盘 100% 原生：Tab 进入、Enter/Space 激活（浏览器原生 click 路径，组件不绑定 keydown、不改写 tabindex）。loading 置 aria-busy=\"true\" 且不落 disabled（读屏可聚焦感知）；disabled 用原生 disabled 而非 aria-disabled。旋转指示 svg aria-hidden；根为 label 元素，点击文本即切换；无 label 时必须经 attrs 提供 aria-label（attrs 直达 button）。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；focus()/blur() 仅客户端暴露方法内。role=\"switch\"、aria-checked、aria-busy（loading 时）、disabled、尺寸类与 label 均随 SSR 输出；loading 指示为纯 CSS 动画，SSR 只输出静态 svg。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生根类与 aria。动效只有轨道背景色、圆点 transform/背景色过渡与旋转指示（时长均由 --ui-motion-* token 推导），prefers-reduced-motion 下 token 归零：过渡即时完成、旋转自动停止。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：轨道未选底 --ui-border-strong、hover 加深 --ui-text-3（中性灰阶）、选中底 --ui-accent/--ui-accent-hover、圆点 --ui-surface/--ui-on-accent、禁用底 --ui-surface-muted、投影 --ui-shadow-rest、间距 --ui-space-*、字号 --ui-text-md、动效 --ui-motion-default/--ui-ease-out。结构性例外：border: none 为结构性重置（非色相取值）；圆形半径取 calc(var(--ui-space-*) / 2)（无圆形半径 token，已提出需求）；轨道/圆点尺寸由 --ui-space-* token 经 calc 推导（sm 32×20、md 40×24、行程 12/16px）。",
+      "examples": [
+        "<Switch v-model='enabled' label='消息通知' />",
+        "<Switch :model-value='syncing' :loading='saving' label='自动同步' @update:model-value='save' />",
+        "<Switch v-model='dark' size='sm' />",
+        "<Switch :model-value='false' disabled label='仅企业版可用' />",
+        "<Switch v-model='muted' aria-label='静音' />"
+      ],
+      "agent": {
+        "keywords": [
+          "switch",
+          "开关",
+          "切换",
+          "toggle",
+          "启用",
+          "停用",
+          "开启",
+          "关闭",
+          "loading",
+          "加载中",
+          "disabled",
+          "禁用",
+          "aria-checked",
+          "role=switch",
+          "设置项",
+          "即时生效",
+          "label"
+        ],
+        "selectionHints": [
+          "即时生效的开/关 → Switch；勾选/多选/随表单提交 → Checkbox（即时生效用 Switch，勾选用 Checkbox）",
+          "多选一 → RadioGroup；触发一次动作 → Button",
+          "切换有异步请求时配 loading（aria-busy + 拦截切换，保持可聚焦）"
+        ],
+        "commonTasks": [
+          "设置页功能开关（即时保存 + loading 反馈）",
+          "列表/卡片上的紧凑启停控制（size=\"sm\"）",
+          "带权限差异的禁用开关（disabled + 说明）"
+        ],
+        "generationNotes": [
+          "v-model 为 boolean；组件是纯受控：点击只发 update:modelValue，状态由使用方回写",
+          "loading 期间点击/键盘激活均不切换；完成后由使用方把 loading 置回 false",
+          "label prop 与默认插槽等价（插槽优先）；都没有时用 attrs 提供 aria-label",
+          "id / aria-describedby / aria-label 等原生属性经 attrs 直达内部 button"
+        ]
+      },
+      "source": {
+        "dir": "switch",
+        "metaFiles": [
+          "Switch.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-table",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Table",
+        "package": "@ui/components",
+        "export": "Table",
+        "category": "data",
+        "description": "纸面泛型数据表格：语义 table/thead/tbody、token 化表头与行 hover、可排序列（aria-sort + 循环 asc/desc/none）、loading 骨架行、空态与 cell-/header- 动态插槽。"
+      },
+      "intent": {
+        "what": "以声明式 columns + data 渲染结构化行列数据，泛型 T 贯穿列定义与行数据，内置轻量排序与加载/空态。",
+        "when": [
+          "后台列表页、分析结果、键值明细等中等量级结构化数据展示",
+          "需要按列点击排序（升/降/复位三态循环）的只读表格",
+          "异步加载需要骨架行占位的数据区",
+          "部分列需要自定义渲染（状态徽标、操作按钮等 cell-<key> 插槽）"
+        ],
+        "whenNot": [
+          "万行级数据用 VirtualTable/DataGrid（windowing + DOM 复用），本组件全量渲染 DOM 行",
+          "行内编辑、列宽拖拽、单元格聚焦漫游等电子表格语义用 DataGrid",
+          "无列结构的长列表用 List/虚拟滚动，不要拿 Table 装排版"
+        ],
+        "userTask": "用户需要浏览并按需排序一组结构化数据"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "columns",
+            "type": "TableColumn<T>[]",
+            "required": true,
+            "description": "列定义：key（取值与插槽名）、label、width?（number 视为 px）、align?（left|right，right 自动 tabular-nums）、sortable?。"
+          },
+          {
+            "name": "data",
+            "type": "T[]",
+            "required": true,
+            "description": "行数据；排序只作用于内部渲染副本，不改写传入数组。"
+          },
+          {
+            "name": "rowKey",
+            "type": "keyof T | ((row: T, index: number) => string | number)",
+            "required": true,
+            "description": "行键（stable key）：字段名或函数；字段值非 string/number 时回落行下标。"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "default": "false",
+            "description": "加载中：tbody 渲染 3 行骨架行（aria-hidden）并在 table 上置 aria-busy=\"true\"；骨架期不渲染数据行与空态。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "cell-<key>",
+            "scope": "{ row: T, value: unknown, column: TableColumn<T>, index: number }",
+            "description": "按列定制的单元格插槽（如 #cell-status）；缺省渲染 String(row[key])（null/undefined/对象为空串）。"
+          },
+          {
+            "name": "header-<key>",
+            "scope": "{ column: TableColumn<T>, label: string }",
+            "description": "按列定制的表头插槽（如 #header-name）；覆盖后该列失去内置排序按钮与 aria-sort，自定义时需自行补齐排序交互。"
+          },
+          {
+            "name": "empty",
+            "description": "空态内容；仅在非 loading 且 data 为空时出现，缺省渲染“暂无数据”。"
+          }
+        ],
+        "events": [
+          {
+            "name": "sort",
+            "payload": "{ key: string, order: \"asc\" | \"desc\" | \"none\" }",
+            "description": "排序变化：点击可排序列表头按钮（或键盘 Enter/Space 激活）时发出；组件内部已按新状态排序渲染。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "clearSort",
+            "type": "() => void",
+            "description": "复位排序状态到 none（不发 sort 事件）。"
+          }
+        ]
+      },
+      "constraints": {
+        "dependsOn": [
+          "@ui/tokens/paper.css（使用方应用入口一次性引入）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Table + Pagination 分页列表",
+          "Table + loading 骨架异步加载",
+          "cell-<key> 插槽内嵌 Badge/Button 行操作"
+        ],
+        "related": [
+          "Pagination",
+          "EmptyState",
+          "Skeleton",
+          "VirtualTable"
+        ],
+        "preferred": [
+          "数字列声明 align=\"right\" 以获得 tabular-nums 对齐",
+          "排序重计算交给组件，外部仅监听 sort 同步筛选条件"
+        ]
+      },
+      "states": {
+        "default": "白底表格、sand（surface-muted）表头、line 边框行分隔；文字 text-sm/text-1，表头 medium/text-2。",
+        "hover": "数据行 hover 转 sand 底（surface-muted）；骨架行与空态行不响应 hover。",
+        "focusVisible": "排序按钮焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline。",
+        "active": "排序按钮为原生 button，按压反馈交由浏览器默认；无额外 transform。",
+        "disabled": "无整体禁用态；不可排序列表头不渲染按钮、无 aria-sort、光标默认。",
+        "loading": "tbody 渲染 3 行骨架行（sand 骨架条 + token 推导时长的呼吸动效，reduced-motion 归零即停），table 置 aria-busy=\"true\"，骨架行 aria-hidden。"
+      },
+      "accessibility": "语义 <table>/<thead>/<tbody>，th scope=\"col\"；可排序列 th 常驻 aria-sort（ascending/descending/none），激活方向随循环切换，非排序列不写该属性；排序入口为原生 <button type=\"button\">，Tab 自然进入，Enter/Space 在 keydown 统一 preventDefault 后由元素 .click() 单次激活（Space 不滚动页面）；排序指示 svg aria-hidden，按钮可读名即列 label；loading 时 aria-busy=\"true\" 且骨架行 aria-hidden；空态为普通 td（colspan 全列）。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；.click() 仅出现在客户端 keydown 回调内；骨架/空态/aria-sort 均随 SSR 输出。",
+      "performance": "纯 computed 派生（排序为浅拷贝排序，不改写 props.data）；无监听器、无测量、无定时器；行使用 rowKey stable key。全量渲染 DOM 行，千行级可用，万行级应改用 VirtualTable。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：表头 --ui-surface-muted、分隔线 --ui-border、行 hover --ui-surface-muted、数字列 font-variant-numeric: var(--ui-numeric)、间距 --ui-space-*、字号 --ui-text-sm、圆角 --ui-radius-sm、动效 --ui-motion-*/--ui-ease-out。列宽 width 为用户数据驱动的内联样式。无全局 CSS 引入。",
+      "examples": [
+        "<Table\n  :columns=\"[\n    { key: 'name', label: '名称' },\n    { key: 'score', label: '得分', align: 'right', sortable: true },\n  ]\"\n  :data=\"rows\"\n  row-key=\"id\"\n/>",
+        "<Table :columns=\"columns\" :data=\"rows\" row-key=\"id\" loading />",
+        "<Table :columns=\"columns\" :data=\"[]\" row-key=\"id\">\n  <template #empty>还没有记录</template>\n</Table>",
+        "<Table :columns=\"columns\" :data=\"rows\" row-key=\"id\" @sort=\"onSort\">\n  <template #cell-status=\"{ row }\">\n    <Badge>{{ row.status }}</Badge>\n  </template>\n  <template #header-name=\"{ label }\">{{ label }}（必填）</template>\n</Table>"
+      ],
+      "agent": {
+        "keywords": [
+          "table",
+          "表格",
+          "数据表",
+          "data table",
+          "列",
+          "column",
+          "行",
+          "row",
+          "排序",
+          "sort",
+          "sortable",
+          "loading",
+          "骨架",
+          "空态",
+          "empty",
+          "rowKey",
+          "行键",
+          "tabular-nums"
+        ],
+        "selectionHints": [
+          "结构化行列数据 + 轻量排序 → Table；万行级/虚拟滚动 → VirtualTable；电子表格语义 → DataGrid",
+          "自定义单元格用 #cell-<key>，自定义表头用 #header-<key>（覆盖即失去内置排序）",
+          "数字列声明 align=\"right\""
+        ],
+        "commonTasks": [
+          "带排序列的只读数据表",
+          "loading 骨架 + 空态兜底",
+          "单元格内嵌操作按钮/徽标"
+        ],
+        "generationNotes": [
+          "rowKey 必填：优先传唯一字段名，无唯一字段时传 (row) => string|number",
+          "排序循环 asc → desc → none；sort 事件载荷 { key, order }，组件内部已同步排序",
+          "header-<key> 插槽会替换内置排序按钮，自定义表头需自行实现排序交互",
+          "本组件全量渲染 DOM 行，大数据量换 VirtualTable"
+        ]
+      },
+      "source": {
+        "dir": "table",
+        "metaFiles": [
+          "Table.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-tabs",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Tabs",
+        "package": "@ui/components",
+        "export": "Tabs",
+        "category": "navigation",
+        "description": "纸面页签：同一上下文内的多视图切换（Tabs + TabsList + TabsTrigger + TabsContent 组装），line 下划线指示档位，自动激活式键盘导航（roving tabindex）。"
+      },
+      "intent": {
+        "what": "在同级视图/数据切片间切换的页签组件，激活值可受控（v-model:value），仅渲染激活面板。",
+        "when": [
+          "同屏同级内容的分组切换（概览 / 成员 / 设置）",
+          "列表的数据切片切换（全部 / 未读 / 已归档）",
+          "详情页内的区块切换，且希望 URL 外的单值状态驱动"
+        ],
+        "whenNot": [
+          "带步骤顺序的向导流程用 Steps：Tabs 无先后语义，可任意跳转",
+          "全局/页面级导航用 Sidebar/Topbar：Tabs 作用于局部内容区，不承载路由层级",
+          "展开/收起的折叠内容用未来的 Collapse：Tabs 是互斥切换，不是显隐"
+        ],
+        "userTask": "用户需要在同一区域的几个平行视图之间快速切换"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "Tabs.value",
+            "type": "string | number",
+            "description": "受控当前激活值（v-model:value）；与 TabsTrigger/TabsContent 的 value 配对。"
+          },
+          {
+            "name": "Tabs.defaultValue",
+            "type": "string | number",
+            "description": "非受控初始激活值；缺省时自动激活首个非 disabled 的 trigger。"
+          },
+          {
+            "name": "Tabs.variant",
+            "type": "'line' | 'pill'",
+            "default": "line",
+            "description": "视觉档位。line：底部基线 + accent 下划线指示；pill 为预留档位（类型已声明，视觉暂未实现）。"
+          },
+          {
+            "name": "TabsTrigger.value",
+            "type": "string | number",
+            "required": true,
+            "description": "与 TabsContent 配对的值；同时参与派生稳定元素 id。"
+          },
+          {
+            "name": "TabsTrigger.disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用该 tab：原生 disabled（移出 Tab 序），点击与键盘激活拦截，方向键导航跳过。"
+          },
+          {
+            "name": "TabsContent.value",
+            "type": "string | number",
+            "required": true,
+            "description": "与 TabsTrigger 配对的值；仅该值激活时渲染面板。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "Tabs.default",
+            "description": "TabsList 与 TabsContent 的组装位置（均应为直接子节点）。"
+          },
+          {
+            "name": "TabsList.default",
+            "description": "TabsTrigger 序列。"
+          },
+          {
+            "name": "TabsTrigger.default",
+            "description": "标签文本/内容；应始终提供可读 label。"
+          },
+          {
+            "name": "TabsContent.default",
+            "description": "面板内容，仅激活时渲染（v-if）。"
+          }
+        ],
+        "events": [
+          {
+            "name": "update:value",
+            "payload": "string | number",
+            "description": "激活值变化（点击 trigger、←→↑↓/Home/End 移动即激活时发出；同值不重复发出）。v-model:value 绑定。"
+          }
+        ],
+        "exposes": []
+      },
+      "constraints": {
+        "requires": [
+          "TabsList/TabsTrigger/TabsContent 必须位于 <Tabs> 内（provide/inject 组装）"
+        ],
+        "conflicts": [
+          "Steps（有序向导流程）",
+          "Sidebar/Topbar（页面级导航）"
+        ],
+        "dependsOn": [
+          "@ui/tokens：--ui-* 视觉 token（使用方引入 paper.css）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Tabs > TabsList > TabsTrigger ×n + TabsContent ×n",
+          "Card 头部内嵌 Tabs 切换卡片体",
+          "表单分区（基础 / 高级 / 权限）"
+        ],
+        "related": [
+          "Card",
+          "Input",
+          "Table"
+        ],
+        "preferred": [
+          "标签为名词短语（视图名），避免句子",
+          "面板重渲染昂贵时依赖\"仅激活渲染\"语义天然懒加载"
+        ]
+      },
+      "states": {
+        "default": "line 档：trigger 透明底 text-2 文字 regular 字重，列表底部 1px 基线（--ui-border）。",
+        "hover": "非 disabled trigger 文字转 text-1（150ms token 动效）；下划线指示不变。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline。",
+        "active": "激活 trigger：text-1 文字 + medium 字重提升 + 2px accent 下划线指示（inset 阴影实现，无布局位移），面板切换 180ms 内完成。",
+        "disabled": "text-3 文字 + not-allowed 光标 + 原生 disabled（移出 Tab 序）；键盘导航跳过。"
+      },
+      "accessibility": "WAI-ARIA Tabs 模式（automatic activation）：TabsList 为 role=tablist；TabsTrigger 为原生 button + role=tab + aria-selected + aria-controls（指向配对面板 id）；TabsContent 为 role=tabpanel + aria-labelledby（指向配对 trigger id）+ tabindex=0（空面板可聚焦）。id 由根 uid + value 确定性派生，SSR/重渲染稳定。roving tabindex：仅激活 trigger 在 Tab 序，其余 -1。键盘：←→↑↓ 在 trigger 间循环移动并即激活（跳过 disabled，preventDefault 防滚动）、Home/End 直达首末、Enter/Space 激活当前 trigger（keydown 统一 preventDefault 后单次触发）。Tab 从激活 trigger 直接移出到面板/后续内容。",
+      "ssr": "renderToString 无异常：setup/模块顶层不访问浏览器 API；focus() 仅在客户端事件回调执行。激活值（含自动激活首个）与全部 aria/id 在服务端即解析输出，客户端水合后契约一致。",
+      "performance": "仅激活面板渲染（v-if，天然懒加载/卸载）；无监听器、无测量、无定时器；状态为 computed 派生，trigger 注册表为数组快照更新。下划线指示用 inset box-shadow，无布局位移。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：颜色走 semantic 层（--ui-text-*/--ui-border/--ui-accent）、间距 --ui-space-*、字号 --ui-text-md、字重 --ui-font-weight-*、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入。基线 1px 与指示条 2px 为结构性细线（无 --ui-border-width token，需求已提出）。",
+      "examples": [
+        "<Tabs v-model:value=\"active\">\n  <TabsList>\n    <TabsTrigger value=\"draft\">草稿</TabsTrigger>\n    <TabsTrigger value=\"published\">已发布</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"draft\">草稿列表…</TabsContent>\n  <TabsContent value=\"published\">已发布列表…</TabsContent>\n</Tabs>",
+        "<Tabs :default-value=\"'all'\">\n  <TabsList aria-label=\"收件箱筛选\">\n    <TabsTrigger value=\"all\">全部</TabsTrigger>\n    <TabsTrigger value=\"unread\" :disabled=\"unread === 0\">未读</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"all\">…</TabsContent>\n  <TabsContent value=\"unread\">…</TabsContent>\n</Tabs>"
+      ],
+      "agent": {
+        "keywords": [
+          "tabs",
+          "页签",
+          "标签页",
+          "tab",
+          "tablist",
+          "tabpanel",
+          "切换",
+          "switch view",
+          "v-model:value"
+        ],
+        "selectionHints": [
+          "同级视图互斥切换 → Tabs；有序流程 → Steps；页面级导航 → Sidebar/Topbar",
+          "需要受控时用 v-model:value；仅初始值用 defaultValue（自动激活首个非 disabled）",
+          "TabsTrigger/TabsContent 以同名 value 配对，value 必填"
+        ],
+        "commonTasks": [
+          "详情页区块切换",
+          "列表状态筛选页签",
+          "设置页分组（基础/高级）"
+        ],
+        "generationNotes": [
+          "四个部件必须组装在 <Tabs> 内，缺一失去 tab 语义",
+          "variant=\"pill\" 为预留档位，当前视觉与 line 基底一致但无下划线；优先用默认 line",
+          "TabsList 上可传 aria-label 描述页签组用途（attrs 透传）",
+          "不要在 TabsTrigger 里放导航链接语义（页签是内容切换，不是路由导航）"
+        ]
+      },
+      "source": {
+        "dir": "tabs",
+        "metaFiles": [
+          "Tabs.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-textarea",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Textarea",
+        "package": "@ui/components",
+        "export": "Textarea",
+        "category": "inputs",
+        "description": "纸面多行文本输入：原生 textarea 封装，带字数统计（右下角弱文字）、垂直拉伸与错误态（aria-invalid），attrs 全量透传到原生控件。"
+      },
+      "intent": {
+        "what": "多行文本的输入与编辑：受控 v-model(string)、可见行数、垂直拉伸、字数统计与校验错误态，原生属性经 attrs 直达控件。",
+        "when": [
+          "表单中的多行文本字段（描述、备注、正文、反馈等）",
+          "需要字数限制并展示 x/y 进度（maxlength + showCount）",
+          "FormField 内做校验反馈展示（status=\"error\" + aria-describedby）",
+          "需要用户调整高度的长文本输入（resize 默认 vertical）"
+        ],
+        "whenNot": [
+          "单行短文本用 Input：Textarea 的多行排版与拉伸在单行场景是负担",
+          "开/关或勾选语义用 Switch / Checkbox：Textarea 只承载自由文本",
+          "从候选项中选择用 Select / Combobox：自由输入不提供选项约束",
+          "富文本/Markdown 编辑器：Textarea 仅纯文本"
+        ],
+        "userTask": "用户需要输入、编辑或查看一段多行文本，并感知其长度与校验状态"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "modelValue",
+            "type": "string",
+            "default": "''",
+            "description": "v-model 绑定值；受控，原生 input 事件路径更新。"
+          },
+          {
+            "name": "rows",
+            "type": "number",
+            "default": "3",
+            "description": "可见行数（原生 rows 属性），决定初始高度。"
+          },
+          {
+            "name": "resize",
+            "type": "'none' | 'vertical'",
+            "default": "'vertical'",
+            "description": "用户可拉伸方向：默认仅垂直（不破坏容器栅格）；'none' 锁定为固定尺寸。"
+          },
+          {
+            "name": "placeholder",
+            "type": "string",
+            "description": "占位文本；不替代 label（label 由使用方或 FormField 提供）。"
+          },
+          {
+            "name": "disabled",
+            "type": "boolean",
+            "default": "false",
+            "description": "禁用：原生 disabled 属性（移出 Tab 序）+ 灰化。"
+          },
+          {
+            "name": "readonly",
+            "type": "boolean",
+            "default": "false",
+            "description": "只读：原生 readonly 属性（可聚焦可选中、不可编辑）。"
+          },
+          {
+            "name": "maxlength",
+            "type": "number",
+            "description": "最大输入长度：透传原生 maxlength，由浏览器原生截断；同时作为字数统计分母 y。"
+          },
+          {
+            "name": "showCount",
+            "type": "boolean",
+            "default": "false",
+            "description": "显示字数统计：容器右下角弱文字，配 maxlength 为 x/y，无 maxlength 为 x。"
+          },
+          {
+            "name": "status",
+            "type": "'default' | 'error'",
+            "default": "'default'",
+            "description": "校验状态：'error' 时容器描边转 danger 并推导 aria-invalid=\"true\"。"
+          }
+        ],
+        "slots": [],
+        "events": [
+          {
+            "name": "update:modelValue",
+            "payload": "string",
+            "description": "v-model 更新：原生 input 事件路径，载荷为输入区最新值。"
+          }
+        ],
+        "exposes": [
+          {
+            "name": "focus",
+            "type": "(options?: FocusOptions) => void",
+            "description": "聚焦原生 textarea（仅客户端有意义）。"
+          },
+          {
+            "name": "blur",
+            "type": "() => void",
+            "description": "移除焦点。"
+          }
+        ]
+      },
+      "constraints": {
+        "conflicts": [
+          "Input（单行文本）",
+          "Select（选项选择）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "FormField 包裹获得 label / 描述 / 错误文案关联（aria-describedby 经 attrs 直达 textarea）",
+          "maxlength + showCount 做受限长度的简介/反馈输入",
+          "resize=\"none\" + rows 固定高度的代码/摘要只读展示"
+        ],
+        "related": [
+          "FormField",
+          "Form",
+          "Input",
+          "Select"
+        ],
+        "preferred": [
+          "label 由 FormField 提供，勿以 placeholder 替代 label",
+          "错误态配 status=\"error\" 并以 aria-describedby 指向错误文案"
+        ]
+      },
+      "states": {
+        "default": "surface 底 + line 描边 + ink 文字；placeholder 与字数统计为 text-3 弱文字。",
+        "hover": "描边加深为 --ui-border-strong；disabled 不响应 hover。",
+        "focusVisible": "焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；容器描边经 :focus-within 同步转 --ui-input-border-focus（accent）。error 态保持 danger 优先。",
+        "active": "输入控件无按压反馈；用户可按 resize 档位垂直拉伸（结构性行为，无动效）。",
+        "disabled": "sand 底 + line 描边 + text-3 文字 + not-allowed 光标；原生 disabled 使其移出 Tab 序。",
+        "error": "danger 描边（hover/focus 均保持 danger 优先于 accent），原生 textarea 置 aria-invalid=\"true\"。"
+      },
+      "accessibility": "原生 <textarea>（隐式 role=textbox），Tab 自然进入、直接键入（Enter 换行为平台原生）；不书写 role/tabindex，不设置 aria-label（label 由 label[for] 或 FormField 提供，placeholder 不承担 label 职责）。status=\"error\" 推导 aria-invalid=\"true\"；aria-describedby 等原生属性经 attrs 直达 textarea 供 FormField 接入。字数统计为可见真实文本（弱文字），读屏可感知长度；maxlength 依赖浏览器原生截断语义。disabled 用原生 disabled 而非 aria-disabled。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；focus()/blur() 仅出现在客户端事件回调与暴露方法内。value（渲染为 textarea 内容）、rows / placeholder / maxlength / disabled / readonly / aria-invalid / 字数统计 / attrs（id 等）均随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅 computed 派生容器 class 与字数文案。动效只有 border-color / background-color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：底 --ui-input-bg、圆角 --ui-input-radius、focus 描边 --ui-input-border-focus、error 描边 --ui-danger、间距 --ui-space-*、字号 --ui-text-xs/--ui-text-md、行高 --ui-leading-small、弱文字 --ui-text-3、数字 --ui-numeric、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入；attrs/class 透传落在原生 textarea 上可做定向覆盖。结构性例外：border-width: 1px（无 --ui-border-width token，与 Button/Input 同一缺口，已提出需求）。",
+      "examples": [
+        "<Textarea v-model='desc' :rows='4' placeholder='项目描述' />",
+        "<Textarea v-model='bio' :maxlength='200' show-count />",
+        "<Textarea v-model='feedback' status='error' aria-describedby='feedback-error' />",
+        "<Textarea :model-value='summary' :rows='3' resize='none' readonly />",
+        "<Textarea v-model='draft' disabled />"
+      ],
+      "agent": {
+        "keywords": [
+          "textarea",
+          "多行文本",
+          "文本域",
+          "多行输入",
+          "rows",
+          "行数",
+          "resize",
+          "拉伸",
+          "maxlength",
+          "字数限制",
+          "showCount",
+          "字数统计",
+          "计数",
+          "disabled",
+          "禁用",
+          "readonly",
+          "只读",
+          "error",
+          "错误态",
+          "aria-invalid",
+          "v-model",
+          "表单输入"
+        ],
+        "selectionHints": [
+          "多行长文本 → Textarea；单行 → Input；选项选择 → Select",
+          "需要 label 与校验文案时用 FormField 包裹，勿用 placeholder 替代 label",
+          "字数限制配 maxlength + showCount，截断由浏览器原生 maxlength 完成"
+        ],
+        "commonTasks": [
+          "表单多行字段（描述/备注/反馈）+ 校验错误态",
+          "限长简介输入 + x/y 字数统计",
+          "只读多行摘要展示（resize=\"none\"）"
+        ],
+        "generationNotes": [
+          "v-model 为 string；resize 默认 vertical（仅垂直拉伸）",
+          "id / name / aria-describedby / aria-label 等原生属性经 attrs 直达原生 textarea",
+          "showCount 无 maxlength 时仅显示当前长度 x",
+          "status=\"error\" 只负责视觉与 aria-invalid，错误文案与 aria-describedby 由使用方/FormField 提供"
+        ]
+      },
+      "source": {
+        "dir": "textarea",
+        "metaFiles": [
+          "Textarea.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-toast",
+      "version": "0.1.0",
+      "identity": {
+        "name": "ToastHost",
+        "package": "@ui/components",
+        "export": "ToastHost",
+        "category": "feedback",
+        "description": "纸面全局通知：toast 单例（默认导出）程序式推入 success/error/info/warning 提示，ToastHost 挂载一次即 Teleport 到 body 右上角堆叠渲染；自动关闭计时 hover 暂停，z-index 走 --ui-z-toast。"
+      },
+      "intent": {
+        "what": "无需用户处理、稍纵即逝的操作反馈：程序式调用推入全局堆栈，Host 集中渲染，超时自动消失（hover 暂停）。",
+        "when": [
+          "保存/提交等异步操作成功或失败的即时确认",
+          "后台任务完成、内容已复制等被动通知",
+          "需要比 Alert 更轻、不打断当前任务的页面级反馈"
+        ],
+        "whenNot": [
+          "需要用户确认/取消才能继续的阻断性反馈用 Dialog：Toast 不收集输入且会自动消失",
+          "页面正文内常驻的状态/上下文信息用 Alert：Toast 是全局浮层、有时效",
+          "表单字段校验错误就地提示用 FormField：Toast 不定位到具体字段",
+          "需要富内容（标题+正文+动作链接）的持久通知面板用 Drawer/Notification 类容器"
+        ],
+        "userTask": "用户完成操作后获得轻量、自动消失的全局反馈"
+      },
+      "api": {
+        "props": [],
+        "slots": [],
+        "events": [],
+        "exposes": [
+          {
+            "name": "toast.success",
+            "type": "(message: string, options?: ToastOptions) => ToastId",
+            "description": "推入成功提示（role=status），返回 id。"
+          },
+          {
+            "name": "toast.error",
+            "type": "(message: string, options?: ToastOptions) => ToastId",
+            "description": "推入错误提示（role=alert，读屏立即播报），返回 id。"
+          },
+          {
+            "name": "toast.info",
+            "type": "(message: string, options?: ToastOptions) => ToastId",
+            "description": "推入中性信息提示（role=status），返回 id。"
+          },
+          {
+            "name": "toast.warning",
+            "type": "(message: string, options?: ToastOptions) => ToastId",
+            "description": "推入警告提示（role=status），返回 id。"
+          },
+          {
+            "name": "toast.remove",
+            "type": "(id: ToastId) => boolean",
+            "description": "按 id 移除一条提示；命中返回 true 并触发其 onClose（恰好一次），未命中返回 false。"
+          }
+        ]
+      },
+      "constraints": {
+        "requires": [
+          "应用根挂载一次 <ToastHost />（否则提示不渲染、也不会自动关闭；计时器位于渲染单元内）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "app 根挂载 Host + 任意事件处调用 toast.success/error/info/warning",
+          "提交按钮 loading 完成后 toast.success / 失败 toast.error",
+          "连续推入多条形成堆叠，按推入顺序自上而下排列"
+        ],
+        "related": [
+          "Button",
+          "Dialog",
+          "Form"
+        ],
+        "preferred": [
+          "同一事件只推一条 Toast；错误语义用 toast.error",
+          "onClose 只做无副作用清理，不承载业务分支"
+        ]
+      },
+      "states": {
+        "default": "surface 白底卡片、md 圆角、pop 阴影、变体 soft 底图标块；入场为 token 时长的 opacity/translateY 动画。",
+        "hover": "条目悬停暂停自动关闭计时（鼠标移出按剩余时长续表）；关闭按钮转 surface-muted 底 + text-1。",
+        "focusVisible": "关闭按钮为原生 button，焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移）；组件不改写 outline。",
+        "active": "关闭按钮按压沿用原生行为，无额外按压动效。",
+        "disabled": "不适用：Toast 无禁用态（被动通知，不承接输入）。"
+      },
+      "accessibility": "容器 role=\"region\" aria-label=\"通知\"；每条提示 role=\"status\"（隐式 aria-live=polite），error 变体 role=\"alert\"（隐式 assertive，立即播报）。关闭按钮为原生 <button type=\"button\"> 且带 aria-label（图标 svg aria-hidden）。键盘路径：关闭按钮自然进入 Tab 序，Enter/Space 按原生激活触发移除；不抢焦点（推入提示不改变文档焦点）。悬停暂停计时兼容读屏浏览（鼠标路径），纯键盘用户由计时兜底。",
+      "ssr": "SSR-safe：toast 单例与 Host 的模块/ setup 顶层不访问任何浏览器 API（node 环境可直接调用单例）；挂载前 Host 仅输出 hidden 的 ui-toast 占位，renderToString 无浮层/region/条目输出且稳定可水合；Teleport 与计时器全部推迟到客户端 onMounted 之后。",
+      "performance": "每条提示一个 setTimeout（默认 4000ms），hover 暂停只重算剩余时长不重建状态；入场动效仅 opacity/transform 且时长走 --ui-motion-*（prefers-reduced-motion 下 token 归零即静止）；无监听器、无测量。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：层级 --ui-z-toast、阴影 --ui-shadow-pop、圆角 --ui-radius-md/-sm、四变体色 --ui-{success|danger|info|warning}(-soft)、间距/字号全 token 化；条目宽度由 --ui-space-* 标尺推导（≈352px，无 toast 宽度 token，已提出需求）；描边宽度 1px 为结构性细线（无 --ui-border-width token，沿 Button 先例）。组件包不引入全局 CSS。",
+      "examples": [
+        "// app 入口（挂载一次）\nimport { ToastHost } from '@ui/components'\ncreateApp(App).mount('#app')\n// App.vue 根模板：<ToastHost />",
+        "import toast from '@ui/components/toast'\ntoast.success('已保存', { duration: 3000, onClose: () => console.log('closed') })",
+        "const id = toast.error('保存失败，请重试')\n// …需要时手动移除\ntoast.remove(id)",
+        "toast.info('已复制到剪贴板')\ntoast.warning('草稿将在 30 天后过期')"
+      ],
+      "agent": {
+        "keywords": [
+          "toast",
+          "通知",
+          "提示",
+          "notification",
+          "snackbar",
+          "全局提示",
+          "自动关闭",
+          "auto dismiss",
+          "hover 暂停",
+          "pause on hover",
+          "feedback",
+          "轻提示",
+          "程序式",
+          "imperative"
+        ],
+        "selectionHints": [
+          "被动、会自动消失的反馈 → Toast；需要用户处理 → Dialog；页面内常驻 → Alert",
+          "错误必须用 toast.error（role=alert 立即播报），不要用 info 冒充",
+          "只在 app 根挂载一次 <ToastHost />，其余地方只调用 toast.*"
+        ],
+        "commonTasks": [
+          "保存成功/失败反馈",
+          "异步任务完成通知",
+          "复制/导出等轻操作确认",
+          "批量操作结果汇总提示"
+        ],
+        "generationNotes": [
+          "先确保 <ToastHost /> 已挂载，再调用 toast.*（未挂载时提示不渲染也不自动关闭）",
+          "duration 传 0 表示不自动关闭，必须经关闭按钮或 toast.remove(id) 移除",
+          "onClose 在超时/手动关闭/toast.remove 三种路径下都恰好触发一次",
+          "不要在 SSR 阶段依赖 Toast 渲染（浮层只在客户端出现）"
+        ]
+      },
+      "source": {
+        "dir": "toast",
+        "metaFiles": [
+          "ToastHost.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-tooltip",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Tooltip",
+        "package": "@ui/components",
+        "export": "Tooltip",
+        "category": "overlay",
+        "description": "纸面纯提示浮层：包裹单个触发元素（默认插槽、无包装 DOM），hover/focus 进入 150ms 后显示、离开/失焦/Esc 立即隐藏；浮层 Teleport 至 body，role=\"tooltip\" 经 aria-describedby 与触发元素关联，挂载后按触发元素 rect 定位（top/bottom/left/right）。"
+      },
+      "intent": {
+        "what": "在触发元素附近悬浮显示一段简短的纯文字补充说明（术语解释、快捷键、截断文本的完整内容），不承载任何交互。",
+        "when": [
+          "为图标按钮/紧凑控件补充一句可访问名称之外的说明",
+          "解释专业术语、缩写或表单项的填写要求",
+          "展示被截断文本（表格单元格、面包屑）的完整内容"
+        ],
+        "whenNot": [
+          "需要菜单项/导航/选择动作 → DropdownMenu：Tooltip 是纯提示，浮层无交互内容、无焦点停留、无键盘漫游",
+          "需要富内容与内部交互（链接、按钮、图表）→ Popover：Tooltip 浮层 pointer-events:none，鼠标无法停留其上",
+          "需要用户必须处理的模态信息 → Dialog：Tooltip 不阻断交互、不圈定焦点",
+          "需要被动通知（保存成功等）→ Toast：Tooltip 由触发元素的 hover/focus 驱动，不主动弹出"
+        ],
+        "userTask": "用户悬停或键盘聚焦某元素时，获得一句即看即走的补充说明"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "placement",
+            "type": "'top' | 'bottom' | 'left' | 'right'",
+            "default": "top",
+            "description": "浮层相对触发元素的方向；打开期间切换会按新方向重排（不做视口碰撞翻转）。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "唯一触发元素（应为恰一个可聚焦/可交互元素）：组件向其克隆合并 hover/focus/Esc 监听器与 aria-describedby，并透传写在 <Tooltip> 上的 attrs。"
+          },
+          {
+            "name": "content",
+            "description": "浮层提示内容；未提供该插槽时不弹层。"
+          }
+        ],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {
+        "conflicts": [
+          "DropdownMenu（可操作菜单：菜单项、键盘漫游、焦点管理——Tooltip 无这些能力）",
+          "Popover（浮层内有交互内容，需要鼠标停留与可选焦点停留）",
+          "Dialog/Toast（模态或主动通知，与 hover/focus 驱动的被动提示语义不同）"
+        ],
+        "dependsOn": []
+      },
+      "composition": {
+        "patterns": [
+          "IconButton + Tooltip（图标操作补充文字说明）",
+          "Table 单元格 + Tooltip（截断文本悬停看全文）",
+          "Form 字段标签 + Tooltip（填写要求即看即走）"
+        ],
+        "related": [
+          "DropdownMenu",
+          "Popover",
+          "Dialog",
+          "IconButton",
+          "Table"
+        ],
+        "preferred": [
+          "提示内容一句话以内（超过请改用 Popover 或正文说明）",
+          "触发元素保持原生交互语义（button/a/input…）"
+        ]
+      },
+      "states": {
+        "default": "关闭态不渲染浮层（仅 SSR/挂载前输出 hidden 占位）；触发元素保持自身原有外观，不添加包装 DOM。",
+        "hover": "悬停触发元素 150ms 后显示浮层：tooltip 底（--ui-tooltip）白字、xs 最小字号档、sm 圆角、pop 阴影，按 placement 悬于触发元素旁（--ui-space-2 间距）；移开立即隐藏。",
+        "focusVisible": "键盘聚焦触发元素同样延迟 150ms 显示（focusin 路径），失焦立即隐藏；焦点环由全局 :focus-visible 约定提供，组件不改动 tabindex。",
+        "active": "浮层 pointer-events:none，无按压态；触发元素自身的 active 态不受影响。",
+        "disabled": "组件级无 disabled；若触发元素自身 disabled（如 button），其不响应鼠标/焦点事件，浮层自然不会被触发。"
+      },
+      "accessibility": "浮层 role=\"tooltip\" 且 id 由 useId 生成；打开时触发元素挂 aria-describedby 指向浮层 id（关闭时移除，读屏以 describedby 关系朗读提示）。键盘可达：Tab 聚焦触发元素（focusin）即显示、失焦（focusout）即隐藏、Esc 立即关闭；触发元素不添加 tabindex、不自造交互语义。浮层自身不可聚焦（无 tabindex）、pointer-events:none，不进入 Tab 序也不抢夺焦点——这是与 DropdownMenu（菜单项可漫游、焦点停留）的本质边界。",
+      "ssr": "SSR-safe：setup 与模块顶层不访问浏览器 API；renderToString 输出触发元素 + hidden 的 ui-tooltip 占位（输出稳定、含根类），不渲染浮层与提示内容、不输出 aria-describedby；Teleport、rect 测量与延迟计时全部推迟到客户端 onMounted 之后；卸载时清理待显示计时器。",
+      "performance": "无持续监听：不监听 resize/scroll（打开期间视口变化不自动重排，重新触发即重算）；仅在显示路径创建一个 150ms 计时器，隐藏/卸载立即清理；定位为单段测量（rect + 结构性 translate 居中），无需测量浮层自身尺寸。入场动效为 token 时长的 opacity 动画，prefers-reduced-motion 下随 --ui-motion-fast 归零。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：z-index 走 --ui-z-tooltip、背景 --ui-tooltip、文字 --ui-color-white、字号 --ui-text-xs（最小档）、圆角 --ui-radius-sm、阴影 --ui-shadow-pop、间距/最大宽度（间距标尺推导）/动效全 token 化；浮层定位的视口坐标来自触发元素 rect 测量数据，与触发元素的间距在 calc 内引用 --ui-space-2。组件包不引入全局 CSS。",
+      "examples": [
+        "<Tooltip placement='top'>\n  <button type='button'>保存</button>\n  <template #content>保存当前草稿（Ctrl+S）</template>\n</Tooltip>",
+        "<Tooltip placement='bottom'>\n  <a href='/docs'>API 文档</a>\n  <template #content>打开完整接口参考</template>\n</Tooltip>",
+        "<Tooltip>\n  <IconButton :icon='TrashIcon' aria-label='删除' />\n  <template #content>移除该行，不可撤销</template>\n</Tooltip>"
+      ],
+      "agent": {
+        "keywords": [
+          "tooltip",
+          "提示",
+          "悬浮提示",
+          "hint",
+          "气泡",
+          "bubble",
+          "overlay",
+          "浮层",
+          "aria-describedby",
+          "纯提示",
+          "hover 提示",
+          "focus 提示"
+        ],
+        "selectionHints": [
+          "纯文字提示 → Tooltip；浮层内有交互 → Popover；菜单动作列表 → DropdownMenu",
+          "需要点击/选择行为时绝不套 Tooltip（其浮层 pointer-events:none、无焦点停留）",
+          "内容超过一句话或含链接/按钮 → 改用 Popover"
+        ],
+        "commonTasks": [
+          "为图标按钮补充文字说明",
+          "截断文本悬停看全文",
+          "术语/表单项的即看即走解释"
+        ],
+        "generationNotes": [
+          "默认插槽必须是恰一个触发元素；组件通过 cloneVNode 向其合并事件与 aria-describedby，不产生包装 DOM",
+          "写在 <Tooltip> 上的 attrs（class/data-*）会透传到触发元素；触发元素已有的事件监听器与组件内部监听器链式共存",
+          "显示延迟 150ms、隐藏立即（含 Esc）；无 content 插槽时不弹层",
+          "placement 只做四方向定位，不做视口碰撞翻转；需要翻转/跟随滚动请在上层方案解决",
+          "无自定义事件与 expose：显隐是内部状态，交互契约走 aria-describedby 与 DOM"
+        ]
+      },
+      "source": {
+        "dir": "tooltip",
+        "metaFiles": [
+          "Tooltip.meta.ts"
+        ]
+      },
+      "subComponents": []
+    },
+    {
+      "id": "ui-heading",
+      "version": "0.1.0",
+      "identity": {
+        "name": "Heading",
+        "package": "@ui/components",
+        "export": "Heading",
+        "category": "typography",
+        "description": "纸面标题：h1–h6 层级（默认 h2）+ 字阶/字重/颜色语义档，默认左对齐，层级语义由原生标题标签承担。"
+      },
+      "intent": {
+        "what": "承载页面/区块/卡片标题的排版组件，渲染原生 h1–h6 并统一消费 --ui-text-* 字阶与字重。",
+        "when": [
+          "页面主标题（h1，每页至多一个）与区块标题（默认 h2）",
+          "卡片、弹窗、分组的层级标题",
+          "需要与全站字阶一致的大号数字/展示文案（配 numeric）"
+        ],
+        "whenNot": [
+          "正文与说明用 Text：Heading 默认 600 字重与标题行高，不适合长文案",
+          "仅视觉放大、无层级含义的装饰文字用 Text size 更大档，避免污染文档大纲",
+          "状态标注用 Badge"
+        ],
+        "userTask": "用户需要以正确的层级语义与统一排版呈现一个标题"
+      },
+      "api": {
+        "props": [
+          {
+            "name": "as",
+            "type": "'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'",
+            "default": "h2",
+            "description": "标题层级标签；h1 每页至多一个，常规区块标题用默认 h2。"
+          },
+          {
+            "name": "size",
+            "type": "'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'",
+            "default": "xl",
+            "description": "字号档位，映射 --ui-text-xs..3xl（默认 20px），行高随档位按标题口径取 --ui-leading-*。"
+          },
+          {
+            "name": "weight",
+            "type": "400 | 500 | 600",
+            "default": "600",
+            "description": "字重，映射 --ui-font-weight-regular/medium/semibold（默认 semibold）。"
+          },
+          {
+            "name": "color",
+            "type": "'text-1' | 'text-2' | 'text-3' | 'muted'",
+            "default": "text-1",
+            "description": "文字颜色语义档；muted 为 text-2 的简写。"
+          },
+          {
+            "name": "numeric",
+            "type": "boolean",
+            "default": "false",
+            "description": "数字场景工具档：font-variant-numeric 采用 --ui-numeric（tabular-nums）。"
+          }
+        ],
+        "slots": [
+          {
+            "name": "default",
+            "description": "标题文本。"
+          }
+        ],
+        "events": [],
+        "exposes": []
+      },
+      "constraints": {
+        "conflicts": [
+          "Text（正文语义）",
+          "Badge（状态标注）"
+        ]
+      },
+      "composition": {
+        "patterns": [
+          "Heading + Text 组成标题/正文块",
+          "Heading + Divider 分隔区块",
+          "Dialog/Card 内按层级递减 h2→h3→h4"
+        ],
+        "related": [
+          "Text",
+          "Divider",
+          "Badge",
+          "Card"
+        ],
+        "preferred": [
+          "页面主标题 h1 每页至多一个",
+          "层级按文档大纲递进，不要跳级",
+          "标题间距交给布局层 --ui-space-*"
+        ]
+      },
+      "states": {
+        "default": "静态标题：左对齐、xl/text-1/600（--ui-text-xl / --ui-font-weight-semibold）。",
+        "hover": "无交互，不响应 hover，无 hover 样式。",
+        "focusVisible": "不可聚焦（无 tabindex、非交互元素），不产生焦点环。",
+        "active": "无按压态，不响应 ：active。",
+        "disabled": "无禁用态；需要弱化标题用 color=\"text-3\"。"
+      },
+      "accessibility": "语义完全由 as 指定的原生 h1–h6 标签承担（隐式 heading role + level），不加 role/aria-level，不设 tabindex；默认左对齐符合排版规约。应保持页面标题层级连续、不跳级。",
+      "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；as 渲染的标题标签、字号/字重/颜色修饰类随 SSR 输出。",
+      "performance": "无监听器、无测量、无定时器；仅一个 computed 派生 class，渲染成本可忽略。",
+      "styling": "视觉只消费 --ui-* token（paper.css）：字号 --ui-text-*、行高 --ui-leading-*、字重 --ui-font-weight-*、颜色 --ui-text-1/2/3、数字 --ui-numeric；margin:0 与 text-align:left 为结构性排版基线（非视觉取值）。无全局 CSS 引入。",
+      "examples": [
+        "<Heading>区块标题（h2 / xl / 600）</Heading>",
+        "<Heading as=\"h1\" size=\"2xl\">页面主标题（每页至多一个）</Heading>",
+        "<Heading as=\"h3\" size=\"lg\" :weight=\"500\">卡片小标题</Heading>",
+        "<Heading as=\"h4\" size=\"md\" color=\"muted\">分组弱标题</Heading>"
+      ],
+      "agent": {
+        "keywords": [
+          "heading",
+          "标题",
+          "h1",
+          "h2",
+          "h3",
+          "title",
+          "typography",
+          "排版",
+          "层级"
+        ],
+        "selectionHints": [
+          "标题/层级语义 → Heading；正文/说明 → Text",
+          "层级按文档大纲 h1→h2→h3 递进，不跳级；视觉大小用 size 独立调节",
+          "弱化标题用 color=\"muted\"/text-3，不要换灰色值"
+        ],
+        "commonTasks": [
+          "页面主标题",
+          "卡片/区块标题",
+          "弹窗标题"
+        ],
+        "generationNotes": [
+          "as 默认 h2；主标题显式 as=\"h1\" 且每页一个",
+          "不要用 Heading 承载正文长文案",
+          "标题间距交给布局层，Heading 自身 margin 为 0"
+        ]
+      },
+      "source": {
+        "dir": "typography",
+        "metaFiles": [
+          "Heading.meta.ts",
+          "Text.meta.ts"
+        ]
+      },
+      "subComponents": [
+        {
+          "id": "ui-text",
+          "version": "0.1.0",
+          "identity": {
+            "name": "Text",
+            "package": "@ui/components",
+            "export": "Text",
+            "category": "typography",
+            "description": "纸面正文/行内文本：任意元素标签（span/p/div）+ 字阶/字重/颜色语义档，默认左对齐，数字可选 tabular-nums。"
+          },
+          "intent": {
+            "what": "承载正文、说明、行内文本的排版组件，统一消费 --ui-text-* 字阶与 --ui-text-1/2/3 颜色语义。",
+            "when": [
+              "正文段落、辅助说明、行内标签等常规文本排版",
+              "需要与全站字阶/字重/文字色一致的任何文本节点",
+              "数字、金额、指标等需要对齐场景（配 numeric）",
+              "弱化文案用 color=\"text-3\"，次级文案用 color=\"text-2\" 或简写 muted"
+            ],
+            "whenNot": [
+              "标题层级用 Heading：h1–h6 语义与默认字重不同，不要用 Text 模拟标题",
+              "状态标注用 Badge（soft 底色语义），不要用彩色文字自造",
+              "需要交互（链接/按钮）的文本用原生 a/button，Text 不承载交互"
+            ],
+            "userTask": "用户需要以统一排版呈现一段文字"
+          },
+          "api": {
+            "props": [
+              {
+                "name": "as",
+                "type": "'span' | 'p' | 'div'",
+                "default": "span",
+                "description": "渲染的元素标签；正文段落建议 p，行内用 span。"
+              },
+              {
+                "name": "size",
+                "type": "'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'",
+                "default": "md",
+                "description": "字号档位，映射 --ui-text-xs..3xl（12/13/15/17/20/24/30px），行高随档位按纸面规约取 --ui-leading-*。"
+              },
+              {
+                "name": "weight",
+                "type": "400 | 500 | 600",
+                "default": "400",
+                "description": "字重，映射 --ui-font-weight-regular/medium/semibold。"
+              },
+              {
+                "name": "color",
+                "type": "'text-1' | 'text-2' | 'text-3' | 'muted'",
+                "default": "text-1",
+                "description": "文字颜色语义档；muted 为 text-2 的简写。"
+              },
+              {
+                "name": "numeric",
+                "type": "boolean",
+                "default": "false",
+                "description": "数字场景工具档：font-variant-numeric 采用 --ui-numeric（tabular-nums）。"
+              }
+            ],
+            "slots": [
+              {
+                "name": "default",
+                "description": "文本内容。"
+              }
+            ],
+            "events": [],
+            "exposes": []
+          },
+          "constraints": {
+            "conflicts": [
+              "Heading（标题层级语义）",
+              "Badge（状态标注）"
+            ]
+          },
+          "composition": {
+            "patterns": [
+              "Heading + Text 组成标题/正文块",
+              "Card 内说明文字（color=\"muted\"）",
+              "表格/指标数字（numeric）"
+            ],
+            "related": [
+              "Heading",
+              "Badge",
+              "Divider",
+              "Card"
+            ],
+            "preferred": [
+              "正文默认 Text（md/text-1）",
+              "次级说明 muted/text-2，弱提示 text-3",
+              "间距交给布局层 --ui-space-*，Text 不自带上边距"
+            ]
+          },
+          "states": {
+            "default": "静态文本：左对齐、md/text-1/400 常规档；字号行高随 size 档位（--ui-text-*/--ui-leading-*）。",
+            "hover": "无交互，不响应 hover，无 hover 样式。",
+            "focusVisible": "不可聚焦（无 tabindex、非交互元素），不产生焦点环。",
+            "active": "无按压态，不响应 ：active。",
+            "disabled": "无禁用态；需要弱化文案用 color=\"text-3\"。"
+          },
+          "accessibility": "纯文本内容，不加 role/aria-*，不设 tabindex；语义由 as 指定的原生标签承担（span/p/div）。默认左对齐符合排版规约；numeric 仅影响 font-variant-numeric，不改变读屏内容。",
+          "ssr": "renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；as 渲染的标签、字号/字重/颜色修饰类随 SSR 输出。",
+          "performance": "无监听器、无测量、无定时器；仅一个 computed 派生 class，渲染成本可忽略。",
+          "styling": "视觉只消费 --ui-* token（paper.css）：字号 --ui-text-*、行高 --ui-leading-*、字重 --ui-font-weight-*、颜色 --ui-text-1/2/3、数字 --ui-numeric；margin:0 与 text-align:left 为结构性排版基线（非视觉取值）。无全局 CSS 引入。",
+          "examples": [
+            "<Text>默认正文（md / text-1 / 400）</Text>",
+            "<Text as=\"p\" color=\"muted\">次级说明文字（等同 color=\"text-2\"）</Text>",
+            "<Text size=\"xs\" color=\"text-3\">弱提示/脚注</Text>",
+            "<Text numeric>1,024.00</Text>",
+            "<Text as=\"div\" size=\"lg\" :weight=\"500\">中 emphasis 行</Text>"
+          ],
+          "agent": {
+            "keywords": [
+              "text",
+              "文本",
+              "正文",
+              "排版",
+              "typography",
+              "字号",
+              "字重",
+              "颜色",
+              "muted",
+              "tabular-nums",
+              "数字对齐"
+            ],
+            "selectionHints": [
+              "正文/说明/行内文字 → Text；标题层级 → Heading",
+              "弱化文案直接 color=\"text-3\" 或 muted，不要引入新的灰色",
+              "数字/金额/指标加 numeric 保证等宽对齐"
+            ],
+            "commonTasks": [
+              "卡片说明文字",
+              "表单帮助文案",
+              "表格/KPI 数字排版"
+            ],
+            "generationNotes": [
+              "as 默认 span；成段内容用 as=\"p\"",
+              "不要用 Text 模拟标题或状态徽标",
+              "文本间距（margin）交给布局层，Text 自身 margin 为 0"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

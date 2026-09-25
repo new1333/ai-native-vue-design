@@ -1,0 +1,264 @@
+/**
+ * 纸面 (Paper) —— 默认视觉 Profile 的 --ui-* 设计 token。
+ *
+ * 使用方在应用入口一次性引入：`import '@ui/tokens/paper.css'`。
+ * 组件包自身不引入任何全局 CSS；组件样式只消费这里的 `var(--ui-*)` 变量。
+ *
+ * 结构：
+ *   1. `:root` —— 默认档：开箱即用的 Paper 值；
+ *   2. `:root[data-theme='paper']` —— 显式 Profile 档：从其他 Profile 切回 paper 时重新生效；
+ *   3. `:focus-visible` —— 全局焦点环约定；
+ *   4. `prefers-reduced-motion: reduce` —— 所有走 token 的动效时长立即归零。
+ *
+ * 变量分三层（见设计文档 §6.1）：
+ *   primitive（--ui-color-* / --ui-space-* / --ui-radius-* / 字体 / --ui-shadow-* / 动效 / --ui-z-*）
+ *   → semantic（--ui-bg / --ui-surface* / --ui-text-* 色彩 / --ui-accent* / 状态色 / 遮罩）
+ *   → component（--ui-button-* / --ui-input-* 最小别名集）。
+ */
+
+/* ============================================================
+ * 1) 默认档：Paper 值
+ * ============================================================ */
+:root {
+  /* ── Primitive · 原始色板 ─────────────────────────── */
+  --ui-color-white: #FFFFFF;
+  --ui-color-paper: #F7F6F2;
+  --ui-color-sand: #F1EFE9;
+  --ui-color-line: #E6E3DB;
+  --ui-color-line-strong: #D5D1C6;
+  --ui-color-ink-950: #26262A;
+  --ui-color-ink-900: #2C2A25;
+  --ui-color-ink-600: #6E6A60;
+  --ui-color-ink-400: #8B8679;
+  --ui-color-pine-50: #EDF1EC;
+  --ui-color-pine-600: #33594A;
+  --ui-color-pine-700: #2A4A3D;
+  --ui-color-moss-50: #EAF2EC;
+  --ui-color-moss-600: #3E7C57;
+  --ui-color-amber-50: #F5EEDF;
+  --ui-color-amber-600: #B8863B;
+  --ui-color-clay-50: #F6EAE6;
+  --ui-color-clay-600: #A9503C;
+  --ui-color-slate-50: #ECF0F2;
+  --ui-color-slate-500: #8A9BA8;
+  --ui-color-scrim: rgba(28,27,23,.4);
+
+  /* ── Semantic · 色彩（Profile 具体值落位层）────────── */
+  --ui-bg: var(--ui-color-paper);
+  --ui-surface: var(--ui-color-white);
+  --ui-surface-muted: var(--ui-color-sand);
+  --ui-border: var(--ui-color-line);
+  --ui-border-strong: var(--ui-color-line-strong);
+  --ui-text-1: var(--ui-color-ink-900);
+  --ui-text-2: var(--ui-color-ink-600);
+  --ui-text-3: var(--ui-color-ink-400);
+  --ui-accent: var(--ui-color-pine-600);
+  --ui-accent-hover: var(--ui-color-pine-700);
+  --ui-accent-soft: var(--ui-color-pine-50);
+  --ui-on-accent: var(--ui-color-white);
+  --ui-success: var(--ui-color-moss-600);
+  --ui-success-soft: var(--ui-color-moss-50);
+  --ui-warning: var(--ui-color-amber-600);
+  --ui-warning-soft: var(--ui-color-amber-50);
+  --ui-danger: var(--ui-color-clay-600);
+  --ui-danger-soft: var(--ui-color-clay-50);
+  --ui-info: var(--ui-color-slate-500);
+  --ui-info-soft: var(--ui-color-slate-50);
+  --ui-tooltip: var(--ui-color-ink-950);
+  --ui-scrim: var(--ui-color-scrim);
+
+  /* ── Primitive · 间距：4/8/12/16/24/32/48/64 ──────── */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 24px;
+  --ui-space-6: 32px;
+  --ui-space-7: 48px;
+  --ui-space-8: 64px;
+
+  /* ── Primitive · 圆角：xs 仅进度条端头等形状细节 ──── */
+  --ui-radius-xs: 2px;
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 16px;
+
+  /* ── Primitive · 字体 ─────────────────────────────── */
+  --ui-font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --ui-font-serif: 'Noto Serif SC', serif;
+  --ui-text-xs: 12px;
+  --ui-text-sm: 13px;
+  --ui-text-md: 15px;
+  --ui-text-lg: 17px;
+  --ui-text-xl: 20px;
+  --ui-text-2xl: 24px;
+  --ui-text-3xl: 30px;
+  --ui-font-weight-regular: 400;
+  --ui-font-weight-medium: 500;
+  --ui-font-weight-semibold: 600;
+  --ui-leading-small: 1.5;
+  --ui-leading-body: 1.7;
+  --ui-leading-heading: 1.3;
+  --ui-numeric: tabular-nums;
+
+  /* ── Primitive · 阴影四档 ─────────────────────────── */
+  --ui-shadow-rest: 0 1px 2px rgba(28,27,23,.05);
+  --ui-shadow-hover: 0 1px 3px rgba(28,27,23,.06);
+  --ui-shadow-pop: 0 4px 12px rgba(28,27,23,.08);
+  --ui-shadow-modal: 0 8px 24px rgba(28,27,23,.12);
+
+  /* ── Primitive · 动效 ─────────────────────────────── */
+  --ui-motion-fast: 150ms;
+  --ui-motion-default: 180ms;
+  --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Primitive · 层级阶梯 ─────────────────────────── */
+  --ui-z-sticky: 10;
+  --ui-z-dropdown: 100;
+  --ui-z-drawer: 200;
+  --ui-z-modal: 300;
+  --ui-z-toast: 400;
+  --ui-z-tooltip: 500;
+
+  /* ── Component · 组件级别名最小集 ─────────────────── */
+  --ui-button-radius: var(--ui-radius-sm);
+  --ui-button-primary-bg: var(--ui-accent);
+  --ui-button-primary-fg: var(--ui-on-accent);
+  --ui-button-font-weight: var(--ui-font-weight-medium);
+  --ui-input-radius: var(--ui-radius-sm);
+  --ui-input-bg: var(--ui-surface);
+  --ui-input-border-focus: var(--ui-accent);
+}
+
+/* ============================================================
+ * 2) 显式 Paper Profile：完整重声明（支持从其他 Profile 切回）
+ * ============================================================ */
+:root[data-theme='paper'] {
+  /* ── Primitive · 原始色板 ─────────────────────────── */
+  --ui-color-white: #FFFFFF;
+  --ui-color-paper: #F7F6F2;
+  --ui-color-sand: #F1EFE9;
+  --ui-color-line: #E6E3DB;
+  --ui-color-line-strong: #D5D1C6;
+  --ui-color-ink-950: #26262A;
+  --ui-color-ink-900: #2C2A25;
+  --ui-color-ink-600: #6E6A60;
+  --ui-color-ink-400: #8B8679;
+  --ui-color-pine-50: #EDF1EC;
+  --ui-color-pine-600: #33594A;
+  --ui-color-pine-700: #2A4A3D;
+  --ui-color-moss-50: #EAF2EC;
+  --ui-color-moss-600: #3E7C57;
+  --ui-color-amber-50: #F5EEDF;
+  --ui-color-amber-600: #B8863B;
+  --ui-color-clay-50: #F6EAE6;
+  --ui-color-clay-600: #A9503C;
+  --ui-color-slate-50: #ECF0F2;
+  --ui-color-slate-500: #8A9BA8;
+  --ui-color-scrim: rgba(28,27,23,.4);
+
+  /* ── Semantic · 色彩 ───────────────────────────────── */
+  --ui-bg: var(--ui-color-paper);
+  --ui-surface: var(--ui-color-white);
+  --ui-surface-muted: var(--ui-color-sand);
+  --ui-border: var(--ui-color-line);
+  --ui-border-strong: var(--ui-color-line-strong);
+  --ui-text-1: var(--ui-color-ink-900);
+  --ui-text-2: var(--ui-color-ink-600);
+  --ui-text-3: var(--ui-color-ink-400);
+  --ui-accent: var(--ui-color-pine-600);
+  --ui-accent-hover: var(--ui-color-pine-700);
+  --ui-accent-soft: var(--ui-color-pine-50);
+  --ui-on-accent: var(--ui-color-white);
+  --ui-success: var(--ui-color-moss-600);
+  --ui-success-soft: var(--ui-color-moss-50);
+  --ui-warning: var(--ui-color-amber-600);
+  --ui-warning-soft: var(--ui-color-amber-50);
+  --ui-danger: var(--ui-color-clay-600);
+  --ui-danger-soft: var(--ui-color-clay-50);
+  --ui-info: var(--ui-color-slate-500);
+  --ui-info-soft: var(--ui-color-slate-50);
+  --ui-tooltip: var(--ui-color-ink-950);
+  --ui-scrim: var(--ui-color-scrim);
+
+  /* ── Primitive · 间距 ─────────────────────────────── */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 24px;
+  --ui-space-6: 32px;
+  --ui-space-7: 48px;
+  --ui-space-8: 64px;
+
+  /* ── Primitive · 圆角 ─────────────────────────────── */
+  --ui-radius-xs: 2px;
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 16px;
+
+  /* ── Primitive · 字体 ─────────────────────────────── */
+  --ui-font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --ui-font-serif: 'Noto Serif SC', serif;
+  --ui-text-xs: 12px;
+  --ui-text-sm: 13px;
+  --ui-text-md: 15px;
+  --ui-text-lg: 17px;
+  --ui-text-xl: 20px;
+  --ui-text-2xl: 24px;
+  --ui-text-3xl: 30px;
+  --ui-font-weight-regular: 400;
+  --ui-font-weight-medium: 500;
+  --ui-font-weight-semibold: 600;
+  --ui-leading-small: 1.5;
+  --ui-leading-body: 1.7;
+  --ui-leading-heading: 1.3;
+  --ui-numeric: tabular-nums;
+
+  /* ── Primitive · 阴影 ─────────────────────────────── */
+  --ui-shadow-rest: 0 1px 2px rgba(28,27,23,.05);
+  --ui-shadow-hover: 0 1px 3px rgba(28,27,23,.06);
+  --ui-shadow-pop: 0 4px 12px rgba(28,27,23,.08);
+  --ui-shadow-modal: 0 8px 24px rgba(28,27,23,.12);
+
+  /* ── Primitive · 动效 ─────────────────────────────── */
+  --ui-motion-fast: 150ms;
+  --ui-motion-default: 180ms;
+  --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Primitive · 层级 ─────────────────────────────── */
+  --ui-z-sticky: 10;
+  --ui-z-dropdown: 100;
+  --ui-z-drawer: 200;
+  --ui-z-modal: 300;
+  --ui-z-toast: 400;
+  --ui-z-tooltip: 500;
+
+  /* ── Component · 别名 ─────────────────────────────── */
+  --ui-button-radius: var(--ui-radius-sm);
+  --ui-button-primary-bg: var(--ui-accent);
+  --ui-button-primary-fg: var(--ui-on-accent);
+  --ui-button-font-weight: var(--ui-font-weight-medium);
+  --ui-input-radius: var(--ui-radius-sm);
+  --ui-input-bg: var(--ui-surface);
+  --ui-input-border-focus: var(--ui-accent);
+}
+
+/* ============================================================
+ * 3) 焦点可见性约定：2px 实线强调色 + 2px 偏移
+ * ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+ * 4) 减少动效：所有走 token 的动效时长立即归零
+ *    （组件动效一律消费 --ui-motion-*，因此 token 级归零即可覆盖全系统）
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-motion-fast: 0ms;
+    --ui-motion-default: 0ms;
+  }
+}
