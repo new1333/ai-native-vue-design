@@ -1,6 +1,7 @@
 /**
  * 侧边栏自动生成：扫描 packages/components/src/<dir>/<Pascal>.meta.ts，
- * 提取 identity.name / identity.category 生成分组导航。
+ * 提取 identity.name / identity.category 生成分组导航；条目展示名优先取
+ * 组件页 md frontmatter 的 title，缺失时回退 identity.name。
  *
  * - 组件页文件位于 src/zh/components/<category>/<dir>.md；尚无对应 md 的组件
  *   （文档未写）自动跳过，因此试点阶段只出现已交付页面，写完即自动挂上。
@@ -46,10 +47,19 @@ interface ComponentEntry {
   dir: string
   name: string
   category: string
+  /** 侧边栏展示名：页面 frontmatter title 优先 */
+  label: string
 }
 
-function scanComponents(): ComponentEntry[] {
-  const entries: ComponentEntry[] = []
+/** 从页面 md 的 frontmatter 读取 title（侧边栏展示名）；缺失时回退 meta 名 */
+function pageTitle(pagePath: string, fallback: string): string {
+  const match = readFileSync(pagePath, 'utf8').match(/^title:\s*(.+)$/m)
+  return match ? match[1].trim() : fallback
+}
+
+/** 扫描结果为原始字段（无展示名）；label 由 buildSidebar 在确认页面存在后补齐 */
+function scanComponents(): Array<Omit<ComponentEntry, 'label'>> {
+  const entries: Array<Omit<ComponentEntry, 'label'>> = []
   for (const dir of readdirSync(COMPONENTS_SRC, { withFileTypes: true })) {
     if (!dir.isDirectory() || dir.name === 'shared') continue
     const metaPath = metaPathForDir(dir.name)
@@ -74,8 +84,9 @@ export function buildSidebar(): DefaultTheme.Sidebar {
     }
     const pagePath = join(PAGES_DIR, entry.category, `${entry.dir}.md`)
     if (!existsSync(pagePath)) continue
+    const label = pageTitle(pagePath, entry.name)
     const list = byCategory.get(entry.category) ?? []
-    list.push(entry)
+    list.push({ ...entry, label })
     byCategory.set(entry.category, list)
   }
 
@@ -83,8 +94,8 @@ export function buildSidebar(): DefaultTheme.Sidebar {
     .filter(({ key }) => byCategory.has(key))
     .map(({ key, label }) => ({
       text: label,
-      items: (byCategory.get(key) ?? []).map(({ dir, name, category }) => ({
-        text: name,
+      items: (byCategory.get(key) ?? []).map(({ dir, label, category }) => ({
+        text: label,
         link: `/components/${category}/${dir}`,
       })),
     }))
