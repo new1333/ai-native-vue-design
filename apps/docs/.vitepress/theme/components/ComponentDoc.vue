@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { ComponentDefinition } from '@comp-src/shared/meta'
 import AgentHints from './AgentHints.vue'
 import ApiTables from './ApiTables.vue'
@@ -14,6 +15,22 @@ const props = defineProps<{
   /** 组件目录名（kebab-case，供源码查看器定位 packages/components/src/<dir>/） */
   dir: string
 }>()
+
+const copied = ref(false)
+
+async function copyImport(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(
+      `import { ${props.meta.identity.export} } from '${props.meta.identity.package}'`,
+    )
+    copied.value = true
+    window.setTimeout(() => {
+      copied.value = false
+    }, 1500)
+  } catch {
+    // 剪贴板不可用（非安全上下文等）时静默降级：代码本身可见，可手动复制
+  }
+}
 </script>
 
 <template>
@@ -24,6 +41,9 @@ const props = defineProps<{
   <h2 id="import">引入</h2>
   <div class="ui-docs-pagedoc__import">
     <code>import { {{ props.meta.identity.export }} } from '{{ props.meta.identity.package }}'</code>
+    <button type="button" class="ui-docs-pagedoc__copy" @click="copyImport">
+      {{ copied ? '已复制' : '复制' }}
+    </button>
   </div>
 
   <h2 id="examples">示例</h2>
@@ -45,14 +65,21 @@ const props = defineProps<{
 }
 
 .ui-docs-pagedoc__import {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
   background: var(--ui-color-ink-950);
   padding: var(--ui-space-3) var(--ui-space-4);
-  overflow-x: auto;
 }
 
 .ui-docs-pagedoc__import code {
+  flex: 1 1 auto;
+  /* 允许 flex 子项收缩到内容宽以下，窄屏时长代码在 code 区内横向滚动，按钮保持可见 */
+  min-width: 0;
+  overflow-x: auto;
   font-family: var(--vp-font-family-mono);
   font-size: var(--ui-text-sm);
   color: var(--ui-color-paper);
@@ -62,5 +89,23 @@ const props = defineProps<{
   padding: 0;
   border-radius: 0;
   white-space: nowrap;
+}
+
+.ui-docs-pagedoc__copy {
+  flex-shrink: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  padding: var(--ui-space-1) var(--ui-space-3);
+  font-size: var(--ui-text-sm);
+  color: var(--ui-color-paper);
+  cursor: pointer;
+  transition: color var(--ui-motion-fast) var(--ui-ease-out),
+    border-color var(--ui-motion-fast) var(--ui-ease-out);
+}
+
+.ui-docs-pagedoc__copy:hover {
+  color: var(--ui-surface);
+  border-color: var(--ui-color-paper);
 }
 </style>
