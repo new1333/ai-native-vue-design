@@ -6,7 +6,7 @@ const props = defineProps<{ agent: ComponentDefinition['agent'] }>()
 
 <template>
   <section class="ui-docs-agent">
-    <h2>给 AI / Agent 的使用提示</h2>
+    <h2 id="agent">给 AI / Agent 的使用提示</h2>
     <details class="ui-docs-agent__details">
       <summary>展开选型与生成提示（来自组件 meta 的 agent 契约）</summary>
       <div class="ui-docs-agent__body">

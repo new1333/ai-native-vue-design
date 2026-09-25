@@ -19,6 +19,7 @@ import cellsSrc from '@docs-demos/table/Cells.vue?raw'
 <ComponentDoc :meta="tableMeta" dir="table">
   <Demo
     title="基础用法"
+    anchor="basic"
     description="columns + data + rowKey 三要素；数字列用 align: 'right' 自动应用 tabular-nums。"
     :src="basicSrc"
   >
@@ -27,6 +28,7 @@ import cellsSrc from '@docs-demos/table/Cells.vue?raw'
 
   <Demo
     title="排序"
+    anchor="sortable"
     description="sortable 列的表头渲染为按钮，点击（或键盘 Enter / Space）循环 none → asc → desc → none；排序只作用于内部渲染副本，不改写传入数组。"
     :src="sortableSrc"
   >
@@ -35,6 +37,7 @@ import cellsSrc from '@docs-demos/table/Cells.vue?raw'
 
   <Demo
     title="加载与空态"
+    anchor="async-states"
     description="loading 渲染骨架行并置 aria-busy；非 loading 且数据为空时出现空态（缺省文案「暂无数据」）。"
     :src="asyncStatesSrc"
   >
@@ -43,6 +46,7 @@ import cellsSrc from '@docs-demos/table/Cells.vue?raw'
 
   <Demo
     title="自定义单元格与空态插槽"
+    anchor="cells"
     description="cell-<key> / header-<key> 按列定制；empty 插槽替换默认空态，可搭配 EmptyState。"
     :src="cellsSrc"
   >

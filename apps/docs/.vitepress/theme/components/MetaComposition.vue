@@ -6,7 +6,7 @@ const props = defineProps<{ composition: ComponentDefinition['composition'] }>()
 
 <template>
   <section v-if="props.composition.patterns.length || props.composition.related.length" class="ui-docs-comp">
-    <h2>组合与相关组件</h2>
+    <h2 id="composition">组合与相关组件</h2>
     <ul v-if="props.composition.patterns.length" class="ui-docs-comp__patterns">
       <li v-for="item in props.composition.patterns" :key="item">{{ item }}</li>
     </ul>

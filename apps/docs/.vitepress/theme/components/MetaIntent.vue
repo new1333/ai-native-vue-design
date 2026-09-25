@@ -6,17 +6,17 @@ defineProps<{ meta: ComponentDefinition }>()
 
 <template>
   <section class="ui-docs-intent">
-    <h2>何时使用</h2>
+    <h2 id="usage">何时使用</h2>
     <p class="ui-docs-intent__what">{{ meta.intent.what }}</p>
     <div class="ui-docs-intent__grid">
       <div class="ui-docs-intent__card ui-docs-intent__card--yes">
-        <h3>适用场景</h3>
+        <h3 id="usage-when">适用场景</h3>
         <ul>
           <li v-for="item in meta.intent.when" :key="item">{{ item }}</li>
         </ul>
       </div>
       <div class="ui-docs-intent__card ui-docs-intent__card--no">
-        <h3>避免使用</h3>
+        <h3 id="usage-when-not">避免使用</h3>
         <ul>
           <li v-for="item in meta.intent.whenNot" :key="item">{{ item }}</li>
         </ul>

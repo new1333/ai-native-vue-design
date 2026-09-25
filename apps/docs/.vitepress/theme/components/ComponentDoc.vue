@@ -21,12 +21,12 @@ const props = defineProps<{
 
   <MetaIntent :meta="props.meta" />
 
-  <h2>引入</h2>
+  <h2 id="import">引入</h2>
   <div class="ui-docs-pagedoc__import">
     <code>import { {{ props.meta.identity.export }} } from '{{ props.meta.identity.package }}'</code>
   </div>
 
-  <h2>示例</h2>
+  <h2 id="examples">示例</h2>
   <slot />
 
   <ApiTables :api="props.meta.api" />

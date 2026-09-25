@@ -6,10 +6,10 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
 
 <template>
   <section class="ui-docs-api">
-    <h2>API</h2>
+    <h2 id="api">API</h2>
 
     <template v-if="props.api.props.length">
-      <h3>Props</h3>
+      <h3 id="api-props">Props</h3>
       <div class="ui-docs-api__scroll">
         <table>
           <thead>
@@ -34,7 +34,7 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
     </template>
 
     <template v-if="props.api.slots.length">
-      <h3>Slots</h3>
+      <h3 id="api-slots">Slots</h3>
       <div class="ui-docs-api__scroll">
         <table>
           <thead>
@@ -52,7 +52,7 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
     </template>
 
     <template v-if="props.api.events.length">
-      <h3>Events</h3>
+      <h3 id="api-events">Events</h3>
       <div class="ui-docs-api__scroll">
         <table>
           <thead>
@@ -70,7 +70,7 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
     </template>
 
     <template v-if="props.api.exposes.length">
-      <h3>Expose</h3>
+      <h3 id="api-exposes">Expose</h3>
       <div class="ui-docs-api__scroll">
         <table>
           <thead>

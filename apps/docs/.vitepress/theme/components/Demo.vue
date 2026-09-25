@@ -9,6 +9,8 @@ const props = defineProps<{
   lang?: string
   title?: string
   description?: string
+  /** 小节锚点（ASCII 小写、连字符分隔），传入后可通过 #<anchor> 直达该示例 */
+  anchor?: string
 }>()
 
 const showSource = ref(false)
@@ -41,7 +43,7 @@ async function copySource(): Promise<void> {
 </script>
 
 <template>
-  <section class="ui-docs-demo">
+  <section :id="anchor || undefined" class="ui-docs-demo">
     <header v-if="title || description" class="ui-docs-demo__head">
       <p v-if="title" class="ui-docs-demo__title">{{ title }}</p>
       <p v-if="description" class="ui-docs-demo__desc">{{ description }}</p>

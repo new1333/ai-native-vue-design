@@ -32,7 +32,7 @@ function rows(): StateRow[] {
 
 <template>
   <section class="ui-docs-states">
-    <h2>状态与视觉</h2>
+    <h2 id="states">状态与视觉</h2>
     <div class="ui-docs-states__scroll">
       <dl>
         <template v-for="row in rows()" :key="row.key">

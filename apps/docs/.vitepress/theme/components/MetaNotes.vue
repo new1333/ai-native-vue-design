@@ -13,7 +13,7 @@ const SECTIONS: Array<{ key: keyof ComponentDefinition; label: string }> = [
 
 <template>
   <section class="ui-docs-notes">
-    <h2>注意事项</h2>
+    <h2 id="notes">注意事项</h2>
     <details v-for="section in SECTIONS" :key="section.key" class="ui-docs-notes__item">
       <summary>{{ section.label }}</summary>
       <p>{{ props.meta[section.key] }}</p>

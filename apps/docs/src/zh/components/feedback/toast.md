@@ -15,6 +15,7 @@ import controlSrc from '@docs-demos/toast/Control.vue?raw'
 <ComponentDoc :meta="toastMeta" dir="toast">
   <Demo
     title="基础用法"
+    anchor="basic"
     description="应用根组件挂载一次 <ToastHost />，随后随处调用 toast.success / error / info / warning；堆叠自上而下按推入顺序渲染。"
     :src="basicSrc"
   >
@@ -23,6 +24,7 @@ import controlSrc from '@docs-demos/toast/Control.vue?raw'
 
   <Demo
     title="常驻提示与手动移除"
+    anchor="manual"
     description="duration: 0 表示不自动关闭；toast.remove(id) 手动移除。onClose 无论何种关闭路径都恰好触发一次。"
     :src="controlSrc"
   >

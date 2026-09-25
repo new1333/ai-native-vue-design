@@ -74,7 +74,7 @@ async function toggle(key: string): Promise<void> {
 
 <template>
   <section class="ui-docs-source">
-    <h2>组件源码</h2>
+    <h2 id="source">组件源码</h2>
     <p class="ui-docs-source__hint">
       目录内源文件按需展开（测试与 meta 省略；meta 契约已由上方 API 部分呈现）。
     </p>
