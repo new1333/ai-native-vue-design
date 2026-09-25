@@ -1,0 +1,24 @@
+{
+  "name": "@ui/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "纸面 Paper 组件库文档站（VitePress；组件页 API 由 meta 自动渲染）",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@ui/components": "workspace:*",
+    "@ui/tokens": "workspace:*",
+    "shiki": "^2.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.0",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.43",
+    "vue-tsc": "^3.3.11"
+  }
+}

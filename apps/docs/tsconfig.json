@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@comp-src/*": ["../../packages/components/src/*"],
+      "@docs-demos/*": ["./src/demos/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.vue",
+    ".vitepress/**/*.ts",
+    ".vitepress/**/*.vue"
+  ]
+}

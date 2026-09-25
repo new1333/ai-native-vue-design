@@ -1,0 +1,81 @@
+/**
+ * VitePress 默认主题变量 → 纸面 --ui-* token 映射。
+ * 只做 token 引用，不写裸视觉值；唯一例外是等宽字体栈——tokens 暂无
+ * --ui-font-mono（已在任务结果中提出 token 需求），先以系统等宽栈兜底。
+ */
+:root {
+  /* 背景 / 表面 / 分隔 */
+  --vp-c-bg: var(--ui-bg);
+  --vp-c-bg-alt: var(--ui-surface);
+  --vp-c-bg-soft: var(--ui-surface-muted);
+  --vp-c-border: var(--ui-border);
+  --vp-c-border-hard: var(--ui-border-strong);
+  --vp-c-divider: var(--ui-border);
+  --vp-c-gutter: var(--ui-border);
+  --vp-c-control: var(--ui-surface);
+  --vp-c-gray-1: var(--ui-surface-muted);
+  --vp-c-gray-2: var(--ui-border);
+  --vp-c-gray-3: var(--ui-border-strong);
+
+  /* 文本 */
+  --vp-c-text-1: var(--ui-text-1);
+  --vp-c-text-2: var(--ui-text-2);
+  --vp-c-text-3: var(--ui-text-3);
+
+  /* 品牌色：松绿（hero 渐变两端同色，呈现为纯色） */
+  --vp-c-brand-1: var(--ui-accent);
+  --vp-c-brand-2: var(--ui-accent-hover);
+  --vp-c-brand-3: var(--ui-accent);
+  --vp-c-brand-soft: var(--ui-accent-soft);
+  --vp-c-brand-dimm: var(--ui-accent-soft);
+
+  /* 首页 hero 按钮与描边按钮 */
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-bg: var(--ui-accent);
+  --vp-button-brand-text: var(--ui-on-accent);
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-hover-bg: var(--ui-accent-hover);
+  --vp-button-brand-hover-text: var(--ui-on-accent);
+  --vp-button-alt-border: var(--ui-border);
+  --vp-button-alt-bg: var(--ui-surface);
+  --vp-button-alt-text: var(--ui-text-1);
+  --vp-button-alt-hover-border: var(--ui-border-strong);
+  --vp-button-alt-hover-bg: var(--ui-surface-muted);
+  --vp-button-alt-hover-text: var(--ui-text-1);
+
+  /* 字体 */
+  --vp-font-family-base: var(--ui-font-sans);
+  --vp-font-family-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  /* 行内代码 / 代码块（代码块沿用深底，与纸面浅底形成层次） */
+  --vp-code-color: var(--ui-text-1);
+  --vp-code-bg: var(--ui-surface-muted);
+  --vp-code-block-bg: var(--ui-color-ink-950);
+  --vp-code-line-highlight-color: var(--ui-color-ink-900);
+
+  /* 自定义容器 ::: tip / info / warning / danger */
+  --vp-custom-block-info-code-bg: var(--ui-info-soft);
+  --vp-custom-block-info-border: var(--ui-info);
+  --vp-custom-block-info-bg: var(--ui-info-soft);
+  --vp-custom-block-info-text: var(--ui-text-2);
+  --vp-custom-block-tip-code-bg: var(--ui-accent-soft);
+  --vp-custom-block-tip-border: var(--ui-accent);
+  --vp-custom-block-tip-bg: var(--ui-accent-soft);
+  --vp-custom-block-tip-text: var(--ui-text-2);
+  --vp-custom-block-warning-code-bg: var(--ui-warning-soft);
+  --vp-custom-block-warning-border: var(--ui-warning);
+  --vp-custom-block-warning-bg: var(--ui-warning-soft);
+  --vp-custom-block-warning-text: var(--ui-text-2);
+  --vp-custom-block-danger-code-bg: var(--ui-danger-soft);
+  --vp-custom-block-danger-border: var(--ui-danger);
+  --vp-custom-block-danger-bg: var(--ui-danger-soft);
+  --vp-custom-block-danger-text: var(--ui-text-2);
+}
+
+/* 代码块基色：shiki 已固定 github-dark，未被 token span 包裹的纯文本一律纸白， */
+/* 保证深底上任何代码文本可读（语法 token 自带浅色 inline color，不受影响） */
+.vp-doc div[class*='language-'] pre,
+.vp-doc div[class*='language-'] pre code,
+.vp-doc div[class*='language-'] pre .line {
+  color: var(--ui-color-paper);
+}

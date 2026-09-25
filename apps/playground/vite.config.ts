@@ -8,4 +8,8 @@ export default defineConfig({
     // EACCES（且自动递增的 5174–5275 同样在保留区间内），故固定用区间外的端口。
     port: 5300,
   },
+  preview: {
+    // 与 server 同端口策略：E2E preview 模式（build && preview）探测同一 url。
+    port: 5300,
+  },
 })

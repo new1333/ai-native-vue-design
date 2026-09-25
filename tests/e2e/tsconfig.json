@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "fixtures/**/*.ts",
+    "pages/**/*.ts",
+    "specs/**/*.ts",
+    "visual/**/*.visual.spec.ts",
+    "playwright.config.ts"
+  ]
+}

@@ -1,6 +1,6 @@
 # 组件编写规约（CONVENTIONS）
 
-适用范围：`packages/components` 下所有组件。实现与本文冲突时，以本文为准；本文未覆盖处遵循根目录设计文档与 TypeScript strict 默认。动手前先读 `AGENTS.md`。
+适用范围：`packages/components` 下所有组件。实现与本文冲突时，以本文为准；本文未覆盖处遵循根目录设计文档与 TypeScript strict 默认。动手前先读 `AGENTS.md`。文档站（`apps/docs`）的页面与示例规约见第 9 节。
 
 ## 1. 目录结构
 
@@ -183,3 +183,26 @@ describe('Button ssr', () => {
 
 - **组件不得修改 `packages/components/src/index.ts`**（由汇总任务维护），**不得改动其他组件目录**与共享配置。
 - 需要新 token、新共享工具时：在任务结果中提出，不自行在组件内写死或跨目录添加。
+
+## 9. 文档站（apps/docs）规约
+
+文档站为 VitePress 应用，源码见 `apps/docs`（`srcDir = src/zh`，语言仅中文，目录预留 `zh/` 前缀以便将来多语言）。**meta 是组件文档的唯一事实来源**：组件页的 API 表格、何时用/何时不用、状态说明、注意事项、Agent 提示全部由 `@ui/components` 导出的 meta 渲染，页面不手抄这些内容。
+
+### 9.1 组件页
+
+- 页面文件：`src/zh/components/<category>/<kebab-name>.md`（category 取 meta.identity.category，现有分类：general / inputs / data / feedback / overlay / typography / navigation）。侧边栏按此路径自动扫描生成，**页面文件就位即自动挂上导航**。
+- 页面结构（统一用全局 `ComponentDoc` 组件编排）：`h1 标题` → `<ComponentDoc :meta="xxxMeta" dir="<kebab-name>">`，slot 内放 `<Demo>`。手写内容只有：标题、demo、少量讲解 prose。
+- 引入约定：meta 从 `@ui/components` 公共入口导入；demo 文件从 `@docs-demos/<kebab-name>/*.vue` 导入，源码以 `?raw` 再导入一份传给 `Demo` 的 `src`。
+- **新组件交付时必须同步交付其文档页与 demo**（纳入组件任务的完成定义）。
+
+### 9.2 Demo
+
+- demo 为独立 `.vue` 文件，放 `apps/docs/src/demos/<kebab-name>/`（srcDir 之外，不产生路由）；文件内组件一律从 `@ui/components` 公共入口引入。
+- **demo 必须覆盖组件的全部可交互状态**（含禁用、加载、受控等），数量随状态复杂度自然伸缩，不设固定上下限；复杂组件（表格、表单、选择器类）按功能域扩展。
+- demo 中的视觉值同样只允许 `var(--ui-*)` token；demo 属于使用方代码，可按需使用局部 `<style scoped>`。
+- demo 参与 `pnpm -C apps/docs typecheck`（vue-tsc）与 `pnpm docs:build` 门禁。
+
+### 9.3 门禁
+
+- `pnpm -C apps/docs typecheck` 与 `pnpm docs:build` 必须全绿且退出码 0。
+- 文档站任务不得改动 `packages/components` 内任何文件；token 缺值（如等宽字体栈 `--ui-font-mono`）时在任务结果中提出需求。

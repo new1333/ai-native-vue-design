@@ -14,7 +14,8 @@
 │   ├── tokens/                # @ui/tokens：--ui-* 设计 token 与 Paper Profile（paper.css）
 │   └── components/            # @ui/components：组件库（本协议主要工作区）
 └── apps/
-    └── playground/            # 最小 Vite+Vue+TS 演示应用（消费方）
+    ├── playground/            # 最小 Vite+Vue+TS 演示应用（消费方）
+    └── docs/                  # 文档站（VitePress；组件页 API 由 meta 自动渲染）
 ```
 
 ## 环境与命令
@@ -26,6 +27,7 @@
   - `pnpm -C packages/components test` —— vitest run（happy-dom）
   - `pnpm -C packages/components build` —— vite build（lib 模式）
   - `pnpm dev` —— 启动 playground
+  - `pnpm docs:dev` —— 启动文档站；`pnpm docs:build` 产出静态站点（apps/docs/.vitepress/dist）
 
 ## 组件开发协议（硬性流程，按序执行）
 
