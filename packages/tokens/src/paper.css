@@ -23,6 +23,7 @@
   /* ── Primitive · 原始色板 ─────────────────────────── */
   --ui-color-white: #FFFFFF;
   --ui-color-paper: #F7F6F2;
+  --ui-color-paper-raised: #FCFBF8;
   --ui-color-sand: #F1EFE9;
   --ui-color-line: #E6E3DB;
   --ui-color-line-strong: #D5D1C6;
@@ -45,7 +46,7 @@
 
   /* ── Semantic · 色彩（Profile 具体值落位层）────────── */
   --ui-bg: var(--ui-color-paper);
-  --ui-surface: var(--ui-color-white);
+  --ui-surface: var(--ui-color-paper-raised);
   --ui-surface-muted: var(--ui-color-sand);
   --ui-border: var(--ui-color-line);
   --ui-border-strong: var(--ui-color-line-strong);
@@ -137,6 +138,7 @@
   /* ── Primitive · 原始色板 ─────────────────────────── */
   --ui-color-white: #FFFFFF;
   --ui-color-paper: #F7F6F2;
+  --ui-color-paper-raised: #FCFBF8;
   --ui-color-sand: #F1EFE9;
   --ui-color-line: #E6E3DB;
   --ui-color-line-strong: #D5D1C6;
@@ -159,7 +161,7 @@
 
   /* ── Semantic · 色彩 ───────────────────────────────── */
   --ui-bg: var(--ui-color-paper);
-  --ui-surface: var(--ui-color-white);
+  --ui-surface: var(--ui-color-paper-raised);
   --ui-surface-muted: var(--ui-color-sand);
   --ui-border: var(--ui-color-line);
   --ui-border-strong: var(--ui-color-line-strong);

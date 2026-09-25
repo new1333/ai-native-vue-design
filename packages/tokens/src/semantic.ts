@@ -9,7 +9,7 @@ import { token } from './token'
 const bg = token('--ui-bg', 'var(--ui-color-paper)')
 
 const surface = {
-  default: token('--ui-surface', 'var(--ui-color-white)'),
+  default: token('--ui-surface', 'var(--ui-color-paper-raised)'),
   muted: token('--ui-surface-muted', 'var(--ui-color-sand)'),
 }
 

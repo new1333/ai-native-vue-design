@@ -9,12 +9,13 @@ import { token } from './token'
 
 /**
  * 原始色板（Paper 暖色系）。
- * 命名：中性 = 纸 paper / 沙 sand / 线 line / 墨 ink；彩色 = 松 pine（强调）/
- * 藓 moss（成功）/ 琥珀 amber（警示）/ 陶 clay（危险）/ 雾 slate（信息）。
+ * 命名：中性 = 纸 paper / 纸白 paper-raised（同色温抬升面）/ 沙 sand / 线 line / 墨 ink；
+ * 彩色 = 松 pine（强调）/ 藓 moss（成功）/ 琥珀 amber（警示）/ 陶 clay（危险）/ 雾 slate（信息）。
  */
 const color = {
   white: token('--ui-color-white', '#FFFFFF'),
   paper: token('--ui-color-paper', '#F7F6F2'),
+  paperRaised: token('--ui-color-paper-raised', '#FCFBF8'),
   sand: token('--ui-color-sand', '#F1EFE9'),
   line: token('--ui-color-line', '#E6E3DB'),
   lineStrong: token('--ui-color-line-strong', '#D5D1C6'),

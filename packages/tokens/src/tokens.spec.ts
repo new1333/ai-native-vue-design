@@ -143,7 +143,7 @@ describe('@ui/tokens · 档位钉子（设计文档 §6.2 规定值）', () => {
   it('语义色彩：bg/surface/text/accent/state/overlay 全集在 :root 中取 Paper 规定引用', () => {
     expect(semantic.bg.name).toBe('--ui-bg')
     expect(paperCssVars['--ui-bg']).toBe('var(--ui-color-paper)')
-    expect(paperCssVars['--ui-surface']).toBe('var(--ui-color-white)')
+    expect(paperCssVars['--ui-surface']).toBe('var(--ui-color-paper-raised)')
     expect(paperCssVars['--ui-surface-muted']).toBe('var(--ui-color-sand)')
     expect(paperCssVars['--ui-text-1']).toBe('var(--ui-color-ink-900)')
     expect(paperCssVars['--ui-tooltip']).toBe('var(--ui-color-ink-950)')

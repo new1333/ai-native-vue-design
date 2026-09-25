@@ -94,7 +94,6 @@ const props = defineProps<{ api: ComponentDefinition['api'] }>()
   overflow-x: auto;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
-  background: var(--ui-surface);
 }
 
 table {

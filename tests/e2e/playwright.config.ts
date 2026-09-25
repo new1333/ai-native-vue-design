@@ -16,7 +16,14 @@ export default defineConfig({
   testDir: '.',
   testMatch: ['specs/**/*.spec.ts', 'visual/**/*.visual.spec.ts'],
   timeout: 15_000,
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01 } },
+  // 视觉回归（visual/）截图确定性选项（1.48 起这三项即匹配器默认值，显式声明便于阅读）：
+  // - animations: 'disabled' —— 截图瞬间停用 CSS 动画/过渡（无限动画取消回初始态）；
+  // - caret: 'hide' —— 隐藏输入光标，focus-visible 截图不受光标闪烁相位影响；
+  // - 快照目录用 Playwright 默认模板 {testFileDir}/{testFileName}-snapshots/，
+  //   文件名自带平台后缀（如 -darwin），macOS 本地基线与 CI(Linux) 基线天然隔离。
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: 'disabled', caret: 'hide' },
+  },
   fullyParallel: true,
   retries: isCI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],

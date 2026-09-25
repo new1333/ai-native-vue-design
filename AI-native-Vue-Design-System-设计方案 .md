@@ -505,7 +505,7 @@ input.border.focus
 | Token           | Value               | 用途                               |
 | --------------- | ------------------- | ---------------------------------- |
 | `bg`            | `#F7F6F2`           | 页面背景                           |
-| `surface`       | `#FFFFFF`           | 卡片、输入框、面板                 |
+| `surface`       | `#FCFBF8`           | 卡片、输入框、面板（纸白：与页面底同色温的抬升面，避免纯白与暖底产生色温割裂） |
 | `surface-muted` | `#F1EFE9`           | 次级容器、表头、代码块             |
 | `border`        | `#E6E3DB`           | 默认 1px 边框                      |
 | `border-strong` | `#D5D1C6`           | hover / active 加深                |

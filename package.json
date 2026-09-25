@@ -13,6 +13,7 @@
     "docs:build": "pnpm -C apps/docs build",
     "test": "pnpm -r --if-present run test",
     "e2e": "pnpm -C tests/e2e e2e",
+    "e2e:update-snapshots": "pnpm -C tests/e2e e2e:update-snapshots",
     "typecheck": "pnpm -r --if-present run typecheck",
     "build": "pnpm -r --if-present run build"
   },
