@@ -9,6 +9,7 @@ export default defineConfig({
   lang: 'zh-CN',
   // tokens 目前只有 paper 浅色 Profile：禁用暗色切换，避免露出未设计的深色页面。
   appearance: false,
+  lastUpdated: true,
   srcDir: 'src/zh',
   markdown: {
     // 代码块统一深底浅字（与 Demo/源码面板一致）：固定单一 github-dark，
@@ -35,6 +36,21 @@ export default defineConfig({
     outline: { label: '本页目录', level: [2, 3] },
     docFooter: { prev: '上一篇', next: '下一篇' },
     returnToTopLabel: '回到顶部',
+    lastUpdated: {
+      text: '最后更新',
+      formatOptions: { dateStyle: 'short', timeStyle: 'short' },
+    },
+    editLink: {
+      pattern: 'https://github.com/new1333/ai-native-vue-design/edit/main/apps/docs/src/zh/:path',
+      text: '在 GitHub 上编辑此页',
+    },
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/new1333/ai-native-vue-design' },
+    ],
+    footer: {
+      message: '纸面 Paper · 为 AI 协作而设计的 Vue 3 组件库',
+      copyright: '开发阶段 · 许可证待定',
+    },
     search: {
       provider: 'local',
       // _render 为内部钩子，其类型已在 search-extra.ts 用交叉类型补齐，
