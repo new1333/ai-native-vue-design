@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 import { buildSidebar } from './sidebar'
+import { buildLocalSearchOptions } from './search-extra'
 
 export default defineConfig({
   title: '纸面 Paper',
@@ -36,16 +37,9 @@ export default defineConfig({
     returnToTopLabel: '回到顶部',
     search: {
       provider: 'local',
-      options: {
-        translations: {
-          button: { buttonText: '搜索文档', buttonAriaLabel: '搜索文档' },
-          modal: {
-            noResultsText: '无法找到相关结果',
-            resetButtonTitle: '清除查询条件',
-            footer: { selectText: '选择', navigateText: '切换', closeText: '关闭' },
-          },
-        },
-      },
+      // _render 为内部钩子，其类型已在 search-extra.ts 用交叉类型补齐，
+      // 此处直接赋值即可、无需断言；下划线 key 不会被序列化进客户端。
+      options: buildLocalSearchOptions(),
     },
   },
 })

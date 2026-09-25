@@ -36,6 +36,12 @@ const PRIMARY_META: Record<string, string> = {
   typography: 'Text.meta.ts',
 }
 
+/** 目录名 → 主 meta 文件绝对路径（侧边栏扫描与搜索语料提取共用） */
+export function metaPathForDir(dir: string): string {
+  const metaFile = PRIMARY_META[dir] ?? `${pascalize(dir)}.meta.ts`
+  return join(COMPONENTS_SRC, dir, metaFile)
+}
+
 interface ComponentEntry {
   dir: string
   name: string
@@ -46,8 +52,7 @@ function scanComponents(): ComponentEntry[] {
   const entries: ComponentEntry[] = []
   for (const dir of readdirSync(COMPONENTS_SRC, { withFileTypes: true })) {
     if (!dir.isDirectory() || dir.name === 'shared') continue
-    const metaFile = PRIMARY_META[dir.name] ?? `${pascalize(dir.name)}.meta.ts`
-    const metaPath = join(COMPONENTS_SRC, dir.name, metaFile)
+    const metaPath = metaPathForDir(dir.name)
     if (!existsSync(metaPath)) {
       throw new Error(`[docs sidebar] 缺少主组件 meta：${metaPath}`)
     }
