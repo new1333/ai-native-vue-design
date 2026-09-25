@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import paperCss from '@ui/tokens/paper.css?raw'
 
 /**
@@ -62,6 +62,22 @@ const groups = computed<TokenGroup[]>(() => {
 function isColor(entry: TokenEntry): boolean {
   return COLOR_RE.test(entry.resolved)
 }
+
+const copiedName = ref('')
+let copiedTimer: number | undefined
+
+async function copyToken(name: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(`var(${name})`)
+    copiedName.value = name
+    window.clearTimeout(copiedTimer)
+    copiedTimer = window.setTimeout(() => {
+      copiedName.value = ''
+    }, 1500)
+  } catch {
+    // 剪贴板不可用时静默降级：token 名本身可见，可手动复制
+  }
+}
 </script>
 
 <template>
@@ -79,6 +95,14 @@ function isColor(entry: TokenEntry): boolean {
           <span v-else class="ui-docs-tokens__plain" aria-hidden="true">{{ entry.resolved }}</span>
           <span class="ui-docs-tokens__name">{{ entry.name }}</span>
           <span class="ui-docs-tokens__value">{{ entry.value }}</span>
+          <button
+            type="button"
+            class="ui-docs-tokens__copy"
+            :aria-label="`复制 ${entry.name}`"
+            @click="copyToken(entry.name)"
+          >
+            {{ copiedName === entry.name ? '已复制' : '复制' }}
+          </button>
         </li>
       </ul>
     </section>
@@ -106,6 +130,7 @@ function isColor(entry: TokenEntry): boolean {
 }
 
 .ui-docs-tokens__item {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-areas: 'mark mark' 'name value';
@@ -148,5 +173,25 @@ function isColor(entry: TokenEntry): boolean {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ui-docs-tokens__copy {
+  position: absolute;
+  top: var(--ui-space-2);
+  right: var(--ui-space-2);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-surface);
+  padding: var(--ui-space-1) var(--ui-space-2);
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-3);
+  cursor: pointer;
+  transition: color var(--ui-motion-fast) var(--ui-ease-out),
+    border-color var(--ui-motion-fast) var(--ui-ease-out);
+}
+
+.ui-docs-tokens__copy:hover {
+  color: var(--ui-text-1);
+  border-color: var(--ui-border-strong);
 }
 </style>
