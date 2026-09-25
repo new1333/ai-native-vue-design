@@ -21,9 +21,12 @@ import MetaStates from './components/MetaStates.vue'
 import SourceViewer from './components/SourceViewer.vue'
 import TokenBoard from './components/TokenBoard.vue'
 import TokenPlayground from './components/TokenPlayground.vue'
+import Layout from './Layout.vue'
 
 export default {
   extends: DefaultTheme,
+  // 包装默认 Layout,填充 not-found 插槽(未知路径的中文 404 落地组件)
+  Layout,
   enhanceApp({ app }) {
     app.component('Demo', Demo)
     app.component('ComponentDoc', ComponentDoc)
