@@ -6,14 +6,14 @@ import type { ComponentDefinition } from '../shared/meta'
 
 export const meta: ComponentDefinition = {
   id: 'ui-dropdown-menu',
-  version: '0.1.0',
+  version: '0.2.0',
   identity: {
     name: 'DropdownMenu',
     package: '@ui/components',
     export: 'DropdownMenu',
     category: 'overlay',
     description:
-      '纸面下拉菜单：原生 button 触发器（默认插槽）+ items 数据驱动的 menu 浮层，Teleport 至 body、锚定触发器定位，WAI-ARIA menu 模式键盘契约（roving focus）与外点/Esc 关闭、焦点还原触发器。',
+      '纸面下拉菜单：触发器（默认插槽为单个元素时该元素直接作为触发元素并合并 id/aria-haspopup/aria-expanded/aria-controls 与 click/keydown；文本/多根/空回退内建原生 button）+ items 数据驱动的 menu 浮层，Teleport 至 body、锚定触发元素定位，WAI-ARIA menu 模式键盘契约（roving focus）与外点/Esc 关闭、焦点还原触发元素。',
   },
   intent: {
     what: '把一列动作（编辑/复制/删除等）收纳在触发器下方的浮层菜单中，点开选择其一后立即执行并关闭。',
@@ -36,7 +36,11 @@ export const meta: ComponentDefinition = {
       { name: 'align', type: "'start' | 'end'", default: 'start', description: '菜单面板与触发器的水平对齐：start 左缘对齐、end 右缘对齐（纯 CSS 实现，无需测量面板宽度）。' },
     ],
     slots: [
-      { name: 'default', description: '触发器内容；应始终有可读 label（如「操作」「更多」）。' },
+      {
+        name: 'default',
+        description:
+          '触发器：单个元素/组件 vnode 直接作为触发元素（组件合并 id、aria-haspopup/aria-expanded/aria-controls 与 click/keydown 监听，元素自身即触发器，不再包裹 button——元素须可聚焦，如 Button / 原生 button；组件触发元素须把 attrs 透传到根元素）；文本/多根/空插槽回退为内建原生 button 触发器。应始终有可读 label（如「操作」「更多」）。',
+      },
     ],
     events: [
       { name: 'select', payload: 'string', description: '选中菜单项（点击或菜单内 Enter），载荷为该项 key；disabled 项不触发。选中后菜单自动关闭且焦点还原触发器。' },
@@ -62,16 +66,16 @@ export const meta: ComponentDefinition = {
     disabled: '项 disabled：原生 disabled（移出 Tab 序、roving 跳过）、text-3 弱化、hover 让位、不可选中。',
   },
   accessibility:
-    'WAI-ARIA menu button 模式：触发器为原生 button，带 aria-haspopup="menu" 与 aria-expanded（打开时另以 aria-controls 关联菜单 id）；面板 role="menu" 且 aria-labelledby 指向触发器；项为原生 button role="menuitem"。键盘：触发器 ↓/↑ 打开并聚焦首/末启用项，Enter/Space 开合；菜单内 ↓/↑ 环绕移动（跳过 disabled）、Home/End 首尾、Enter 选中、Esc/Tab 关闭；roving tabindex（当前项 0、其余 -1，disabled 恒 -1）。一切键盘关闭与选中路径焦点还原触发器；外点（document click capture）关闭不抢焦点。',
+    'WAI-ARIA menu button 模式：触发元素带 aria-haspopup="menu" 与 aria-expanded（打开时另以 aria-controls 关联菜单 id）——默认插槽为单个元素/组件时该元素即触发元素（组件合并 id 与上述 aria 与 click/keydown，不产生嵌套 button；插槽元素已声明 id 时沿用之），文本/多根/空插槽回退为内建原生 button 触发器；面板 role="menu" 且 aria-labelledby 指向触发元素 id；项为原生 button role="menuitem"。键盘：触发元素 ↓/↑ 打开并聚焦首/末启用项，Enter/Space 开合；菜单内 ↓/↑ 环绕移动（跳过 disabled）、Home/End 首尾、Enter 选中、Esc/Tab 关闭；roving tabindex（当前项 0、其余 -1，disabled 恒 -1）。一切键盘关闭与选中路径焦点还原触发元素；外点（document click capture）关闭不抢焦点。',
   ssr:
-    'SSR-safe：setup 与模块顶层不访问浏览器 API；浮层仅客户端渲染（mounted 门控 + Teleport，isOpen 初始 false），renderToString 只输出触发器（含 ui-dropdown-menu 根类与 aria-haspopup/aria-expanded），无浮层内容泄出；document/window 监听只在 onMounted 注册、onBeforeUnmount 移除。',
+    'SSR-safe：setup 与模块顶层不访问浏览器 API；浮层仅客户端渲染（mounted 门控 + Teleport，isOpen 初始 false），renderToString 只输出触发元素（含 ui-dropdown-menu 根类与 aria-haspopup/aria-expanded；文本插槽输出内建触发器 button，元素插槽输出该元素并带合并后的 aria），无浮层内容泄出；document/window 监听只在 onMounted 注册、onBeforeUnmount 移除。',
   performance:
     'onMounted 常驻绑定 document click/scroll（capture）与 window resize 三个监听（open 守卫短路），onBeforeUnmount 统一移除；roving focus 仅在按键时查询锚盒内 menuitem；定位为一次 getBoundingClientRect + inline style 写入；入场动效为 token 时长的 opacity/transform，prefers-reduced-motion 下随 --ui-motion-* 归零。',
   styling:
     '视觉只消费 --ui-* token（paper.css）：层级 --ui-z-dropdown、阴影 --ui-shadow-pop、圆角 --ui-radius-sm/--ui-radius-xs、危险色 --ui-danger/--ui-danger-soft、颜色/字号/间距/动效全 token 化；描边宽度 1px 为结构性细线（已提出 --ui-border-width token 需求）；组件包不引入全局 CSS。',
   examples: [
     "<DropdownMenu\n  :items=\"[\n    { key: 'edit', label: '编辑', icon: EditIcon },\n    { key: 'copy', label: '复制' },\n    { key: 'delete', label: '删除', danger: true },\n  ]\"\n  @select=\"onSelect\"\n>\n  操作\n</DropdownMenu>",
-    "<DropdownMenu align=\"end\" :items=\"items\" @select=\"key => run(key)\">更多</DropdownMenu>",
+    "<DropdownMenu align=\"end\" :items=\"items\" @select=\"key => run(key)\">\n  <!-- 单个元素插槽：Button 自身即触发元素（合并 id/aria-haspopup/expanded/controls 与 click/keydown，无嵌套 button） -->\n  <Button variant=\"secondary\">更多</Button>\n</DropdownMenu>",
     "<DropdownMenu\n  :items=\"[\n    { key: 'rename', label: '重命名' },\n    { key: 'archive', label: '归档', disabled: true },\n    { key: 'delete', label: '删除', danger: true },\n  ]\"\n  @select=\"onSelect\"\n/>",
   ],
   agent: {
@@ -84,9 +88,9 @@ export const meta: ComponentDefinition = {
     commonTasks: ['表格行「更多操作」', '卡片角落动作收纳', '账户/设置菜单（退出登录用 danger 项）'],
     generationNotes: [
       'items 数据驱动：key 必填且应稳定（select 载荷即 key）；icon 传内联 SVG 组件（viewBox 0 0 24 24、stroke-width 1.5、currentColor），组件统一约束为 16px',
-      '开合状态为组件内部状态：触发器点击/Enter/Space/↓/↑ 打开，Esc/Tab/外点/选中后关闭，无需外部 v-model',
-      '触发器默认插槽应提供可读 label；如需自定义触发器视觉可包裹或替换插槽内容',
-      '选中即关闭并还原焦点到触发器；不要用它承载需要停留多步的任务流（用 Dialog）',
+      '开合状态为组件内部状态：触发元素点击/Enter/Space/↓/↑ 打开，Esc/Tab/外点/选中后关闭，无需外部 v-model',
+      '默认插槽应提供可读 label；传单个可聚焦元素（如 Button / 原生 button）时该元素直接作为触发元素（组件合并 id、aria-haspopup/expanded/controls 与 click/keydown；元素自身已声明 id 时沿用），不产生嵌套 button；组件触发元素须把 attrs 透传到根元素；文本/多根/空插槽回退为内建原生 button 触发器',
+      '选中即关闭并还原焦点到触发元素；不要用它承载需要停留多步的任务流（用 Dialog）',
     ],
   },
 }

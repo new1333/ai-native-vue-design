@@ -37,7 +37,12 @@ export interface DropdownMenuEmits {
 
 /** DropdownMenu 的 Slots。 */
 export interface DropdownMenuSlots {
-  /** 触发器内容（应始终有可读 label）。 */
+  /**
+   * 触发器：插槽为「单个元素/组件 vnode」时该元素直接作为触发元素——组件合并
+   * id、aria-haspopup、aria-expanded、aria-controls 与 click/keydown 监听，
+   * 不再包裹内建 button（元素须可聚焦，如 Button / 原生 button）；
+   * 文本/多根/空插槽回退为内建原生 button 触发器。应始终有可读 label。
+   */
   default?: () => VNode[]
 }
 

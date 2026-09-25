@@ -72,16 +72,20 @@ const listboxEl = ref<HTMLDivElement | null>(null)
 /** 浮层仅客户端：SSR 输出中不出现弹层。 */
 const mounted = ref(false)
 
-/** 弹层内联定位：打开时按触发器 rect 计算（top/left/minWidth）。 */
+/** 弹层内联定位：打开时按触发器 rect + 页面滚动偏移计算（文档坐标 top/left + minWidth）。 */
 const popupStyle = ref<Record<string, string>>({})
 
 function updatePosition(): void {
   const trigger = triggerEl.value
   if (!trigger) return
+  // getBoundingClientRect() 为视口坐标；弹层 Teleport 到 body 下绝对定位，包含块是
+  // 初始包含块（文档原点），须加 window.scrollX/scrollY 换算为文档坐标——否则页面
+  // 滚动后打开时面板漂到文档顶部。打开期间弹层与文档同滚，无需滚动监听跟随。
+  // 仅在 open 变 true 后的 nextTick（客户端交互路径）触达 window，SSR 不经过此处。
   const rect = trigger.getBoundingClientRect()
   popupStyle.value = {
-    top: `${rect.bottom}px`,
-    left: `${rect.left}px`,
+    top: `${rect.bottom + window.scrollY}px`,
+    left: `${rect.left + window.scrollX}px`,
     minWidth: `${rect.width}px`,
   }
 }
@@ -330,7 +334,7 @@ defineExpose<SelectExpose>({ focus, blur })
 }
 
 /* ── 弹层：Teleport body + 绝对定位（top/left/minWidth 由打开时的触发器
-   rect 内联计算写入）；与触发器的间距走 margin-top token ── */
+   rect + 页面滚动偏移换算的文档坐标内联写入）；与触发器的间距走 margin-top token ── */
 .ui-select__listbox {
   position: absolute;
   /* 坐标原点为结构性取值，实际 top/left 由内联定位覆盖 */

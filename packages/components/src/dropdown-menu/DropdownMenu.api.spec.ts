@@ -62,6 +62,20 @@ describe('DropdownMenu api', () => {
     expect(wrapper.find('button.ui-dropdown-menu__trigger').text()).toBe('操作')
   })
 
+  it('默认插槽为单个元素 vnode：该元素直接作为触发元素（aria-haspopup 落在其上，无内建触发器包裹）', () => {
+    const wrapper = mount(DropdownMenu, {
+      props: { items: ITEMS },
+      slots: { default: () => h('button', { type: 'button', class: 'custom-trigger' }, '操作') },
+      attachTo: document.body,
+    })
+    wrappers.push(wrapper)
+    const trigger = wrapper.find('button.custom-trigger')
+    expect(trigger.exists()).toBe(true)
+    expect(trigger.attributes('aria-haspopup')).toBe('menu')
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('button.ui-dropdown-menu__trigger').exists()).toBe(false)
+  })
+
   it('默认关闭态：aria-haspopup="menu"、aria-expanded="false"、无浮层渲染', () => {
     const wrapper = mountMenu()
     const trigger = wrapper.find('button.ui-dropdown-menu__trigger')

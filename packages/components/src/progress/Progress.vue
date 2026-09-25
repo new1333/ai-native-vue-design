@@ -64,11 +64,15 @@ const ariaValueNow = computed(() => (props.indeterminate ? undefined : clampedVa
 </template>
 
 <style scoped>
-/* ── 根：横排（轨道 + 可选数值标签）────────────────────── */
+/* ── 根：横排（轨道 + 可选数值标签）──────────────────────
+   块级满宽（width: 100%）：轨道的 flex-grow 需要根元素持有真实可用宽度。
+   若根宽收缩为内容宽（列向 flex + align-items: flex-start、float 等
+   收缩上下文），轨道内容宽为 0、无自由空间可 grow，随之整体塌缩为 0。 */
 .ui-progress {
   display: flex;
   align-items: center;
   gap: var(--ui-space-2);
+  width: 100%;
 }
 
 /* ── 轨道：muted 面 + 端头 2px（--ui-radius-xs：进度条端头专用档）── */

@@ -1,8 +1,8 @@
-// behavior spec：开合（点击触发器）、选中、外点关闭（document click capture）、定位写入等交互行为。
+// behavior spec：开合（点击触发元素）、选中、外点关闭（document click capture）、定位写入等交互行为。
 import { afterEach, describe, expect, it } from 'vitest'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
-import { h, nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import DropdownMenu from './DropdownMenu.vue'
 import type { DropdownMenuItem } from './DropdownMenu.types'
 
@@ -13,12 +13,22 @@ const ITEMS: DropdownMenuItem[] = [
   { key: 'delete', label: '删除', danger: true },
 ]
 
+/** 模拟同家族 Button 的「根 button + attrs 透传」契约（真实场景：触发器传 Button 组件）。 */
+const AttrForwardButton = defineComponent({
+  name: 'AttrForwardButton',
+  props: { label: { type: String, required: true } },
+  setup(props, { attrs }) {
+    return () => h('button', { type: 'button', class: 'custom-trigger', ...attrs }, props.label)
+  },
+})
+
 const wrappers: Array<{ unmount: () => void }> = []
 function mountMenu(props: Record<string, unknown> = {}): VueWrapper {
-  // attachTo document.body：触发器在文档内，focus()/activeElement 断言才与真实使用一致
+  // attachTo document.body：触发器在文档内，focus()/activeElement 断言才与真实使用一致。
+  // 默认插槽为单个元素 vnode：按新契约该元素直接作为触发元素（不再有内建包裹 button）。
   const wrapper = mount(DropdownMenu, {
     props: { items: ITEMS, ...props },
-    slots: { default: () => h('span', '操作') },
+    slots: { default: () => h('button', { type: 'button', class: 'custom-trigger' }, '操作') },
     attachTo: document.body,
   })
   wrappers.push(wrapper)
@@ -26,7 +36,7 @@ function mountMenu(props: Record<string, unknown> = {}): VueWrapper {
 }
 
 function triggerEl(wrapper: VueWrapper): DOMWrapper<HTMLButtonElement> {
-  return wrapper.find('button.ui-dropdown-menu__trigger') as DOMWrapper<HTMLButtonElement>
+  return wrapper.find('button.custom-trigger') as DOMWrapper<HTMLButtonElement>
 }
 
 /** 打开菜单（点击触发器）并等 Teleport 渲染与初始移焦落地。 */
@@ -51,6 +61,24 @@ describe('DropdownMenu behavior', () => {
     const panel = panelEl()
     expect(panel).not.toBeNull()
     expect(panel?.getAttribute('role')).toBe('menu')
+  })
+
+  it('组件触发器（根 button 透传 attrs）：单一触发元素且点击开合（不嵌套 button）', async () => {
+    const wrapper = mount(DropdownMenu, {
+      props: { items: ITEMS },
+      slots: { default: () => h(AttrForwardButton, { label: '操作' }) },
+      attachTo: document.body,
+    })
+    wrappers.push(wrapper)
+    // 关闭态全文档只有一个 button：插槽按钮即触发元素，无内建包裹层
+    expect(document.body.querySelectorAll('button')).toHaveLength(1)
+    const trigger = triggerEl(wrapper)
+    await trigger.trigger('click')
+    await nextTick()
+    await nextTick()
+    expect(panelEl()).not.toBeNull()
+    await trigger.trigger('click')
+    expect(panelEl()).toBeNull()
   })
 
   it('再次点击触发器：关闭（点击开合）', async () => {

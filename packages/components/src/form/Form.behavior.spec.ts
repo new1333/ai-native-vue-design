@@ -1,4 +1,4 @@
-// behavior spec：提交校验网关 / 异步规则 / pending 拦截 / 错误分发与清除（Form + FormField）。
+// behavior spec：提交校验网关 / Enter 隐式提交路径 / 异步规则 / pending 拦截 / 错误分发与清除（Form + FormField）。
 import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
@@ -66,6 +66,66 @@ const notBlank: FormRules = {
   title: [(v: unknown) => (v === '纸面' ? true : '标题必须是纸面')],
 }
 
+/**
+ * 两字段 + 原生 type=submit 按钮的演示构图（playground Form 卡片同构）。
+ * 用于验证浏览器「输入框内按 Enter 隐式提交」与「点击提交按钮」共用的原生 submit 路径。
+ * attachTo=true 时挂入 document（happy-dom 提交按钮激活行为要求 isConnected），
+ * 此时调用方负责在结束时 unmount 清理。
+ */
+function mountTwoFieldForm(options: {
+  model: Record<string, unknown>
+  rules?: FormRules
+  attachTo?: boolean
+}) {
+  const model = ref<Record<string, unknown>>({ ...options.model })
+  const submitted = vi.fn()
+  const host = defineComponent({
+    setup() {
+      return () =>
+        h(
+          Form,
+          {
+            model: model.value,
+            rules: options.rules,
+            onSubmit: (event: SubmitEvent) => submitted(event),
+          },
+          {
+            default: (scope: FormSlotScope) => [
+              h(FormField, { name: 'name', label: '姓名' }, {
+                default: (s: FormFieldSlotScope) =>
+                  h(Input, {
+                    ...s.controlAttrs,
+                    modelValue: String(model.value.name ?? ''),
+                    'onUpdate:modelValue': (v: string) => {
+                      model.value.name = v
+                    },
+                  }),
+              }),
+              h(FormField, { name: 'email', label: '邮箱' }, {
+                default: (s: FormFieldSlotScope) =>
+                  h(Input, {
+                    ...s.controlAttrs,
+                    modelValue: String(model.value.email ?? ''),
+                    'onUpdate:modelValue': (v: string) => {
+                      model.value.email = v
+                    },
+                  }),
+              }),
+              h('button', { type: 'submit' }, '提交'),
+              h(
+                'output',
+                { class: 'form-scope' },
+                `${scope.valid}|${scope.pending}|${Object.keys(scope.errors).length}`,
+              ),
+            ],
+          },
+        )
+    },
+  })
+  const wrapper = mount(host, options.attachTo ? { attachTo: document.body } : {})
+  return { wrapper, model, submitted }
+}
+
 describe('Form behavior', () => {
   it('校验失败：不 emit submit，错误进入作用域 errors，FormField 展示错误文案', async () => {
     const { wrapper, submitted } = mountForm({ model: { title: '' }, rules: notBlank })
@@ -89,6 +149,78 @@ describe('Form behavior', () => {
     expect(submitted).toHaveBeenCalledTimes(1)
     expect(wrapper.find('.form-scope').text()).toBe('true|false|0')
     expect(wrapper.find('.ui-form-field__error').exists()).toBe(false)
+  })
+
+  it('Enter 隐式提交路径：浏览器隐式提交派发的原生 submit（cancelable）走校验网关，默认提交被拦截', async () => {
+    const rules: FormRules = {
+      name: [(v: unknown) => (v === '纸面' ? true : '请输入姓名')],
+      email: [(v: unknown) => (v === 'a@b.co' ? true : '请输入合法邮箱')],
+    }
+    const { wrapper, model, submitted } = mountTwoFieldForm({
+      model: { name: '', email: '' },
+      rules,
+    })
+    // 浏览器在输入框内按 Enter（存在 type=submit 默认按钮时触发隐式提交）最终派发的
+    // 就是 form 元素上的 cancelable submit 事件；happy-dom 不实现隐式提交，
+    // 故直接分派该事件作为等价路径（a11y spec 另以 requestSubmit 覆盖同一语义）。
+    const formEl = wrapper.find('form').element as HTMLFormElement
+
+    // 空表单按 Enter：校验失败——两处 FormField 错误文案出现，不 emit submit，
+    // 且 preventDefault 已拦截原生默认提交（页面不跳转）
+    const first = new Event('submit', { bubbles: true, cancelable: true })
+    formEl.dispatchEvent(first)
+    await flushPromises()
+    expect(first.defaultPrevented).toBe(true)
+    expect(submitted).not.toHaveBeenCalled()
+    const errors = wrapper.findAll('.ui-form-field__error')
+    expect(errors).toHaveLength(2)
+    expect(errors[0].text()).toBe('请输入姓名')
+    expect(errors[1].text()).toBe('请输入合法邮箱')
+    expect(wrapper.find('.form-scope').text()).toBe('false|false|2')
+
+    // 修正两字段后再按 Enter：同一事件路径校验通过并 emit submit，错误清除
+    model.value.name = '纸面'
+    model.value.email = 'a@b.co'
+    await flushPromises()
+    const second = new Event('submit', { bubbles: true, cancelable: true })
+    formEl.dispatchEvent(second)
+    await flushPromises()
+    expect(second.defaultPrevented).toBe(true)
+    expect(submitted).toHaveBeenCalledTimes(1)
+    expect(wrapper.findAll('.ui-form-field__error')).toHaveLength(0)
+    expect(wrapper.find('.form-scope').text()).toBe('true|false|0')
+  })
+
+  it('点击 type=submit 按钮与 Enter 同经校验网关：真实按钮 click 触发原生 submit 后校验', async () => {
+    const rules: FormRules = {
+      name: [(v: unknown) => (v === '纸面' ? true : '请输入姓名')],
+      email: [(v: unknown) => (v === 'a@b.co' ? true : '请输入合法邮箱')],
+    }
+    const { wrapper, model, submitted } = mountTwoFieldForm({
+      model: { name: '', email: '' },
+      rules,
+      attachTo: true,
+    })
+
+    try {
+      // 空表单点击提交按钮：真实按钮激活行为触发原生 submit → 校验失败，错误展示且不 emit。
+      // 注意：VTU 默认不挂入文档（isConnected=false），happy-dom 的提交按钮激活行为
+      // 仅对已连接元素生效，故本用例 attachTo: document.body（结束即卸载清理）。
+      await wrapper.find('button[type="submit"]').trigger('click')
+      await flushPromises()
+      expect(submitted).not.toHaveBeenCalled()
+      expect(wrapper.findAll('.ui-form-field__error')).toHaveLength(2)
+
+      // 修正后再次点击：校验通过并 emit submit（与 Enter 为同一条原生 submit 路径）
+      model.value.name = '纸面'
+      model.value.email = 'a@b.co'
+      await wrapper.find('button[type="submit"]').trigger('click')
+      await flushPromises()
+      expect(submitted).toHaveBeenCalledTimes(1)
+      expect(wrapper.findAll('.ui-form-field__error')).toHaveLength(0)
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('字段内按序执行：首个失败文案生效，后续规则不再执行', async () => {

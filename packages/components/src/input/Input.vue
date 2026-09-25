@@ -140,8 +140,9 @@ defineExpose<InputExpose>({ focus, blur })
   border-color: var(--ui-border-strong);
 }
 
-/* focus：遵循全局 accent 约定——焦点环由 paper.css 的 :focus-visible 提供（不改写 outline），
-   容器描边同步转 accent 别名 --ui-input-border-focus */
+/* focus：焦点指示完全由容器承担——描边转 accent 别名 --ui-input-border-focus。
+   内层原生 input 的全局 :focus-visible 焦点环须关闭（见 __control），
+   否则会在容器描边内再叠一圈 outline，形成双重边框 */
 .ui-input:focus-within {
   border-color: var(--ui-input-border-focus);
 }
@@ -171,6 +172,12 @@ defineExpose<InputExpose>({ focus, blur })
   font-size: var(--ui-text-md);
   line-height: var(--ui-leading-small);
   padding: var(--ui-space-2) 0;
+}
+
+/* 关闭全局焦点环在内部 input 上的绘制：焦点指示由容器描边（--ui-input-border-focus）
+   统一承担，避免容器描边与内层 outline 叠出双重边框（结构性重置：非视觉取值） */
+.ui-input__control:focus-visible {
+  outline: none;
 }
 
 .ui-input__control::placeholder {

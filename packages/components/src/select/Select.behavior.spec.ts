@@ -133,6 +133,25 @@ describe('Select behavior', () => {
     wrapper.unmount()
   })
 
+  it('打开时弹层定位计入页面滚动偏移（视口 rect + scrollX/scrollY → 文档坐标）', async () => {
+    const wrapper = mount(Select, { props: { options: OPTIONS }, attachTo: document.body })
+    const trigger = wrapper.find('button.ui-select__trigger')
+    // 桩定触发器视口 rect，模拟「页面滚动后触发器位于视口中下方」的场景
+    vi.spyOn(trigger.element, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 120, 160, 32))
+    // happy-dom：window.scrollX/scrollY 读取 documentElement 的 scrollLeft/scrollTop
+    document.documentElement.scrollLeft = 30
+    document.documentElement.scrollTop = 400
+    await trigger.trigger('click')
+    await nextTick()
+    const style = (document.querySelector('.ui-select__listbox')?.getAttribute('style') ?? '').replace(/\s+/g, '')
+    expect(style).toContain('top:552px') // rect.bottom 152 + scrollY 400
+    expect(style).toContain('left:50px') // rect.left 20 + scrollX 30
+    expect(style).toContain('min-width:160px') // rect.width 不受滚动影响
+    document.documentElement.scrollLeft = 0
+    document.documentElement.scrollTop = 0
+    wrapper.unmount()
+  })
+
   it('卸载时移除 document 点击监听（onMounted 注册、onBeforeUnmount 移除）', async () => {
     const removeSpy = vi.spyOn(document, 'removeEventListener')
     const wrapper = mount(Select, { props: { options: OPTIONS }, attachTo: document.body })

@@ -17,6 +17,12 @@ export const TABLE_SORT_NONE = 'none' as const
 /** 点击可排序列表头的循环：asc → desc → none → asc（none 起点即 asc）。 */
 export const TABLE_SORT_CYCLE: readonly TableSortOrder[] = ['asc', 'desc', 'none']
 
+/**
+ * 字符串列排序的整理 locale：简体中文拼音序（程 < 顾 < 江 < …，而非 Unicode 码点序）。
+ * 比较器创建与回退策略见 useTableSort.ts 的 createStringCompare。
+ */
+export const TABLE_SORT_LOCALE = 'zh-Hans-CN'
+
 /** TableSortOrder → aria-sort 值（WAI-ARIA）。 */
 export const TABLE_ARIA_SORT: Readonly<Record<TableSortOrder, 'ascending' | 'descending' | 'none'>> = {
   asc: 'ascending',

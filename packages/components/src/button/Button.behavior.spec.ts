@@ -107,4 +107,23 @@ describe('Button behavior', () => {
     await buttons[1].trigger('click')
     expect(clicks).toEqual(['a', 'b', 'b'])
   })
+
+  it('ButtonGroup：点击后立即检查也无持久选中态（不承载选中语义）', async () => {
+    // ButtonGroup 不承载选中语义（ButtonGroup.meta.ts：分段选择应使用专用组件）。
+    // 组内 Button 的灰底是 :hover/--ui-surface-muted 瞬时态，点击不得引入任何
+    // 持久选中标记（选中类 / aria-pressed / aria-selected / aria-checked）。
+    // 此用例在点击后立即断言，钉住该契约，防止误加选中状态导致「高亮滞后」类回归。
+    const wrapper = mount(ButtonGroup, {
+      slots: { default: () => [h(Button, { key: 'a' }), h(Button, { key: 'b' })] },
+    })
+    const buttons = wrapper.findAll('button.ui-button')
+    await buttons[0].trigger('click')
+    await buttons[1].trigger('click')
+    for (const button of buttons) {
+      expect(button.classes()).not.toContain('ui-button--selected')
+      expect(button.attributes('aria-pressed')).toBeUndefined()
+      expect(button.attributes('aria-selected')).toBeUndefined()
+      expect(button.attributes('aria-checked')).toBeUndefined()
+    }
+  })
 })

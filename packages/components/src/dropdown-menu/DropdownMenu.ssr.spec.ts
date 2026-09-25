@@ -20,6 +20,23 @@ describe('DropdownMenu ssr', () => {
     expect(html).toContain('操作')
   })
 
+  it('插槽为单个元素：SSR 输出该元素并带合并后的 aria（无内建触发器 button）', async () => {
+    const html = await render(() =>
+      h(
+        DropdownMenu,
+        { items: [{ key: 'a', label: '甲' }] },
+        { default: () => h('span', { class: 'custom-trigger' }, '操作') },
+      ),
+    )
+    expect(html).toContain('<span')
+    expect(html).toContain('custom-trigger')
+    expect(html).toContain('aria-haspopup="menu"')
+    expect(html).toContain('aria-expanded="false"')
+    // 单元素插槽：该元素即触发元素，内建触发器 button 不渲染
+    expect(html).not.toContain('ui-dropdown-menu__trigger')
+    expect(html).toContain('操作')
+  })
+
   it('挂载前不渲染浮层：无 role=menu/menuitem，菜单项 label 不随 Teleport 泄出', async () => {
     const html = await render(() =>
       h(

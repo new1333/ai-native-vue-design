@@ -71,7 +71,7 @@ export const meta: ComponentDefinition = {
   states: {
     default: 'surface 底 + line 描边 + ink 文字；placeholder 为 text-3。',
     hover: '描边加深为 --ui-border-strong；disabled 不响应 hover。',
-    focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；容器描边同步转 --ui-input-border-focus（accent）。error 态保持 danger 优先。',
+    focusVisible: '焦点指示由容器描边统一承担：描边转 --ui-input-border-focus（accent）；内层原生 input 关闭全局 :focus-visible 焦点环，避免双重边框。error 态保持 danger 优先。',
     active: '输入控件无按压反馈；清空按钮为原生 button，hover 图标色 text-3 → text-1。',
     disabled: 'sand 底 + line 描边 + text-3 文字 + not-allowed 光标；原生 disabled 使其移出 Tab 序，不渲染清空按钮。',
     error: 'danger 描边（hover/focus 均保持 danger 优先于 accent），原生 input 置 aria-invalid="true"。',

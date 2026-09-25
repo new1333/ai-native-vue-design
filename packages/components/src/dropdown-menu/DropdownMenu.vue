@@ -2,17 +2,22 @@
 /**
  * DropdownMenu —— 下拉菜单：触发器（默认插槽）+ items 数据驱动的 menu 浮层。
  *
- * - 触发器为原生 button（aria-haspopup="menu" + aria-expanded）；点击或 Enter/Space/↓/↑ 打开。
- * - 浮层 Teleport 至 body：fixed 锚盒钉在触发器 rect 上，面板在锚盒下方绝对定位，
- *   align=start 左对齐 / align=end 右对齐；打开期间跟随滚动与 resize。
+ * - 触发器模型（不再嵌套 button）：默认插槽为「单个元素/组件 vnode」时，该元素
+ *   直接作为触发元素——经 cloneVNode 合并 id、aria-haspopup="menu"、aria-expanded、
+ *   aria-controls 与 click/keydown 监听（策略同 tooltip/）；插槽为文本/多根/空时
+ *   回退为内建原生 button 触发器（ui-dropdown-menu__trigger）。
+ * - 点击或 Enter/Space/↓/↑ 打开。浮层 Teleport 至 body：fixed 锚盒钉在触发元素
+ *   rect 上，面板在锚盒下方绝对定位，align=start 左对齐 / align=end 右对齐；
+ *   打开期间跟随滚动与 resize。
  * - 键盘（WAI-ARIA menu button 模式）：菜单内 ↓/↑ 环绕移动、Home/End 首尾、
  *   Enter 选中、Esc/Tab 关闭；roving focus 跳过 disabled 项。
  * - 外点关闭（document click capture，onMounted 常驻绑定 + open 守卫，策略同 select/）；
- *   键盘/选中路径关闭后焦点还原触发器。
- * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport），renderToString 只输出触发器
+ *   键盘/选中路径关闭后焦点还原触发元素。
+ * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport），renderToString 只输出触发元素
  *   （无浏览器 API 访问）。
  */
-import { onMounted, ref, useId } from 'vue'
+import { cloneVNode, onMounted, ref, useAttrs, useId, useSlots } from 'vue'
+import type { ComponentPublicInstance, VNode } from 'vue'
 import { DROPDOWN_MENU_ALIGN_DEFAULT, DROPDOWN_MENU_HASPOPUP } from './DropdownMenu.constants'
 import { useDropdownMenu } from './useDropdownMenu'
 import type {
@@ -23,7 +28,7 @@ import type {
   DropdownMenuSlots,
 } from './DropdownMenu.types'
 
-// 根为「wrapper + Teleport」fragment，attrs 不自动继承（透传到触发器，同 select/）
+// 根为「触发元素 + Teleport」fragment，attrs 不自动继承（手动并入触发元素，同 select/tooltip/）
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<DropdownMenuProps>(), {
@@ -32,18 +37,30 @@ const props = withDefaults(defineProps<DropdownMenuProps>(), {
 const emit = defineEmits<DropdownMenuEmits>()
 defineSlots<DropdownMenuSlots>()
 
+const attrs = useAttrs()
+const slots = useSlots()
+
 const triggerId = useId()
 const menuId = useId()
 
-const triggerRef = ref<HTMLButtonElement | null>(null)
+/** 触发元素：原生元素或组件实例（组件触发元素经 $el 解包，同 tooltip/）。 */
+const triggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null)
 const flyoutRef = ref<HTMLDivElement | null>(null)
+
+/** 触发元素 getter：组件实例解包为其根元素（多根/文本根组件返回 null）。 */
+function triggerElement(): HTMLElement | null {
+  const current = triggerRef.value
+  if (current instanceof HTMLElement) return current
+  const inner = (current as ComponentPublicInstance | null)?.$el
+  return inner instanceof HTMLElement ? inner : null
+}
 
 /** 浮层仅客户端渲染（SSR 输出中不出现菜单，同 select/）。 */
 const mounted = ref(false)
 
 const { isOpen, activeIndex, openMenu, closeMenu, selectItem, onTriggerKeydown, onMenuKeydown } =
   useDropdownMenu({
-    trigger: () => triggerRef.value,
+    trigger: triggerElement,
     flyout: () => flyoutRef.value,
     items: () => props.items,
     onSelect: item => emit('select', item.key),
@@ -58,16 +75,82 @@ function onItemClick(item: DropdownMenuItem): void {
   selectItem(item)
 }
 
+/* ── 触发器插槽：单个元素/组件 → 直接作为触发元素；文本/多根/空 → 内建触发器 ── */
+
+/** 默认插槽 vnodes（未使用插槽或空数组时为 null）。 */
+function slotVNodes(): VNode[] | null {
+  const nodes = slots.default?.()
+  return nodes && nodes.length > 0 ? nodes : null
+}
+
+/**
+ * 插槽恰好渲染「单个元素/组件 vnode」时返回它（该元素将直接作为触发元素）；
+ * 文本/注释/片段 vnode 与多根插槽不可承接触发职责，返回 null 走内建触发器。
+ */
+function slotTriggerNode(): VNode | null {
+  const nodes = slotVNodes()
+  if (!nodes || nodes.length !== 1) return null
+  const node = nodes[0]
+  if (
+    typeof node.type === 'string' ||
+    typeof node.type === 'object' ||
+    typeof node.type === 'function'
+  ) {
+    return node
+  }
+  return null
+}
+
+function hasSlotTrigger(): boolean {
+  return slotTriggerNode() !== null
+}
+
+/** 插槽触发元素自身声明的 id（组件触发元素须把 attrs 透传到根元素，id 才可达）。 */
+function declaredTriggerId(node: VNode | null): string | null {
+  const declared = node?.props?.id
+  return typeof declared === 'string' && declared.length > 0 ? declared : null
+}
+
+/** panel aria-labelledby：指向触发元素实际 id（插槽声明 id 或组件内定 id）。 */
+function triggerLabelledById(): string {
+  return declaredTriggerId(slotTriggerNode()) ?? triggerId
+}
+
+/**
+ * 渲染触发元素：克隆默认插槽的首个（且唯一）元素/组件 vnode，合并交互监听与
+ * aria-haspopup/expanded/controls（打开时 aria-controls 关联菜单 id）；
+ * 同时透传使用方写在 <DropdownMenu> 上的 attrs（class / data-* / 既有监听器链式合并）。
+ * 每次渲染重新求值（非 computed），确保 attrs / 插槽内容不因缓存而滞后（同 tooltip/）。
+ */
+function renderTrigger(): VNode | null {
+  const node = slotTriggerNode()
+  if (!node) return null
+  const extra: Record<string, unknown> = {
+    ...attrs,
+    'aria-haspopup': DROPDOWN_MENU_HASPOPUP,
+    'aria-expanded': isOpen.value ? 'true' : 'false',
+    'aria-controls': isOpen.value ? menuId : undefined,
+    onClick: onTriggerClick,
+    onKeydown: onTriggerKeydown,
+  }
+  // 原生 button 触发元素未显式声明 type 时补 button（防表单内误提交）；
+  // 组件触发元素的 type 契约由其自身负责（如 Button 默认渲染 type="button"）。
+  if (node.type === 'button' && node.props?.type === undefined) extra.type = 'button'
+  if (declaredTriggerId(node) === null) extra.id = triggerId
+  // 定向断言为 cloneVNode 的 extraProps 形参类型（非 as any 绕过，同 tooltip/）
+  return cloneVNode(node, extra as Parameters<typeof cloneVNode>[1], true)
+}
+
 onMounted(() => {
   mounted.value = true
 })
 
 function focus(options?: FocusOptions): void {
-  triggerRef.value?.focus(options)
+  triggerElement()?.focus(options)
 }
 
 function blur(): void {
-  triggerRef.value?.blur()
+  triggerElement()?.blur()
 }
 
 defineExpose<DropdownMenuExpose>({ focus, blur })
@@ -75,7 +158,11 @@ defineExpose<DropdownMenuExpose>({ focus, blur })
 
 <template>
   <div class="ui-dropdown-menu">
+    <!-- 插槽为单个元素/组件：该元素即触发元素（克隆合并 id/aria/事件，不再包一层 button） -->
+    <component v-if="hasSlotTrigger()" :is="renderTrigger()" ref="triggerRef" />
+    <!-- 插槽为文本/多根/空：回退内建原生 button 触发器（既有观感与契约不变） -->
     <button
+      v-else
       :id="triggerId"
       ref="triggerRef"
       type="button"
@@ -96,7 +183,7 @@ defineExpose<DropdownMenuExpose>({ focus, blur })
           class="ui-dropdown-menu__panel"
           :class="`ui-dropdown-menu__panel--${align}`"
           role="menu"
-          :aria-labelledby="triggerId"
+          :aria-labelledby="triggerLabelledById()"
           @keydown="onMenuKeydown"
         >
           <button
@@ -129,7 +216,8 @@ defineExpose<DropdownMenuExpose>({ focus, blur })
   font-family: var(--ui-font-sans);
 }
 
-/* ── 触发器：secondary 观感的原生 button ────────────────── */
+/* ── 触发器（回退路径）：插槽为文本/多根/空时的内建原生 button（secondary 观感）；
+   插槽为单个元素/组件时不渲染该层，触发元素视觉由其自身负责（如 Button） ── */
 .ui-dropdown-menu__trigger {
   display: inline-flex;
   align-items: center;

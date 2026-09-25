@@ -1,4 +1,4 @@
-// behavior spec：排序循环 / 数据不可变 / 状态切换 / 千行渲染。
+// behavior spec：排序循环 / 中文拼音排序 / 数据不可变 / 状态切换 / 千行渲染。
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
@@ -29,6 +29,10 @@ const TableFixture = Table as unknown as DefineComponent<TableProps<Row>>
 
 function scoreTexts(wrapper: VueWrapper): string[] {
   return wrapper.findAll('tbody tr').map((tr) => tr.findAll('td')[1]?.text() ?? '')
+}
+
+function nameTexts(wrapper: VueWrapper): string[] {
+  return wrapper.findAll('tbody tr').map((tr) => tr.findAll('td')[0]?.text() ?? '')
 }
 
 describe('Table behavior', () => {
@@ -66,6 +70,63 @@ describe('Table behavior', () => {
     expect(scoreTexts(wrapper)).toEqual(['9', '10', '100'])
     await scoreButton?.trigger('click') // desc
     expect(scoreTexts(wrapper)).toEqual(['100', '10', '9'])
+  })
+
+  it('中文字符串列按拼音序（locale 感知）排序，而非 Unicode 码点序', async () => {
+    // 与 playground 示例数据同源的中文名单：Unicode 码点序为 林→江→沈→程→苏→闻→陆→顾，
+    // 拼音序应为 程→顾→江→林→陆→沈→苏→闻。
+    const chinese: Row[] = [
+      { id: 1, name: '林晚照', score: 92 },
+      { id: 2, name: '沈砚', score: 88 },
+      { id: 3, name: '顾清桐', score: 75 },
+      { id: 4, name: '苏行舟', score: 95 },
+      { id: 5, name: '陆知遥', score: 61 },
+      { id: 6, name: '江雨眠', score: 83 },
+      { id: 7, name: '程既白', score: 79 },
+      { id: 8, name: '闻人语', score: 90 },
+    ]
+    const wrapper = mount(TableFixture, { props: { columns, data: chinese, rowKey: 'id' } })
+    const nameButton = wrapper.findAll('button.ui-table__sort')[0]
+    expect(nameTexts(wrapper)[0]).toBe('林晚照') // 未排序：保持 data 原始顺序
+
+    await nameButton?.trigger('click') // name asc：拼音序，首行为「程既白」
+    expect(wrapper.emitted('sort')?.[0]?.[0]).toEqual({ key: 'name', order: 'asc' })
+    expect(nameTexts(wrapper)).toEqual([
+      '程既白',
+      '顾清桐',
+      '江雨眠',
+      '林晚照',
+      '陆知遥',
+      '沈砚',
+      '苏行舟',
+      '闻人语',
+    ])
+
+    await nameButton?.trigger('click') // name desc：拼音序倒排
+    expect(wrapper.emitted('sort')?.[1]?.[0]).toEqual({ key: 'name', order: 'desc' })
+    expect(nameTexts(wrapper)).toEqual([
+      '闻人语',
+      '苏行舟',
+      '沈砚',
+      '陆知遥',
+      '林晚照',
+      '江雨眠',
+      '顾清桐',
+      '程既白',
+    ])
+
+    await nameButton?.trigger('click') // none：回到 data 原始顺序
+    expect(wrapper.emitted('sort')?.[2]?.[0]).toEqual({ key: 'name', order: 'none' })
+    expect(nameTexts(wrapper)).toEqual([
+      '林晚照',
+      '沈砚',
+      '顾清桐',
+      '苏行舟',
+      '陆知遥',
+      '江雨眠',
+      '程既白',
+      '闻人语',
+    ])
   })
 
   it('切换到另一可排序列：直接进入该列 asc；再点回原列也从头 asc', async () => {

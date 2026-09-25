@@ -69,7 +69,7 @@ export const meta: ComponentDefinition = {
   performance:
     '无 JS 运行时开销（仅 computed class/style/aria 派生）；动效为 CSS transform 关键帧无限循环（仅 indeterminate，加载态豁免），prefers-reduced-motion 下显式 @media 停用；确定态无任何动画。',
   styling:
-    '视觉只消费 --ui-* token：轨道 --ui-surface-muted、填充 --ui-accent、条高 --ui-space-1/--ui-space-2、端头 --ui-radius-xs（进度条端头为该 token 唯一合法用途）、标签字号 --ui-text-xs / 颜色 --ui-text-2 / 数字 --ui-numeric、间距 --ui-space-2。indeterminate 扫描时长由 --ui-motion-default calc 推导。',
+    '视觉只消费 --ui-* token：轨道 --ui-surface-muted、填充 --ui-accent、条高 --ui-space-1/--ui-space-2、端头 --ui-radius-xs（进度条端头为该 token 唯一合法用途）、标签字号 --ui-text-xs / 颜色 --ui-text-2 / 数字 --ui-numeric、间距 --ui-space-2。indeterminate 扫描时长由 --ui-motion-default calc 推导。布局：根元素块级满宽（width: 100%），轨道 flex: 1 1 auto 弹性吃满剩余宽度、数值标签 flex: none 固有宽——在 flex-start 等收缩上下文中轨道不塌缩，填充百分比始终基于真实轨道宽度。',
   examples: [
     "<Progress :value='42' show-label />",
     "<Progress indeterminate size='sm' />",
@@ -93,6 +93,7 @@ export const meta: ComponentDefinition = {
       'indeterminate=true 时忽略 value、省略 aria-valuenow、隐藏数值标签',
       '端头 2px 来自 --ui-radius-xs；条高仅 sm/md 两档',
       '无 emits/slots/exposes；确定态无动画，扫描动画仅在 indeterminate 出现',
+      '根元素块级满宽（width: 100%）：轨道弹性伸缩、标签固有宽，放入 align-items: flex-start 的列向 flex 等收缩上下文也不会塌缩',
     ],
   },
 }
