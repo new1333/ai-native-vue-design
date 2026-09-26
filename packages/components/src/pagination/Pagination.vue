@@ -146,6 +146,9 @@ function goNext(): void {
 
 .ui-pagination__item {
   display: inline-flex;
+  /* 结构性重置：隔离使用方对 li 的样式注入（如 .vp-doc li + li 的 margin-top），
+     否则 flex 居中下首个 item 与其余 item 中心线错开（非视觉取值） */
+  margin: 0;
 }
 
 /* ── 页码 / 上一页 / 下一页：等宽基底（min-width 对齐 + tabular 数字） ── */
