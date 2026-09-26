@@ -4,6 +4,10 @@ import { buildSidebar } from './sidebar'
 import { buildLocalSearchOptions } from './search-extra'
 
 export default defineConfig({
+  // GitHub Project Pages 部署在子路径 https://new1333.github.io/ai-native-vue-design/ 下，
+  // 静态资源与站内链接必须带该前缀（本地 dev/preview 也工作于同一子路径）。
+  // 与 .github/workflows/docs-pages.yml 的 artifact 路径约定：勿单侧改动仓库名。
+  base: '/ai-native-vue-design/',
   title: '纸面 Paper',
   description: '为 AI 协作而设计的 Vue 3 组件库 —— token 驱动、a11y / SSR 就绪、meta 即契约',
   lang: 'zh-CN',
