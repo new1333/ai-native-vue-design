@@ -179,6 +179,8 @@ describe('Button ssr', () => {
 })
 ```
 
+本节只约束组件包内的 vitest 用例。真浏览器侧的 Playwright E2E、axe 扫描与视觉回归用例规约见 [tests/e2e/README.md](../tests/e2e/README.md)（`tests/e2e` 工作区包）。分工原则：一个断言若 happy-dom 能可靠验证，就留在上述四类 spec；只有依赖真实浏览器能力（浮层定位、焦点流转、真实键盘路径、像素基线、axe 扫描）的断言才进 E2E。不得为通过 E2E 给组件添加测试专用 props / 类名 / data 属性。
+
 ## 8. 边界
 
 - **组件不得修改 `packages/components/src/index.ts`**（由汇总任务维护），**不得改动其他组件目录**与共享配置。

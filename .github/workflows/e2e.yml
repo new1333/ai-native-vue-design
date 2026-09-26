@@ -1,0 +1,143 @@
+# E2E PR 门禁（docs/e2e-integration-plan.md §7 阶段 3 / 任务票 12-ci-workflow）
+#
+# 职责：在 Linux runner 上以「生产构建 + vite preview」跑 chromium E2E（交互 + axe + 视觉回归），
+# 失败时上传 trace / 截图 / HTML 报告。只做 E2E，不与组件单测（vitest / happy-dom）合流——
+# 单测应有独立工作流与本 job 互不阻塞。
+#
+# 与 tests/e2e/playwright.config.ts 的协作约定（勿单侧改动）：
+# - E2E_SERVER=preview → webServer 走 `apps/playground build && preview`（生产构建路径回归）；
+# - CI=true（GitHub runner 自动设置）→ reuseExistingServer 关闭、失败重试 1 次（配置内处理）。
+#
+# 浏览器矩阵：仅 chromium（维护者裁定 2026-09-25；多浏览器矩阵已裁撤，见任务票 11 状态注记）。
+
+name: E2E
+
+on:
+  pull_request:
+    paths:
+      - 'packages/components/src/**' # 组件源码（被测对象；包入口/构建配置变化不影响 e2e——playground 直接消费 src）
+      - 'packages/tokens/**' # 设计 token（paper.css）直接决定全部视觉输出，token-only 变更必须过视觉门禁
+      - 'apps/playground/**' # 被测应用（页面结构、vite 配置、依赖）
+      - 'tests/e2e/**' # 用例、playwright 配置与视觉基线本身
+      - 'pnpm-lock.yaml' # 依赖锁变更可能换 Playwright 浏览器构建 / vite 构建产物 → 视觉与行为都可能漂移
+      - '.github/workflows/e2e.yml' # 工作流自身改动需自验
+      # 其余（docs/**、apps/docs/**、根/各包 package.json、tsconfig 等）不影响 e2e 结果，不触发
+  push:
+    branches: [main]
+    paths:
+      - 'packages/components/src/**'
+      - 'packages/tokens/**'
+      - 'apps/playground/**'
+      - 'tests/e2e/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch: {} # 支持手动触发（例如首次生成 Linux 基线时）
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # 生产构建 + preview（覆盖 vite build 路径回归）
+      E2E_SERVER: preview
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm 版本：本仓 engines 要求 >=10，维护者本机为 11.x（lockfile v9）——用 major 11 保持一致。
+      # 顺序要求：pnpm 必须先于 setup-node 安装，`cache: pnpm` 才能定位 store。
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22 # engines: >=20.19；与维护者本机一致取 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        # workspace 包（@ui/components / @ui/tokens）exports 直指 src，playground 由 vite
+        # 从源码构建——无需先跑各包 build。
+
+      # Playwright 浏览器缓存 key 从 tests/e2e/package.json 派生（@playwright/test 精确锁版），
+      # 升级 Playwright 时浏览器二进制随之换血、自动另起缓存。
+      - name: Derive Playwright version (cache key)
+        id: pw
+        run: echo "version=$(node -p "require('./tests/e2e/package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}
+          # 后续增删浏览器项目时回退旧缓存，install 会补齐缺失项（正确性不依赖缓存命中）
+
+      - name: Install Playwright browsers
+        run: pnpm -C tests/e2e exec playwright install --with-deps chromium
+
+      # ── Linux 视觉基线策略（阶段 3 跨平台基线：本地 -darwin 基线不用于 CI）──
+      # 前提（@playwright/test 1.48.2 实测源码 matchers/toMatchSnapshot.js#handleMissing）：
+      # 默认 updateSnapshots='missing' 时，缺失基线会被**写入**但用例**判失败**（且不可重试）；
+      # 已入库基线则严格比对、diff 即败。因此分两步：
+      #   1) 生成步（本步）：chromium-only 跑 visual/，缺失的 -linux 基线被写盘，容忍
+      #      “snapshot 缺失”类失败（其退出码不作门禁）；
+      #   2) 验证步（下步）：chromium 重跑，所有基线（含刚生成的）严格比对，零 diff 才绿——
+      #      真正的视觉门禁在这一步。
+      # 刻意不用 `--update-snapshots`：该 flag 在 1.48 是布尔（模式 'all'），会把已入库基线
+      # 一并覆盖为实际渲染，生成步直接吞掉视觉回归。
+      - name: Generate missing Linux visual baselines (chromium / visual only)
+        run: |
+          set +e
+          pnpm -C tests/e2e e2e --project=chromium visual
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "::warning::基线生成步退出码 $code（首次在 Linux 跑属预期：缺失基线写盘即失败）。以验证步为准。"
+          fi
+
+      - name: Run E2E (chromium, strict)
+        run: pnpm e2e
+
+      # 失败产物：trace + 失败截图（test-results/）与 HTML 报告（playwright-report/，由验证步产出）
+      - name: Upload Playwright report & traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            tests/e2e/playwright-report/
+            tests/e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # 生成的 Linux 基线（*-chromium-linux.png）作为 artifact 供维护者下载后提交入库：
+      # artifact 内保留 `<spec>-snapshots/` 目录层级，整体拷回 tests/e2e/visual/ 即可。
+      # 入库后本工作流无需任何改动：生成步不再有缺失项，验证步直接对入库基线严格比对。
+      # （若日后想自动化入库（bot 直接开 PR 提交基线），需给本工作流 `permissions: contents: write`
+      #   且允许 GITHUB_TOKEN 推分支，并接受「该 token 的 PR 不触发其他工作流」的限制——前提
+      #   未满足前不启用，维持人工入库。）
+      - name: Upload generated Linux visual baselines
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-visual-baselines
+          path: tests/e2e/visual/**/*-chromium-linux.png
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Summarize Linux baselines
+        if: always()
+        run: |
+          total=$(find tests/e2e/visual -name '*-chromium-linux.png' | wc -l | tr -d ' ')
+          new=$(git status --porcelain -- tests/e2e/visual | wc -l | tr -d ' ')
+          echo "Linux chromium 基线共 $total 张，其中本次新生成 $new 张（新生成项请从 linux-visual-baselines artifact 下载并入库）"
