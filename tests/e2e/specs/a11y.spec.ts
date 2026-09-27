@@ -24,6 +24,13 @@ import type { FamilyId } from '../pages/playground.page'
  *      Badge success/warning/info 的 soft 底 + 同系文字色分别约 4.4 / 2.8 / 2.5:1，
  *      均低于 WCAG AA 4.5:1（wcag143）。修复归属 packages/tokens（Paper Profile 取值），
  *      不在本票（仅限 tests/e2e）范围内，豁免登记待 token Profile 修订后回收。
+ *
+ * 2026-09-28 增补（40 个新组件接入 playground 后首扫）：
+ *   - 演示侧已修：新演示不用 text-3 弱化文字（一律 text-2）；role=combobox 触发器
+ *     （Cascader / ModelSelector / TreeSelect，name-from-author 同 Select）补 aria-label。
+ *   - 新登记沿用首扫根因分类：C（Tag/ToolCallCard soft 色对、各组件 text-3 弱化文字）、
+ *     A（SplitterPane 内容盒 overflow:auto 无 tabindex，键盘不可滚动）、
+ *     B（Layout 演示的 aside/main 地标嵌套于分区 region——演示壳层结构约束）。
  */
 
 /** axe 结果类型：axe-core 是 @axe-core/playwright 的传递依赖，不直接 import，从 analyze() 推导 */
@@ -175,6 +182,94 @@ const EXEMPTIONS: readonly A11yExemption[] = [
     target: /\.ui-badge--(success|warning|info)(?![\w-])/,
     reason: 'Table 状态列 Badge（success / warning）命中与通用分区相同的 token 色对缺口。',
     followUp: '同 general 分区登记的 tokens issue，一并回收。',
+  },
+
+  /* ── 2026-09-28 增补：40 个新组件接入 playground 后的首扫增补登记 ──
+   * 根因沿袭首扫两类：token 层 text-3 / soft 色对（C）；组件层结构缺口（A）。 */
+
+  /* ── 根因 C：Tag soft 底 + 同系文字色（与 Badge soft 色对同一 token 根因） ── */
+  {
+    family: 'family-general',
+    ruleId: 'color-contrast',
+    ruleTags: ['cat.color', 'wcag2aa', 'wcag143', 'TTv5', 'TT13.c', 'EN-301-549', 'EN-9.1.4.3', 'ACT'],
+    target: /\.ui-tag--(success|warning|info)(?![\w-])/,
+    reason:
+      'Tag success / warning / info 变体文字色对 soft 底，取色与 Badge soft 色对同源' +
+      '（--ui-{variant}-soft 底 + --ui-{variant} 文字，packages/tokens Paper Profile），' +
+      '组件按 token 消费，修复归属 token 层，不在本票范围。',
+    followUp: '与 general 分区 Badge soft 色对登记的 tokens issue 一并回收。',
+  },
+
+  /* ── 根因 C：新增组件内 text-3 同源弱化文字 ── */
+  {
+    family: 'family-inputs',
+    ruleId: 'color-contrast',
+    ruleTags: ['cat.color', 'wcag2aa', 'wcag143', 'TTv5', 'TT13.c', 'EN-301-549', 'EN-9.1.4.3', 'ACT'],
+    target:
+      /(\.ui-cascader__label--placeholder)|(\.ui-date-picker__label--placeholder)|(\.ui-model-selector__label--placeholder)|(\.ui-slider__mark(?![\w-]))|(\.ui-upload__size(?![\w-]))/,
+    reason:
+      '均为 text-3 同源弱化文字：Cascader / DatePicker / ModelSelector 占位文本、Slider 刻度标签、' +
+      'Upload 文件体积，组件样式统一消费 --ui-text-3——token 层缺口，不在本票范围。',
+    followUp: '同 typography 分区登记的 tokens issue；text-3 档修订后应全部过期并由本 spec 自动报出回收。',
+  },
+  {
+    family: 'family-data',
+    ruleId: 'color-contrast',
+    ruleTags: ['cat.color', 'wcag2aa', 'wcag143', 'TTv5', 'TT13.c', 'EN-301-549', 'EN-9.1.4.3', 'ACT'],
+    target:
+      /(\.ui-message__time)|(\.ui-timeline__time)|(\.ui-tool-call-card__duration)|(\.ui-tool-call-card__section-label)|(\.ui-tool-call-card__status--(success|info|warning))/,
+    reason:
+      'Message 时间戳、Timeline 时间、ToolCallCard 耗时 / 分区标签均为 text-3 同源弱化文字；' +
+      'ToolCallCard 状态徽标（success / info / warning）为 soft 底 + 同系文字色（Badge 同根因）——' +
+      '均属 token 层缺口，不在本票范围。',
+    followUp: '同 typography 分区登记的 tokens issue（text-3 档 + soft 色对），一并回收。',
+  },
+  {
+    family: 'family-feedback',
+    ruleId: 'color-contrast',
+    ruleTags: ['cat.color', 'wcag2aa', 'wcag143', 'TTv5', 'TT13.c', 'EN-301-549', 'EN-9.1.4.3', 'ACT'],
+    target: /\.ui-agent-status--(waitingForTool|completed) .*\.ui-agent-status__label(?![\w-])/,
+    reason:
+      'AgentStatus waitingForTool / completed 态根元素取 --ui-warning / --ui-success 文字色对 soft 底，' +
+      '标签文字继承根色——与 Badge soft 色对同一 token 根因，修复归属 packages/tokens，不在本票范围。',
+    followUp: '与 general 分区 Badge soft 色对登记的 tokens issue 一并回收。',
+  },
+
+  /* ── 根因 A：组件层缺口（SplitterPane 滚动容器键盘不可达） ── */
+  {
+    family: 'family-general',
+    ruleId: 'scrollable-region-focusable',
+    ruleTags: ['cat.keyboard', 'wcag2a', 'wcag211', 'wcag213', 'TTv5', 'TT4.a', 'EN-301-549', 'EN-9.2.1.1', 'EN-9.2.1.3'],
+    target: /\.ui-splitter__pane-content(?![\w-])/,
+    reason:
+      'SplitterPane 根元素（内容盒）恒为 overflow: auto 且未提供 tabindex，内容超出时键盘用户无法滚动——' +
+      '组件层缺口（packages/components/splitter），不在本票（仅限 tests/e2e）范围。',
+    followUp:
+      '组件修复：SplitterPane 内容盒在可滚动时补 tabindex="0"（或无溢出时不设 overflow: auto）；' +
+      '应开组件 issue（SplitterPane 键盘可达）并补组件 a11y spec 断言。',
+  },
+
+  /* ── 根因 B（演示壳层结构）：Layout 演示的地标元素嵌套于分区 region 内 ── */
+  {
+    family: 'family-general',
+    ruleId: 'landmark-complementary-is-top-level',
+    ruleTags: ['cat.semantics', 'best-practice'],
+    target: /#ui-layout-sider/,
+    reason:
+      'LayoutSider 渲染 <aside> 互补地标；playground 壳按产品族把演示卡片包进 section[aria-labelledby]' +
+      '（region 地标）内，aside 因此嵌套于 region——属演示壳层结构约束，组件语义本身正确，不在本票范围。',
+    followUp:
+      '文档站整页演示不受分区 region 包裹；如需回收，可将 Layout 演示移至独立路由或壳层改用非 landmark 分组。',
+  },
+  {
+    family: 'family-general',
+    ruleId: 'landmark-main-is-top-level',
+    ruleTags: ['cat.semantics', 'best-practice'],
+    target: /^main$/,
+    reason:
+      'LayoutContent 渲染 <main> 主地标；壳层已改为 div 以保证全页仅此一个 main，但它仍嵌套于分区' +
+      'region 内——演示壳层结构约束所致，组件语义本身正确，不在本票范围。',
+    followUp: '同 aside 登记条目：Layout 演示移至独立路由或壳层改用非 landmark 分组后回收。',
   },
 ]
 

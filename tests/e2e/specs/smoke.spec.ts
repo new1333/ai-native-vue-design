@@ -15,10 +15,11 @@ test('七个产品族分区 h2 标题齐全', async ({ page, playground }) => {
   }
 })
 
-test('25 个组件 ui-* 根类全部出现在 DOM（初始加载部分）', async ({ playground }) => {
-  // 清单完整性：必须恰好覆盖 25 个组件目录，防止后续漂移
-  expect(Object.keys(COMPONENT_ROOT_CLASSES)).toHaveLength(25)
-  // 浮层（Dialog / Tooltip）与 Toast 条目按需挂载，在 overlay / feedback 用例中交互后断言
+test('65 个组件 ui-* 根类全部出现在 DOM（初始加载部分）', async ({ playground }) => {
+  // 清单完整性：必须恰好覆盖 65 个组件目录，防止后续漂移
+  expect(Object.keys(COMPONENT_ROOT_CLASSES)).toHaveLength(65)
+  // 浮层（Dialog / Drawer / Artifact / CommandPalette / Tooltip）与 Toast 条目按需挂载，
+  // 在 overlay / feedback 用例中交互后断言
   for (const cls of ROOT_CLASSES_ON_LOAD) {
     await expect(playground.rootClass(cls)).toBeAttached()
   }

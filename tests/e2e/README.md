@@ -24,7 +24,7 @@ tests/e2e/
 │   ├── index.ts              # 守卫 fixture：console error / [Vue warn] / pageerror 违例即失败（auto）；豁免 API
 │   └── visual.ts             # 视觉确定性 fixture：reduced-motion + --ui-motion-* 归零 + 1280×720 + settle
 ├── pages/
-│   └── playground.page.ts    # 页面对象：7 个分区 locator + 25 组件 ui-* 根类清单
+│   └── playground.page.ts    # 页面对象：7 个分区 locator + 65 组件 ui-* 根类清单
 ├── specs/                    # 冒烟 + 7 个家族交互 spec + axe 扫描
 │   ├── smoke.spec.ts
 │   ├── form.e2e.spec.ts      # Form / FormField
@@ -40,7 +40,7 @@ tests/e2e/
 
 命名：交互用例 `<family>.e2e.spec.ts`；视觉用例 `<family>.visual.spec.ts`；冒烟 `smoke.spec.ts`；axe 扫描 `a11y.spec.ts`。`playwright.config.ts` 的 `testMatch` 圈定 `specs/**/*.spec.ts` 与 `visual/**/*.visual.spec.ts` 两个目录。
 
-**页面对象维护纪律**：`pages/playground.page.ts` 中的 `COMPONENT_ROOT_CLASSES` 逐一镜像 `packages/components/src/<dir>/` 各 SFC 根元素的 `ui-*` class（含复合子组件；冒烟断言恰好 25 个目录，防漂移）。**组件根类变更时必须同步维护该清单**。浮层类（`ui-dialog` / `ui-tooltip` / `ui-toast__item`）Teleport + 按需挂载，不在初始 DOM，由 overlay / feedback 用例交互后单独断言（`INTERACTION_GATED_ROOT_CLASSES`）。
+**页面对象维护纪律**：`pages/playground.page.ts` 中的 `COMPONENT_ROOT_CLASSES` 逐一镜像 `packages/components/src/<dir>/` 各 SFC 根元素的 `ui-*` class（含复合子组件；冒烟断言恰好 65 个目录，防漂移）。**组件根类变更时必须同步维护该清单**。浮层类（`ui-dialog` / `ui-drawer` / `ui-artifact` / `ui-command-palette` / `ui-tooltip` / `ui-toast__item`）Teleport + 按需挂载，不在初始 DOM，由 overlay / feedback 用例交互后单独断言（`INTERACTION_GATED_ROOT_CLASSES`）。
 
 ## 3. 常用命令
 
