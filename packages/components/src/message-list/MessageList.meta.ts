@@ -34,7 +34,7 @@ export const meta: ComponentDefinition = {
     props: [
       { name: 'messages', type: 'T[]', default: 'undefined', description: '消息数据（数据模式）：提供时逐条渲染，每条经 default 插槽（scope { message, index }）渲染；未提供（undefined）时为分发模式，默认插槽内容原样渲染进滚动容器。显式传 [] 即数据模式空态。' },
       { name: 'autoScroll', type: 'boolean', default: 'true', description: '贴底自动滚动：仅当视口处于贴底阈值内时，内容更新后定位到底部；挂载首帧同样贴底定位。用户向上翻阅离开贴底区后不再自动滚动。' },
-      { name: 'nearBottomThreshold', type: 'number', default: '48（MESSAGE_LIST_NEAR_BOTTOM_THRESHOLD_DEFAULT）', description: '贴底判定阈值（px）：视口底边距内容底部 ≤ 该值视为贴底，autoScroll 才会跟随。' },
+      { name: 'nearBottomThreshold', type: 'number', default: '48', description: '贴底判定阈值（px）：视口底边距内容底部 ≤ 该值视为贴底，autoScroll 才会跟随；缺省回落常量 MESSAGE_LIST_NEAR_BOTTOM_THRESHOLD_DEFAULT（48）。' },
       { name: 'messageKey', type: '(message: T, index: number) => string | number', default: '回落渲染下标', description: '消息稳定键（数据模式）：v-for DOM 复用依据；loadMore 前插历史时强烈建议提供业务唯一键，否则整列表按下标重建。' },
     ],
     slots: [

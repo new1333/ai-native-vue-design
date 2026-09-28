@@ -37,9 +37,7 @@ export const meta: ComponentDefinition = {
     slots: [
       { name: 'default', description: 'label 内容（优先于 label prop）；点击文本即选中（根为 label 元素）。' },
     ],
-    events: [
-      { name: 'change', payload: 'Event', description: '原生 change 事件（经组件转发到组的选中路径；一般无需直接监听，改用 RadioGroup 的 update:modelValue）。' },
-    ],
+    events: [],
     exposes: [
       { name: 'focus', type: '(options?: FocusOptions) => void', description: '聚焦原生 radio（仅客户端有意义）。' },
       { name: 'blur', type: '() => void', description: '移除焦点。' },
