@@ -1,59 +1,27 @@
 /**
- * useDrawer —— Drawer 的浮层交互 composable：焦点圈定（Tab 循环）、焦点移入/还原、
- * body 滚动锁定（跨实例计数，支持嵌套 Drawer）、Esc 请求关闭。
+ * useDrawer —— Drawer 的浮层交互 composable：共享模态层（shared/useModalLayer）的薄适配层。
+ *
+ * 机制已收口于 shared/useModalLayer：body 滚动锁（跨实例计数）、焦点记录/移入/还原、
+ * Tab 循环圈定、Esc 请求关闭、模态/非模态旁路。本文件只保留 Drawer 家族差异——
+ * modal 开关语义（非模态旁路由共享层实现）与滚动锁 body class、面板可聚焦元素选择器
+ * （常量来自 Drawer.constants）。
  *
  * 与 Dialog 的差异：按 modal() 区分模态/非模态——
- *   模态：遮罩关闭路径由组件层承担，此处负责滚动锁、焦点移入/圈定/还原；
+ *   模态：遮罩关闭路径由组件层承担，共享层负责滚动锁、焦点移入/圈定/还原；
  *   非模态：不抢焦点、不锁滚动、Tab 不圈定（页面保持可交互），仅保留 Esc 关闭路径。
  *
- * SSR 安全：模块顶层不访问任何浏览器 API；document 只出现在
- * 由客户端生命周期（onMounted/watch）与用户事件调用的函数内部。
+ * 有意的行为改进：滚动锁此前 dialog/drawer 各自为政（嵌套 dialog+drawer 无法互认计数），
+ * 现由共享层统一计数；且共享层按实例记账，修复了「非模态 drawer deactivate 误减计数」的潜在缺陷。
+ *
+ * 注：DRAWER_ESCAPE_KEY / DRAWER_TAB_KEY 仍为公共契约常量（由 Drawer.constants 导出、
+ * 目录 index.ts 公共导出不变），供使用方与文档引用；模态引擎内部键名（'Escape'/'Tab'）
+ * 由共享层自持，本文件不再消费这两个键名常量。
+ *
+ * SSR 安全：模块顶层不访问任何浏览器 API；document 只出现在由共享层管理的、
+ * 仅被客户端生命周期（onMounted/watch）与用户事件调用的函数内部。
  */
-import { nextTick } from 'vue'
-import {
-  DRAWER_BODY_SCROLL_LOCK_CLASS,
-  DRAWER_ESCAPE_KEY,
-  DRAWER_FOCUSABLE_SELECTOR,
-  DRAWER_TAB_KEY,
-} from './Drawer.constants'
-
-/* ── body 滚动锁定（模块级计数：嵌套 Drawer 只有最后一个解锁时才真正恢复） ── */
-
-/** 当前持有滚动锁的 Drawer 实例数。 */
-let scrollLockCount = 0
-
-/** 锁定前 <body> 的行内 overflow（解锁时原样还原）。 */
-let bodyOverflowCache = ''
-
-/** 锁定 body 滚动：挂 class（公开钩子）+ 行内 overflow 兜底（组件包禁止全局 CSS）。 */
-function lockBodyScroll(): void {
-  scrollLockCount += 1
-  if (scrollLockCount > 1) return
-  bodyOverflowCache = document.body.style.overflow
-  document.body.classList.add(DRAWER_BODY_SCROLL_LOCK_CLASS)
-  // overflow:hidden 为行为性滚动锁定而非视觉取值（token 体系无 overflow 语义）
-  document.body.style.overflow = 'hidden'
-}
-
-/** 解锁 body 滚动（计数归零时还原行内 overflow 并移除 class）。 */
-function unlockBodyScroll(): void {
-  if (scrollLockCount === 0) return
-  scrollLockCount -= 1
-  if (scrollLockCount > 0) return
-  document.body.classList.remove(DRAWER_BODY_SCROLL_LOCK_CLASS)
-  document.body.style.overflow = bodyOverflowCache
-  bodyOverflowCache = ''
-}
-
-/** 当前文档焦点元素（非 HTMLElement 时为 null）。 */
-function getActiveElement(): HTMLElement | null {
-  return document.activeElement instanceof HTMLElement ? document.activeElement : null
-}
-
-/** 面板内可聚焦元素（DOM 序）。 */
-function getFocusableElements(panel: HTMLElement): HTMLElement[] {
-  return Array.from(panel.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE_SELECTOR))
-}
+import { useModalLayer } from '../shared/useModalLayer'
+import { DRAWER_BODY_SCROLL_LOCK_CLASS, DRAWER_FOCUSABLE_SELECTOR } from './Drawer.constants'
 
 /** useDrawer 选项。 */
 export interface UseDrawerOptions {
@@ -77,73 +45,19 @@ export interface UseDrawerReturn {
   focusDrawer: () => void
 }
 
-/** Drawer 浮层交互 composable。 */
+/** Drawer 浮层交互 composable（共享模态层的薄适配：透传 modal 开关）。 */
 export function useDrawer(options: UseDrawerOptions): UseDrawerReturn {
-  let active = false
-  let previouslyFocused: HTMLElement | null = null
-
-  function focusDrawer(): void {
-    const panel = options.panel()
-    if (!panel) return
-    const focusable = getFocusableElements(panel)
-    if (focusable.length > 0) focusable[0].focus()
-    else panel.focus()
+  const layer = useModalLayer({
+    panel: options.panel,
+    onEscape: options.onEscape,
+    modal: options.modal,
+    scrollLockClass: DRAWER_BODY_SCROLL_LOCK_CLASS,
+    focusableSelector: DRAWER_FOCUSABLE_SELECTOR,
+  })
+  return {
+    activate: layer.activate,
+    deactivate: layer.deactivate,
+    onKeydown: layer.onKeydown,
+    focusDrawer: layer.focusPanel,
   }
-
-  function activate(): void {
-    if (active) return
-    active = true
-    // 非模态：页面保持可交互，不锁滚动、不移入焦点（仅 Esc 关闭路径可用）。
-    if (!options.modal()) return
-    lockBodyScroll()
-    previouslyFocused = getActiveElement()
-    // Teleport 内容在打开后的下一次渲染落地；焦点移入等 DOM 就绪再执行。
-    void nextTick().then(() => {
-      if (active) focusDrawer()
-    })
-  }
-
-  function deactivate(): void {
-    if (!active) return
-    active = false
-    unlockBodyScroll()
-    const toRestore = previouslyFocused
-    previouslyFocused = null
-    if (toRestore !== null && toRestore.isConnected) toRestore.focus()
-  }
-
-  /** Tab 循环圈定：焦点始终在面板内首尾环绕，逃逸到面板外时拉回（仅模态调用）。 */
-  function handleTab(event: KeyboardEvent): void {
-    const panel = options.panel()
-    if (!panel) return
-    const focusable = getFocusableElements(panel)
-    if (focusable.length === 0) {
-      event.preventDefault()
-      panel.focus()
-      return
-    }
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    const current = getActiveElement()
-    const insidePanel = current !== null && panel.contains(current)
-    if (event.shiftKey) {
-      if (!insidePanel || current === first) {
-        event.preventDefault()
-        last.focus()
-      }
-    } else if (!insidePanel || current === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
-
-  function onKeydown(event: KeyboardEvent): void {
-    if (event.key === DRAWER_ESCAPE_KEY) {
-      options.onEscape()
-      return
-    }
-    if (event.key === DRAWER_TAB_KEY && options.modal()) handleTab(event)
-  }
-
-  return { activate, deactivate, onKeydown, focusDrawer }
 }

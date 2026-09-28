@@ -1,55 +1,22 @@
 /**
- * useDialog —— Dialog 的浮层交互 composable：焦点圈定（Tab 循环）、焦点移入/还原、
- * body 滚动锁定（跨实例计数，支持嵌套 Dialog）、Esc 请求关闭。
+ * useDialog —— Dialog 的浮层交互 composable：共享模态层（shared/useModalLayer）的薄适配层。
  *
- * SSR 安全：模块顶层不访问任何浏览器 API；document 只出现在
- * 由客户端生命周期（onMounted/watch）与用户事件调用的函数内部。
+ * 机制已收口于 shared/useModalLayer：body 滚动锁（跨实例计数）、焦点记录/移入/还原、
+ * Tab 循环圈定、Esc 请求关闭。本文件只保留 Dialog 家族差异——滚动锁 body class 与
+ * 面板可聚焦元素选择器（常量来自 Dialog.constants）。
+ *
+ * 有意的行为改进：滚动锁此前 dialog/drawer 各自为政（嵌套 dialog+drawer 无法互认计数），
+ * 现由共享层统一计数；且共享层按实例记账，修复了「非模态 drawer deactivate 误减计数」的潜在缺陷。
+ *
+ * 注：DIALOG_ESCAPE_KEY / DIALOG_TAB_KEY 仍为公共契约常量（由 Dialog.constants 导出、
+ * 目录 index.ts 公共导出不变），供使用方与文档引用；模态引擎内部键名（'Escape'/'Tab'）
+ * 由共享层自持，本文件不再消费这两个键名常量。
+ *
+ * SSR 安全：模块顶层不访问任何浏览器 API；document 只出现在由共享层管理的、
+ * 仅被客户端生命周期（onMounted/watch）与用户事件调用的函数内部。
  */
-import { nextTick } from 'vue'
-import {
-  DIALOG_BODY_SCROLL_LOCK_CLASS,
-  DIALOG_ESCAPE_KEY,
-  DIALOG_FOCUSABLE_SELECTOR,
-  DIALOG_TAB_KEY,
-} from './Dialog.constants'
-
-/* ── body 滚动锁定（模块级计数：嵌套 Dialog 只有最后一个解锁时才真正恢复） ── */
-
-/** 当前持有滚动锁的 Dialog 实例数。 */
-let scrollLockCount = 0
-
-/** 锁定前 <body> 的行内 overflow（解锁时原样还原）。 */
-let bodyOverflowCache = ''
-
-/** 锁定 body 滚动：挂 class（公开钩子）+ 行内 overflow 兜底（组件包禁止全局 CSS）。 */
-function lockBodyScroll(): void {
-  scrollLockCount += 1
-  if (scrollLockCount > 1) return
-  bodyOverflowCache = document.body.style.overflow
-  document.body.classList.add(DIALOG_BODY_SCROLL_LOCK_CLASS)
-  // overflow:hidden 为行为性滚动锁定而非视觉取值（token 体系无 overflow 语义）
-  document.body.style.overflow = 'hidden'
-}
-
-/** 解锁 body 滚动（计数归零时还原行内 overflow 并移除 class）。 */
-function unlockBodyScroll(): void {
-  if (scrollLockCount === 0) return
-  scrollLockCount -= 1
-  if (scrollLockCount > 0) return
-  document.body.classList.remove(DIALOG_BODY_SCROLL_LOCK_CLASS)
-  document.body.style.overflow = bodyOverflowCache
-  bodyOverflowCache = ''
-}
-
-/** 当前文档焦点元素（非 HTMLElement 时为 null）。 */
-function getActiveElement(): HTMLElement | null {
-  return document.activeElement instanceof HTMLElement ? document.activeElement : null
-}
-
-/** 面板内可聚焦元素（DOM 序）。 */
-function getFocusableElements(panel: HTMLElement): HTMLElement[] {
-  return Array.from(panel.querySelectorAll<HTMLElement>(DIALOG_FOCUSABLE_SELECTOR))
-}
+import { useModalLayer } from '../shared/useModalLayer'
+import { DIALOG_BODY_SCROLL_LOCK_CLASS, DIALOG_FOCUSABLE_SELECTOR } from './Dialog.constants'
 
 /** useDialog 选项。 */
 export interface UseDialogOptions {
@@ -71,71 +38,18 @@ export interface UseDialogReturn {
   focusDialog: () => void
 }
 
-/** Dialog 浮层交互 composable。 */
+/** Dialog 浮层交互 composable（共享模态层的薄适配：恒模态语义）。 */
 export function useDialog(options: UseDialogOptions): UseDialogReturn {
-  let active = false
-  let previouslyFocused: HTMLElement | null = null
-
-  function focusDialog(): void {
-    const panel = options.panel()
-    if (!panel) return
-    const focusable = getFocusableElements(panel)
-    if (focusable.length > 0) focusable[0].focus()
-    else panel.focus()
+  const layer = useModalLayer({
+    panel: options.panel,
+    onEscape: options.onEscape,
+    scrollLockClass: DIALOG_BODY_SCROLL_LOCK_CLASS,
+    focusableSelector: DIALOG_FOCUSABLE_SELECTOR,
+  })
+  return {
+    activate: layer.activate,
+    deactivate: layer.deactivate,
+    onKeydown: layer.onKeydown,
+    focusDialog: layer.focusPanel,
   }
-
-  function activate(): void {
-    if (active) return
-    active = true
-    lockBodyScroll()
-    previouslyFocused = getActiveElement()
-    // Teleport 内容在打开后的下一次渲染落地；焦点移入等 DOM 就绪再执行。
-    void nextTick().then(() => {
-      if (active) focusDialog()
-    })
-  }
-
-  function deactivate(): void {
-    if (!active) return
-    active = false
-    unlockBodyScroll()
-    const toRestore = previouslyFocused
-    previouslyFocused = null
-    if (toRestore !== null && toRestore.isConnected) toRestore.focus()
-  }
-
-  /** Tab 循环圈定：焦点始终在面板内首尾环绕，逃逸到面板外时拉回。 */
-  function handleTab(event: KeyboardEvent): void {
-    const panel = options.panel()
-    if (!panel) return
-    const focusable = getFocusableElements(panel)
-    if (focusable.length === 0) {
-      event.preventDefault()
-      panel.focus()
-      return
-    }
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    const current = getActiveElement()
-    const insidePanel = current !== null && panel.contains(current)
-    if (event.shiftKey) {
-      if (!insidePanel || current === first) {
-        event.preventDefault()
-        last.focus()
-      }
-    } else if (!insidePanel || current === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
-
-  function onKeydown(event: KeyboardEvent): void {
-    if (event.key === DIALOG_ESCAPE_KEY) {
-      options.onEscape()
-      return
-    }
-    if (event.key === DIALOG_TAB_KEY) handleTab(event)
-  }
-
-  return { activate, deactivate, onKeydown, focusDialog }
 }
