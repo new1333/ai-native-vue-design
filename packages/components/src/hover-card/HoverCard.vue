@@ -263,10 +263,11 @@ function renderTrigger(): VNode | null {
   border-color: var(--ui-border-strong);
 }
 
-/* ── 卡片：surface 底 + md 圆角 + pop 阴影，按 placement 定位（坐标来自触发元素 rect）；
+/* ── 卡片：surface 底 + md 圆角 + pop 阴影，按 placement 定位（坐标来自触发元素 rect，
+   anchored 策略输出视口坐标，须 fixed 定位——absolute 会按文档坐标解析，页面滚动后卡片漂出视口）；
    与 tooltip 的本质差异：卡片可停留（pointer-events:auto），承载摘要与轻交互 ── */
 .ui-hover-card__card {
-  position: absolute;
+  position: fixed;
   box-sizing: border-box;
   max-width: calc(var(--ui-space-8) * 6); /* ≈384px；宽度走间距标尺推导（无 hover-card 宽度 token） */
   padding: var(--ui-space-4);
