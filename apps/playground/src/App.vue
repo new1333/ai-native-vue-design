@@ -2135,9 +2135,15 @@ const lastConfirm = ref('（尚未操作）')
 </style>
 
 <style>
-/* 消费方壳样式：铺底色（--ui-bg 来自 paper.css）并去掉 body 默认边距 */
+/* 消费方壳样式：铺底色（--ui-bg 来自 paper.css）；本页是长组件目录（文档型
+   消费方，靠窗口滚动），覆盖 paper.css 的 app-shell 视口锁恢复文档流。
+   margin 0 与全局滚动条样式由 paper.css 提供 */
+html,
 body {
-  margin: 0;
+  height: auto;
+  overflow: visible;
+}
+body {
   background: var(--ui-bg);
 }
 </style>

@@ -165,4 +165,96 @@ describe('@ui/tokens · paper.css 全局约定', () => {
     expect(tail).toContain('--ui-motion-fast: 0ms')
     expect(tail).toContain('--ui-motion-default: 0ms')
   })
+
+  it('页面滚动约定：html/body 铺满视口、margin 0、overflow hidden、overscroll-behavior none', () => {
+    const block = paperCss.match(/html,\s*body\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(block).toContain('height: 100%')
+    expect(block).toContain('margin: 0')
+    expect(block).toContain('overflow: hidden')
+    expect(block).toContain('overscroll-behavior: none')
+  })
+
+  it('全局滚动条与 ScrollArea 装饰条同款：thumb/hover/宽高/圆角全走 token', () => {
+    const universal = paperCss.match(/(^|\n)\*\s*\{([^}]*)\}/)?.[2] ?? ''
+    expect(universal).toContain('scrollbar-width: thin')
+    expect(universal).toContain('scrollbar-color: var(--ui-border-strong) transparent')
+
+    const bar = paperCss.match(/\n::-webkit-scrollbar \{([^}]*)\}/)?.[1] ?? ''
+    expect(bar).toContain('width: var(--ui-space-2)')
+    expect(bar).toContain('height: var(--ui-space-2)')
+
+    const thumb = paperCss.match(/\n::-webkit-scrollbar-thumb \{([^}]*)\}/)?.[1] ?? ''
+    expect(thumb).toContain('background-color: var(--ui-border-strong)')
+    expect(thumb).toContain('border-radius: var(--ui-radius-xs)')
+
+    const thumbHover = paperCss.match(/\n::-webkit-scrollbar-thumb:hover \{([^}]*)\}/)?.[1] ?? ''
+    expect(thumbHover).toContain('background-color: var(--ui-text-3)')
+  })
+})
+
+describe('@ui/tokens · 深色 Profile（夜纸）', () => {
+  const darkBlock = paperCss.match(
+    /:root\.dark,\s*:root\[data-theme='paper-dark'\]\s*\{([\s\S]*?)\}/,
+  )?.[1]
+  const darkDecls = declarationsOf(darkBlock)
+
+  it('双入口选择器存在，且声明顺序在显式 paper 档之后（组合态深色胜出）', () => {
+    expect(darkBlock).toBeTruthy()
+    expect(paperCss.indexOf(":root[data-theme='paper']")).toBeLessThan(paperCss.indexOf(':root.dark,'))
+  })
+
+  it('重声明全部语义 token 与 component 别名（Profile 档独立成立）', () => {
+    const missing = [...semanticTokens, ...collectTokens(component)].filter((t) => !darkDecls.has(t.name))
+    expect(missing.map((t) => t.name)).toEqual([])
+  })
+
+  it('不随档变的 primitive 亦全量重声明（不依赖默认档铺底）', () => {
+    for (const name of [
+      '--ui-space-8', '--ui-radius-lg', '--ui-font-sans', '--ui-text-3xl',
+      '--ui-motion-default', '--ui-ease-out', '--ui-z-tooltip',
+    ]) {
+      expect(darkDecls.has(name)).toBe(true)
+    }
+  })
+
+  it('块内声明无重复', () => {
+    const names = [...darkDecls.keys()]
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('语义落位：夜纸三级底 + 雾纸文字 + 同构 var() 引用链', () => {
+    expect(darkDecls.get('--ui-bg')).toBe('var(--ui-color-night)')
+    expect(darkDecls.get('--ui-surface')).toBe('var(--ui-color-night-raised)')
+    expect(darkDecls.get('--ui-surface-muted')).toBe('var(--ui-color-dusk)')
+    expect(darkDecls.get('--ui-text-1')).toBe('var(--ui-color-mist-100)')
+    expect(darkDecls.get('--ui-text-2')).toBe('var(--ui-color-mist-300)')
+    expect(darkDecls.get('--ui-text-3')).toBe('var(--ui-color-ink-400)')
+    expect(darkDecls.get('--ui-accent')).toBe('var(--ui-color-pine-600)')
+    expect(darkDecls.get('--ui-on-accent')).toBe('var(--ui-color-white)')
+  })
+
+  it('深色新槽位与重落位值（夜纸三级 / 雾纸 / 前景反转 / 提亮松绿 / 深阴影）', () => {
+    expect(darkDecls.get('--ui-color-night')).toBe('#1B1A16')
+    expect(darkDecls.get('--ui-color-night-raised')).toBe('#23221D')
+    expect(darkDecls.get('--ui-color-dusk')).toBe('#2A2924')
+    expect(darkDecls.get('--ui-color-mist-100')).toBe('#EDEAE0')
+    expect(darkDecls.get('--ui-color-mist-300')).toBe('#B3AFA3')
+    expect(darkDecls.get('--ui-color-white')).toBe('#22211C')
+    expect(darkDecls.get('--ui-color-pine-600')).toBe('#7FAE97')
+    expect(darkDecls.get('--ui-shadow-modal')).toBe('0 8px 24px rgba(0, 0, 0, 0.6)')
+  })
+
+  it('tooltip 对仗：浅色档墨片 ink-950 ↔ 深色档纸片 paper（墨上纸 ↔ 纸上墨）', () => {
+    expect(rootDecls.get('--ui-tooltip')).toBe('var(--ui-color-ink-950)')
+    expect(darkDecls.get('--ui-tooltip')).toBe('var(--ui-color-paper)')
+  })
+
+  it('有意保持浅色的槽位不随档反转（代码块深底浅字设计依赖 ink-950/paper）', () => {
+    for (const name of [
+      '--ui-color-paper', '--ui-color-paper-raised', '--ui-color-sand',
+      '--ui-color-ink-950', '--ui-color-ink-900', '--ui-color-ink-600', '--ui-color-ink-400',
+    ]) {
+      expect(darkDecls.get(name)).toBe(rootDecls.get(name))
+    }
+  })
 })

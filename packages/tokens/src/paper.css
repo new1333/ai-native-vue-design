@@ -7,8 +7,12 @@
  * 结构：
  *   1. `:root` —— 默认档：开箱即用的 Paper 值；
  *   2. `:root[data-theme='paper']` —— 显式 Profile 档：从其他 Profile 切回 paper 时重新生效；
+ *      `:root.dark, :root[data-theme='paper-dark']` —— 深色 Profile 档（夜纸）：双入口同值，
+ *      声明顺序在 paper 档之后（两档同时命中时深色胜出）；
  *   3. `:focus-visible` —— 全局焦点环约定；
- *   4. `prefers-reduced-motion: reduce` —— 所有走 token 的动效时长立即归零。
+ *   4. `prefers-reduced-motion: reduce` —— 所有走 token 的动效时长立即归零；
+ *   5. `html, body` —— 页面滚动约定（视口即应用，页面级滚动条不出现）；
+ *   6. 全局滚动条 —— 与 ScrollArea 装饰条同款的纸面风格。
  *
  * 变量分三层（见设计文档 §6.1）：
  *   primitive（--ui-color-* / --ui-space-* / --ui-radius-* / 字体 / --ui-shadow-* / 动效 / --ui-z-*）
@@ -132,7 +136,7 @@
 }
 
 /* ============================================================
- * 2) 显式 Paper Profile：完整重声明（支持从其他 Profile 切回）
+ * 2) Profile 档：显式 paper（全量重声明）与深色 paper-dark（夜纸）
  * ============================================================ */
 :root[data-theme='paper'] {
   /* ── Primitive · 原始色板 ─────────────────────────── */
@@ -246,6 +250,148 @@
   --ui-input-border-focus: var(--ui-accent);
 }
 
+/* ------------------------------------------------------------
+ * 2b) 深色 Profile：夜纸（全量重声明，双入口同值）
+ *     `:root.dark`（行业惯例 class 入口，VitePress appearance 等
+ *     直接挂 html.dark）与 `:root[data-theme='paper-dark']`（本包
+ *     Profile 属性机制）等价；声明顺序在 paper 档之后，两档同时
+ *     命中时深色胜出。
+ *
+ *     夜纸 = 浅色纸面的镜像：夜色三级抬升底（night / night-raised /
+ *     dusk 新槽位）、文字换雾纸（mist-100 / mist-300）、松绿与语义
+ *     色阶整体提亮、强调实底反转为「浅底深字」——`--ui-color-white`
+ *     槽位随档装深墨，on-accent 与组件直引的彩底前景字（danger 实底、
+ *     tooltip 文字）同步反转；tooltip 化作纸片（浅色档为墨片
+ *     ink-950，深色档为纸片 paper —— 墨上纸 ↔ 纸上墨）。
+ *
+ *     有意保持浅色值的槽位：paper / paper-raised / sand / ink-*。
+ *     文档站代码块与源码面板的「深底浅字」设计（ink-950 底 +
+ *     paper 字）依赖它们不随档反转；ink-400 为深浅两档通用的弱化灰。
+ *     间距 / 圆角 / 字体 / 动效 / 层级不随档变，按 Profile 档全量
+ *     重声明（data-theme='paper-dark' 独立成立，不依赖默认档铺底）。
+ * ------------------------------------------------------------ */
+:root.dark,
+:root[data-theme='paper-dark'] {
+  /* ── Primitive · 深色新槽位：夜纸三级底 + 雾纸文字 ──── */
+  --ui-color-night: #1B1A16;
+  --ui-color-night-raised: #23221D;
+  --ui-color-dusk: #2A2924;
+  --ui-color-mist-100: #EDEAE0;
+  --ui-color-mist-300: #B3AFA3;
+
+  /* ── Primitive · 槽位重落位（同名槽位换深色值） ────── */
+  --ui-color-white: #22211C;
+  --ui-color-line: #3B3931;
+  --ui-color-line-strong: #4D4A40;
+  --ui-color-pine-50: #25332C;
+  --ui-color-pine-600: #7FAE97;
+  --ui-color-pine-700: #93C0AA;
+  --ui-color-moss-50: #243528;
+  --ui-color-moss-600: #82BD9A;
+  --ui-color-amber-50: #3A3322;
+  --ui-color-amber-600: #D9A85C;
+  --ui-color-clay-50: #3A2A25;
+  --ui-color-clay-600: #D98A70;
+  --ui-color-slate-50: #272E33;
+  --ui-color-slate-500: #9FB4C0;
+  --ui-color-scrim: rgba(0, 0, 0, 0.6);
+
+  /* ── Primitive · 有意保持浅色（见块首注释） ────────── */
+  --ui-color-paper: #F7F6F2;
+  --ui-color-paper-raised: #FCFBF8;
+  --ui-color-sand: #F1EFE9;
+  --ui-color-ink-950: #26262A;
+  --ui-color-ink-900: #2C2A25;
+  --ui-color-ink-600: #6E6A60;
+  --ui-color-ink-400: #8B8679;
+
+  /* ── Semantic · 色彩（与浅色档同构的 var() 落位） ──── */
+  --ui-bg: var(--ui-color-night);
+  --ui-surface: var(--ui-color-night-raised);
+  --ui-surface-muted: var(--ui-color-dusk);
+  --ui-border: var(--ui-color-line);
+  --ui-border-strong: var(--ui-color-line-strong);
+  --ui-text-1: var(--ui-color-mist-100);
+  --ui-text-2: var(--ui-color-mist-300);
+  --ui-text-3: var(--ui-color-ink-400);
+  --ui-accent: var(--ui-color-pine-600);
+  --ui-accent-hover: var(--ui-color-pine-700);
+  --ui-accent-soft: var(--ui-color-pine-50);
+  --ui-on-accent: var(--ui-color-white);
+  --ui-success: var(--ui-color-moss-600);
+  --ui-success-soft: var(--ui-color-moss-50);
+  --ui-warning: var(--ui-color-amber-600);
+  --ui-warning-soft: var(--ui-color-amber-50);
+  --ui-danger: var(--ui-color-clay-600);
+  --ui-danger-soft: var(--ui-color-clay-50);
+  --ui-info: var(--ui-color-slate-500);
+  --ui-info-soft: var(--ui-color-slate-50);
+  --ui-tooltip: var(--ui-color-paper);
+  --ui-scrim: var(--ui-color-scrim);
+
+  /* ── Primitive · 间距：不随档变，全量重声明 ─────────── */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 24px;
+  --ui-space-6: 32px;
+  --ui-space-7: 48px;
+  --ui-space-8: 64px;
+
+  /* ── Primitive · 圆角 ─────────────────────────────── */
+  --ui-radius-xs: 2px;
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 16px;
+
+  /* ── Primitive · 字体 ─────────────────────────────── */
+  --ui-font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --ui-font-serif: 'Noto Serif SC', serif;
+  --ui-text-xs: 12px;
+  --ui-text-sm: 13px;
+  --ui-text-md: 15px;
+  --ui-text-lg: 17px;
+  --ui-text-xl: 20px;
+  --ui-text-2xl: 24px;
+  --ui-text-3xl: 30px;
+  --ui-font-weight-regular: 400;
+  --ui-font-weight-medium: 500;
+  --ui-font-weight-semibold: 600;
+  --ui-leading-small: 1.5;
+  --ui-leading-body: 1.7;
+  --ui-leading-heading: 1.3;
+  --ui-numeric: tabular-nums;
+
+  /* ── Primitive · 阴影：夜色下加深一档维持层次 ──────── */
+  --ui-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ui-shadow-hover: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --ui-shadow-pop: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --ui-shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  /* ── Primitive · 动效 ─────────────────────────────── */
+  --ui-motion-fast: 150ms;
+  --ui-motion-default: 180ms;
+  --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Primitive · 层级 ─────────────────────────────── */
+  --ui-z-sticky: 10;
+  --ui-z-dropdown: 100;
+  --ui-z-drawer: 200;
+  --ui-z-modal: 300;
+  --ui-z-toast: 400;
+  --ui-z-tooltip: 500;
+
+  /* ── Component · 别名 ─────────────────────────────── */
+  --ui-button-radius: var(--ui-radius-sm);
+  --ui-button-primary-bg: var(--ui-accent);
+  --ui-button-primary-fg: var(--ui-on-accent);
+  --ui-button-font-weight: var(--ui-font-weight-medium);
+  --ui-input-radius: var(--ui-radius-sm);
+  --ui-input-bg: var(--ui-surface);
+  --ui-input-border-focus: var(--ui-accent);
+}
+
 /* ============================================================
  * 3) 焦点可见性约定：2px 实线强调色 + 2px 偏移
  * ============================================================ */
@@ -263,4 +409,55 @@
     --ui-motion-fast: 0ms;
     --ui-motion-default: 0ms;
   }
+}
+
+/* ============================================================
+ * 5) 页面滚动约定：视口即应用，页面不滚动
+ *    AI-native 应用以视口为界：根布局铺满 html/body，页面级滚动条
+ *    不出现，滚动全部发生在内部面板（ScrollArea 等）。
+ *    overscroll-behavior 同时关闭滚动链与下拉刷新。
+ *    文档型站点（长页面靠窗口滚动）可在自己的样式中覆盖
+ *    height / overflow 恢复文档流。
+ * ============================================================ */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* ============================================================
+ * 6) 全局滚动条：与 ScrollArea 装饰条同款的纸面风格
+ *    标准属性声明在 * 上（scrollbar-width 在部分引擎不继承，
+ *    须逐元素生效）：Firefox / 新 Chromium / 新 Safari 走此路；
+ *    webkit 伪元素兜底旧引擎（新引擎中 scrollbar-color 非 auto
+ *    时按规范抑制伪元素，两条路径互斥不冲突）。视觉全部取
+ *    --ui-* token：拇指 --ui-border-strong、悬停 --ui-text-3、
+ *    条宽 --ui-space-2、圆角 --ui-radius-xs、轨道透明。
+ *    ScrollArea 的 viewport 以组件级规则隐藏原生滚动条
+ *    （类选择器优先级高于 *），不受本约定影响。
+ * ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--ui-space-2);
+  height: var(--ui-space-2);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--ui-border-strong);
+  border-radius: var(--ui-radius-xs);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ui-text-3);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background-color: transparent;
 }
