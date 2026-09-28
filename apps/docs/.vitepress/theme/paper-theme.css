@@ -79,3 +79,41 @@
 .vp-doc div[class*='language-'] pre .line {
   color: var(--ui-color-paper);
 }
+
+/* 文档流恢复：文档站属文档型消费方（长页面靠窗口滚动），覆盖 paper.css */
+/* 的 app-shell 视口锁（height / overflow）；margin 0 与全局滚动条样式继续生效 */
+html,
+body {
+  height: auto;
+  overflow: visible;
+}
+
+/* ============================================================
+ * 首页 hero 右列：HeroShowcase 活组件演示（Layout.vue 的
+ * home-hero-image 插槽）。默认主题该列按「hero 图片」处理：
+ *   - 窄屏渲染在标题上方并居中文本（has-image 行为）；
+ *   - 桌面端容器带 -32px 位移与装饰圆背景（为静态图片设计）。
+ * 组件卡片形态下装饰圆与位移不适用，窄屏直接隐藏演示列
+ * （完整可交互版在首页下方 AiWorkbench），桌面端恢复常规居中。
+ * 选择器用「双类名 / 直接命中 .main」抬高特异性：默认主题的
+ * scoped 样式带 data 属性选择器，等特异性会受加载顺序影响。
+ * ============================================================ */
+.VPHero .image,
+.VPHero .image-bg {
+  display: none;
+}
+
+.VPHero.has-image .main {
+  text-align: left;
+}
+
+@media (min-width: 960px) {
+  .VPHero .image {
+    display: block;
+  }
+
+  .VPHero .image .image-container.image-container {
+    transform: none;
+  }
+}
+

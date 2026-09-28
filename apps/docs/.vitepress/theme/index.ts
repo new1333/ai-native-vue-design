@@ -11,9 +11,10 @@ import './paper-theme.css'
 
 import AgentHints from './components/AgentHints.vue'
 import ApiTables from './components/ApiTables.vue'
+import AiWorkbench from './components/AiWorkbench.vue'
+import ComponentDirectory from './components/ComponentDirectory.vue'
 import ComponentDoc from './components/ComponentDoc.vue'
 import Demo from './components/Demo.vue'
-import HomeCollage from './components/HomeCollage.vue'
 import MetaComposition from './components/MetaComposition.vue'
 import MetaIntent from './components/MetaIntent.vue'
 import MetaNotes from './components/MetaNotes.vue'
@@ -39,6 +40,7 @@ export default {
     app.component('SourceViewer', SourceViewer)
     app.component('TokenBoard', TokenBoard)
     app.component('TokenPlayground', TokenPlayground)
-    app.component('HomeCollage', HomeCollage)
+    app.component('AiWorkbench', AiWorkbench)
+    app.component('ComponentDirectory', ComponentDirectory)
   },
 } satisfies Theme
