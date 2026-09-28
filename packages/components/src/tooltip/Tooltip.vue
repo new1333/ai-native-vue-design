@@ -7,11 +7,13 @@
  * - 触发元素经 cloneVNode 克隆合并事件与 aria-describedby（打开时指向浮层 id），
  *   同时透传使用方写在 <Tooltip> 上的 attrs（class / data-* / 既有监听器链式合并）。
  * - 浮层 Teleport 至 body：role="tooltip"、pointer-events:none（纯提示、不承载交互）；
- *   定位在挂载后按触发元素 rect 计算（fixed + --ui-space-2 间距 token）。
+ *   定位与 Esc 关闭收口于 shared 浮层引擎 useFloatingLayer（anchored 策略：
+ *   按触发元素 rect 计算 fixed 坐标 + --ui-space-2 间距 token + 结构性 translate）。
  * - SSR：不渲染浮层，仅输出 hidden 占位（ui-tooltip 根类）；Teleport 推迟到客户端。
  */
 import { cloneVNode, onBeforeUnmount, onMounted, ref, useAttrs, useId, useSlots } from 'vue'
 import type { ComponentPublicInstance, VNode } from 'vue'
+import { unwrapElement } from '../shared/useFloatingLayer'
 import { TOOLTIP_PLACEMENT_DEFAULT } from './Tooltip.constants'
 import { useTooltip } from './useTooltip'
 import type { TooltipProps, TooltipSlots } from './Tooltip.types'
@@ -34,11 +36,9 @@ const isMounted = ref(false)
 // 触发元素可能是原生元素，也可能是组件（组件取其根元素 $el 测量）
 const triggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null)
 
+/** 触发元素 getter：模板 ref 解包收口于 shared unwrapElement（多根/文本根组件返回 null）。 */
 function getTriggerElement(): HTMLElement | null {
-  const current = triggerRef.value
-  if (current instanceof HTMLElement) return current
-  const inner = (current as ComponentPublicInstance | null)?.$el
-  return inner instanceof HTMLElement ? inner : null
+  return unwrapElement(triggerRef.value)
 }
 
 const { isOpen, floatingStyle, showWithDelay, hideNow, onTriggerKeydown, dispose } = useTooltip({

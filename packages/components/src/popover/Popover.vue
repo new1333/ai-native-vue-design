@@ -9,14 +9,16 @@
  * - 触发元素经 cloneVNode 克隆合并 id、aria-expanded、aria-controls 与事件监听
  *   （策略同 dropdown-menu/）；插槽为文本/多根/空时回退内建原生 button 触发器。
  * - 浮层 Teleport 至 body：role="dialog"（非模态、不设 aria-modal）经 aria-labelledby
- *   指向触发元素 id；定位复用 tooltip/ 策略（rect 测量 + token 间距 + 结构性 translate），
- *   打开期间滚动/resize 跟随重排（策略同 dropdown-menu/）。
+ *   指向触发元素 id；定位与 Esc 收口于 shared 浮层引擎 useFloatingLayer（anchored
+ *   策略：rect 测量 + token 间距 + 结构性 translate），打开期间滚动/resize 跟随重排。
  * - 关闭路径：再次点击 / Esc（触发元素或卡片内按下，焦点回归触发元素）/ scrim 点击
  *   （closeOnScrim，默认开；scrim 为透明命中层，不变暗页面、不圈定焦点，非模态）。
  * - SSR：不渲染浮层，仅输出触发元素（ui-popover 根类包裹）；Teleport 推迟到客户端。
  */
-import { cloneVNode, computed, getCurrentInstance, nextTick, onMounted, ref, useAttrs, useId, useSlots } from 'vue'
+import { cloneVNode, nextTick, onMounted, ref, useAttrs, useId, useSlots } from 'vue'
 import type { ComponentPublicInstance, VNode } from 'vue'
+import { unwrapElement } from '../shared/useFloatingLayer'
+import { useControllableOpen } from '../shared/useControllableOpen'
 import {
   POPOVER_CLOSE_ON_SCRIM_DEFAULT,
   POPOVER_PLACEMENT_DEFAULT,
@@ -28,7 +30,8 @@ import type { PopoverEmits, PopoverProps, PopoverSlots } from './Popover.types'
 // 根为「触发元素 + Teleport」组合，attrs 不自动继承（手动并入触发元素，同 dropdown-menu/）
 defineOptions({ inheritAttrs: false })
 
-// 注意：modelValue 不给默认值；受控与否由「是否绑定 v-model / 直传 :model-value」判定（见下方 isControlled）
+// 注意：modelValue 不给默认值；受控与否由「是否绑定 v-model / 直传 :model-value」判定
+// （判定收口于 shared useControllableOpen）
 const props = withDefaults(defineProps<PopoverProps>(), {
   trigger: POPOVER_TRIGGER_DEFAULT,
   placement: POPOVER_PLACEMENT_DEFAULT,
@@ -47,43 +50,27 @@ const cardId = useId()
 /** 客户端已挂载：SSR 期间恒为 false，浮层分支不渲染。 */
 const isMounted = ref(false)
 
-/** 触发元素：原生元素或组件实例（组件触发元素经 $el 解包，同 tooltip/dropdown-menu/）。 */
+/** 触发元素：原生元素或组件实例（组件触发元素经 $el 解包，收口于 shared unwrapElement）。 */
 const triggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null)
 const cardRef = ref<HTMLElement | null>(null)
 
-/** 触发元素 getter：组件实例解包为其根元素（多根/文本根组件返回 null）。 */
+/** 触发元素 getter：模板 ref 解包收口于 shared unwrapElement（组件实例取根 $el）。 */
 function triggerElement(): HTMLElement | null {
-  const current = triggerRef.value
-  if (current instanceof HTMLElement) return current
-  const inner = (current as ComponentPublicInstance | null)?.$el
-  return inner instanceof HTMLElement ? inner : null
+  return unwrapElement(triggerRef.value)
 }
 
-/* ── 显隐：受控跟随 modelValue，非受控走内部状态；开合统一 emit update:modelValue ── */
-
-/** 非受控内部状态。 */
-const internalOpen = ref(false)
+/* ── 显隐：受控/非受控收口于 shared useControllableOpen；开合统一 emit update:modelValue ── */
 
 /**
- * 是否受控：绑定了 v-model（onUpdate:modelValue 监听）或显式直传 :model-value 即为受控。
- * 注意 Vue 对 Boolean 型 prop 有布尔转型（未传时 props.modelValue 恒为 false 而非
- * undefined），无法用 props.modelValue 判空，须查原始 vnode props 的键存在性；
- * 受控与否由模板静态决定，在 setup（挂载）时判定一次即可。
+ * 受控/非受控开合状态：绑定了 v-model 或直传 :model-value 即为受控（setup 时判定一次，
+ * 须查原始 vnode props 键存在性，不能凭 props.modelValue 判空——Vue 对 Boolean 型
+ * prop 有布尔转型）；受控跟随 modelValue，非受控走内部状态；setOpen 同值短路，
+ * 受控只 emit，非受控 emit + 内部落位。
  */
-const initialRawProps = getCurrentInstance()?.vnode.props as Record<string, unknown> | undefined
-const isControlled = Boolean(
-  initialRawProps && ('modelValue' in initialRawProps || 'onUpdate:modelValue' in initialRawProps),
-)
-
-/** 当前是否打开。 */
-const isOpen = computed(() => (isControlled ? Boolean(props.modelValue) : internalOpen.value))
-
-/** 统一开合入口：受控只 emit，非受控 emit + 内部落位。 */
-function setOpen(value: boolean): void {
-  if (isOpen.value === value) return
-  emit('update:modelValue', value)
-  if (!isControlled) internalOpen.value = value
-}
+const { isOpen, setOpen } = useControllableOpen({
+  modelValue: () => props.modelValue,
+  onUpdate: (value) => emit('update:modelValue', value),
+})
 
 /** 请求开启：无 default 插槽（无内容）不开启（受控外部置 true 不受限）。 */
 function requestOpen(): void {

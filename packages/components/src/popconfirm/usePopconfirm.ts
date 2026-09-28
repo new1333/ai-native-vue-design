@@ -5,17 +5,20 @@
  *      emit 对应事件后调用 close；Esc（触发元素或气泡内）关闭并焦点回归触发元素；
  *      打开期间 document 上的 mousedown 落在触发元素/气泡之外时关闭（焦点在气泡内
  *      则焦点回归触发元素，否则不抢焦点）。
- *   2. 定位（策略同 tooltip/popover 家族）：按触发元素 rect 计算 fixed 坐标——与
- *      触发元素的间距在 calc 内引用 --ui-space-2 token，居中/贴边用结构性 translate
- *      百分比，无需测量气泡自身尺寸；打开与打开期间方向切换、滚动（capture）/
- *      resize 跟随重排（策略同 popover/）。
+ *   2. 定位与 Esc 关闭收口于 shared 浮层引擎 useFloatingLayer（anchored 策略）：
+ *      按触发元素 rect 计算 fixed 坐标——与触发元素的间距在 calc 内引用 --ui-space-2
+ *      token，居中/贴边用结构性 translate 百分比，无需测量气泡自身尺寸；打开与打开
+ *      期间方向切换、滚动（capture）/resize 跟随重排（followViewport）。Esc（打开时
+ *      preventDefault）映射 close(true)（焦点回归触发元素）。外部点击关闭走本
+ *      composable 的 mousedown 判定（含焦点去向语义），不启用引擎的 closeOnOutsideClick。
  *
  * SSR 安全：模块/setup 顶层不访问任何浏览器 API；document/window 监听只在
  * onMounted 注册、onBeforeUnmount 移除，回调内逻辑仅由用户事件触达。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ComputedRef, CSSProperties, Ref } from 'vue'
-import { POPCONFIRM_GAP, POPCONFIRM_KEY_ESCAPE } from './Popconfirm.constants'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
+import { POPCONFIRM_GAP } from './Popconfirm.constants'
 import type { PopconfirmPlacement } from './Popconfirm.types'
 
 /** usePopconfirm 选项（均为 getter，保持对 props / ref 的响应式依赖）。 */
@@ -53,51 +56,6 @@ export interface UsePopconfirmReturn {
 /** Popconfirm 气泡交互 composable（仅在 setup 中调用）。 */
 export function usePopconfirm(options: UsePopconfirmOptions): UsePopconfirmReturn {
   const isOpen = ref(false)
-  const position = ref<CSSProperties>({})
-
-  /**
-   * 按触发元素 rect 计算气泡定位（策略同 tooltip/popover/）：fixed 坐标取自 rect
-   * （测量数据），与触发元素的间距走 --ui-space-2 token（calc 内引用，无裸值）；
-   * 居中对齐用结构性 translate 百分比（无需二段测量气泡自身尺寸）。
-   */
-  function updatePosition(): void {
-    const trigger = options.trigger()
-    if (!trigger) return
-    const rect = trigger.getBoundingClientRect()
-    const centerX = `${rect.left + rect.width / 2}px`
-    const centerY = `${rect.top + rect.height / 2}px`
-
-    switch (options.placement()) {
-      case 'top':
-        position.value = {
-          left: centerX,
-          top: `calc(${rect.top}px - ${POPCONFIRM_GAP})`,
-          transform: 'translate(-50%, -100%)',
-        }
-        break
-      case 'bottom':
-        position.value = {
-          left: centerX,
-          top: `calc(${rect.bottom}px + ${POPCONFIRM_GAP})`,
-          transform: 'translate(-50%, 0)',
-        }
-        break
-      case 'left':
-        position.value = {
-          left: `calc(${rect.left}px - ${POPCONFIRM_GAP})`,
-          top: centerY,
-          transform: 'translate(-100%, -50%)',
-        }
-        break
-      case 'right':
-        position.value = {
-          left: `calc(${rect.right}px + ${POPCONFIRM_GAP})`,
-          top: centerY,
-          transform: 'translate(0, -50%)',
-        }
-        break
-    }
-  }
 
   /** 请求打开：title/description 均为空（无内容）不弹层。 */
   function open(): void {
@@ -118,13 +76,17 @@ export function usePopconfirm(options: UsePopconfirmOptions): UsePopconfirmRetur
     else open()
   }
 
-  /** Esc 关闭（触发元素与气泡共用）：打开时关闭并焦点回归触发元素。 */
-  function onEscapeKeydown(event: KeyboardEvent): void {
-    if (event.key === POPCONFIRM_KEY_ESCAPE && isOpen.value) {
-      event.preventDefault()
-      close(true)
-    }
-  }
+  // 定位与 Esc 关闭收口于 shared 浮层引擎：anchored 策略（GAP 走 --ui-space-2 token，
+  // calc 内引用）、滚动（capture）/resize 跟随重排；Esc → close(true)（焦点回归触发元素）。
+  const layer = useFloatingLayer({
+    isOpen: () => isOpen.value,
+    anchor: options.trigger,
+    strategy: 'anchored',
+    placement: options.placement,
+    gap: POPCONFIRM_GAP,
+    followViewport: true,
+    onRequestClose: () => close(true),
+  })
 
   /**
    * 外部 mousedown：目标落在触发元素与气泡之外时关闭（触发元素上仍走 click 开合，
@@ -140,42 +102,22 @@ export function usePopconfirm(options: UsePopconfirmOptions): UsePopconfirmRetur
     close(options.card()?.contains(document.activeElement) === true)
   }
 
-  // 打开与打开期间的方向变化：等 Teleport 内容落地后按 rect 重排。
-  watch(
-    [isOpen, () => options.placement()],
-    ([open]) => {
-      if (open) void nextTick().then(updatePosition)
-    },
-  )
-
-  /* ── 全局监听（onMounted 常驻绑定、onBeforeUnmount 移除，回调以 isOpen 守卫，同 popover/） ── */
-
-  /** 滚动（capture 捕获任意祖先滚动容器）与视口变化时跟随重定位。 */
-  function onViewportChange(): void {
-    if (!isOpen.value) return
-    updatePosition()
-  }
-
   onMounted(() => {
     document.addEventListener('mousedown', onDocumentMousedown)
-    document.addEventListener('scroll', onViewportChange, true)
-    window.addEventListener('resize', onViewportChange)
   })
 
   onBeforeUnmount(() => {
     document.removeEventListener('mousedown', onDocumentMousedown)
-    document.removeEventListener('scroll', onViewportChange, true)
-    window.removeEventListener('resize', onViewportChange)
   })
 
   return {
     isOpen,
-    floatingStyle: computed(() => position.value),
-    updatePosition,
+    floatingStyle: layer.floatingStyle,
+    updatePosition: layer.updatePosition,
     open,
     close,
     toggle,
-    onTriggerKeydown: onEscapeKeydown,
-    onCardKeydown: onEscapeKeydown,
+    onTriggerKeydown: layer.onKeydown,
+    onCardKeydown: layer.onKeydown,
   }
 }

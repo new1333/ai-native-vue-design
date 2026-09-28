@@ -1,17 +1,16 @@
 /**
- * useTooltip —— Tooltip 的浮层交互 composable：显示延迟/立即隐藏的状态机
- * 与按触发元素 rect 的方向定位（top / bottom / left / right）。
+ * useTooltip —— Tooltip 的浮层交互 composable：显示延迟/立即隐藏的状态机。
+ * 方向定位（anchored 四向 + token 间距 + 结构性 translate）与 Esc 关闭收口于
+ * shared 浮层引擎 useFloatingLayer（anchored 策略）；纯提示浮层不跟随滚动/resize
+ * （不启用 followViewport），Esc 映射为 hideNow（立即隐藏）。
  *
- * SSR 安全：模块顶层不访问任何浏览器 API；getBoundingClientRect /
- * setTimeout 只出现在由客户端生命周期与用户事件触发的函数内部。
+ * SSR 安全：模块/setup 顶层不访问任何浏览器 API；setTimeout 只出现在由客户端
+ * 生命周期与用户事件触发的函数内部（引擎侧监听只在 onMounted 注册）。
  */
-import { computed, nextTick, ref, watch } from 'vue'
+import { ref } from 'vue'
 import type { ComputedRef, CSSProperties, Ref } from 'vue'
-import {
-  TOOLTIP_ESCAPE_KEY,
-  TOOLTIP_GAP,
-  TOOLTIP_SHOW_DELAY_MS,
-} from './Tooltip.constants'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
+import { TOOLTIP_GAP, TOOLTIP_SHOW_DELAY_MS } from './Tooltip.constants'
 import type { TooltipPlacement } from './Tooltip.types'
 
 /** useTooltip 选项（均为 getter，保持对 props / ref 的响应式依赖）。 */
@@ -43,7 +42,6 @@ export interface UseTooltipReturn {
 /** Tooltip 浮层交互 composable。 */
 export function useTooltip(options: UseTooltipOptions): UseTooltipReturn {
   const isOpen = ref(false)
-  const position = ref<CSSProperties>({})
 
   let showTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -68,68 +66,28 @@ export function useTooltip(options: UseTooltipOptions): UseTooltipReturn {
     isOpen.value = false
   }
 
-  function onTriggerKeydown(event: KeyboardEvent): void {
-    if (event.key === TOOLTIP_ESCAPE_KEY) hideNow()
-  }
-
-  /**
-   * 按触发元素 rect 计算浮层定位：fixed 坐标取自 rect（测量数据），
-   * 与触发元素的间距走 --ui-space-2 token（calc 内引用，无裸值）；
-   * 居中对齐用结构性 translate 百分比（无需二段测量浮层自身尺寸）。
-   */
-  function updatePosition(): void {
-    const trigger = options.trigger()
-    if (!trigger) return
-    const rect = trigger.getBoundingClientRect()
-    const centerX = `${rect.left + rect.width / 2}px`
-    const centerY = `${rect.top + rect.height / 2}px`
-
-    switch (options.placement()) {
-      case 'top':
-        position.value = {
-          left: centerX,
-          top: `calc(${rect.top}px - ${TOOLTIP_GAP})`,
-          transform: 'translate(-50%, -100%)',
-        }
-        break
-      case 'bottom':
-        position.value = {
-          left: centerX,
-          top: `calc(${rect.bottom}px + ${TOOLTIP_GAP})`,
-          transform: 'translate(-50%, 0)',
-        }
-        break
-      case 'left':
-        position.value = {
-          left: `calc(${rect.left}px - ${TOOLTIP_GAP})`,
-          top: centerY,
-          transform: 'translate(-100%, -50%)',
-        }
-        break
-      case 'right':
-        position.value = {
-          left: `calc(${rect.right}px + ${TOOLTIP_GAP})`,
-          top: centerY,
-          transform: 'translate(0, -50%)',
-        }
-        break
-    }
-  }
-
-  // 打开与打开期间的方向变化：等 Teleport 内容落地后按 rect 重排。
-  watch(
-    [isOpen, () => options.placement()],
-    ([open]) => {
-      if (open) void nextTick().then(updatePosition)
-    },
-  )
-
-  const floatingStyle = computed<CSSProperties>(() => position.value)
+  // 定位与 Esc 关闭收口于 shared 浮层引擎：anchored 策略（GAP 走 --ui-space-2 token，
+  // calc 内引用）；纯提示浮层不跟随滚动/resize；Esc（打开时）→ hideNow 立即隐藏。
+  const layer = useFloatingLayer({
+    isOpen: () => isOpen.value,
+    anchor: options.trigger,
+    strategy: 'anchored',
+    placement: options.placement,
+    gap: TOOLTIP_GAP,
+    onRequestClose: () => hideNow(),
+  })
 
   function dispose(): void {
     clearShowTimer()
     isOpen.value = false
   }
 
-  return { isOpen, floatingStyle, showWithDelay, hideNow, onTriggerKeydown, dispose }
+  return {
+    isOpen,
+    floatingStyle: layer.floatingStyle,
+    showWithDelay,
+    hideNow,
+    onTriggerKeydown: layer.onKeydown,
+    dispose,
+  }
 }

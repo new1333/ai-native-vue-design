@@ -10,8 +10,8 @@
  *   （策略同 popover/）；插槽为文本/多根/空时回退内建原生 button 触发器。
  * - 气泡 Teleport 至 body：role="dialog"（非模态、不设 aria-modal），aria-labelledby
  *   指向标题元素 id（无 title 时指向触发元素 id），有 description 时 aria-describedby
- *   指向描述元素 id；定位复用 tooltip/popover 策略（rect 测量 + token 间距 + 结构性
- *   translate），打开期间滚动/resize 跟随重排（策略同 popover/）。
+ *   指向描述元素 id；定位与 Esc 收口于 shared 浮层引擎 useFloatingLayer（anchored
+ *   策略：rect 测量 + token 间距 + 结构性 translate），打开期间滚动/resize 跟随重排。
  * - 焦点：气泡 Teleport 至 body 尾部、Tab 序不自然经过，打开时把初始焦点移入气泡
  *   （落在「取消」这一破坏性最小动作，Tab 即达「确认」）；关闭（确认/取消/Esc/
  *   外部点击时焦点在气泡内）把焦点还原到触发元素。
@@ -21,6 +21,7 @@
  */
 import { cloneVNode, nextTick, onMounted, ref, useAttrs, useId, useSlots, watch } from 'vue'
 import type { ComponentPublicInstance, VNode } from 'vue'
+import { unwrapElement } from '../shared/useFloatingLayer'
 import {
   POPCONFIRM_CANCEL_TEXT_DEFAULT,
   POPCONFIRM_CONFIRM_TEXT_DEFAULT,
@@ -52,18 +53,15 @@ const descriptionId = useId()
 /** 客户端已挂载：SSR 期间恒为 false，气泡分支不渲染。 */
 const isMounted = ref(false)
 
-/** 触发元素：原生元素或组件实例（组件触发元素经 $el 解包，同 tooltip/popover/）。 */
+/** 触发元素：原生元素或组件实例（组件触发元素经 $el 解包，收口于 shared unwrapElement）。 */
 const triggerRef = ref<HTMLElement | ComponentPublicInstance | null>(null)
 const cardRef = ref<HTMLElement | null>(null)
 /** 「取消」按钮：打开后初始焦点落点（破坏性最小动作）。 */
 const cancelRef = ref<HTMLButtonElement | null>(null)
 
-/** 触发元素 getter：组件实例解包为其根元素（多根/文本根组件返回 null）。 */
+/** 触发元素 getter：模板 ref 解包收口于 shared unwrapElement（组件实例取根 $el）。 */
 function triggerElement(): HTMLElement | null {
-  const current = triggerRef.value
-  if (current instanceof HTMLElement) return current
-  const inner = (current as ComponentPublicInstance | null)?.$el
-  return inner instanceof HTMLElement ? inner : null
+  return unwrapElement(triggerRef.value)
 }
 
 const { isOpen, floatingStyle, toggle, close, onTriggerKeydown, onCardKeydown } = usePopconfirm({
