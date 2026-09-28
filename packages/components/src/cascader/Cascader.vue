@@ -4,18 +4,20 @@
  * + Paper 视觉（token-only）。
  *
  * - 状态机在 useCascader.ts（纯逻辑，无 DOM）；本组件只承接 DOM 副作用：
- *   弹层定位（打开时按触发器 rect 计算）、document 点击外部关闭、焦点管理。
+ *   浮层接入 shared 引擎 useFloatingLayer（dropdown 策略：文档坐标定位 +
+ *   document 点击外部关闭）与焦点管理。
  * - 焦点模型复用 Select 的 combobox + listbox 纪律（aria-activedescendant）：
  *   焦点始终停留在触发器上，选项不进 Tab 序，弹层 mousedown preventDefault；
  *   键盘 ↑↓←→ 面板导航：↓/↑ 当前面板内移动，→ 进入子级，← 返回上级。
  * - aria-controls 仅打开时挂载：弹层由 v-if 整体承载、关闭即从 DOM 移除，关闭态
  *   不输出悬空 idref（与 Popover/Popconfirm/HoverCard 的 dialog 家族约定一致）；
  *   aria-expanded 恒有。
- * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；document 监听只在
- *   onMounted 注册、onBeforeUnmount 移除。
+ * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；document 点击监听由浮层
+ *   引擎在 onMounted 注册、onBeforeUnmount 移除。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   CASCADER_EMPTY_TEXT_DEFAULT,
   CASCADER_PATHS_SEPARATOR,
@@ -137,25 +139,20 @@ const menuEl = ref<HTMLDivElement | null>(null)
 /** 浮层仅客户端：SSR 输出中不出现弹层。 */
 const mounted = ref(false)
 
-/** 弹层内联定位：打开时按触发器 rect + 页面滚动偏移计算（文档坐标 top/left + minWidth）。 */
-const popupStyle = ref<Record<string, string>>({})
-
-function updatePosition(): void {
-  const trigger = triggerEl.value
-  if (!trigger) return
-  // 与 Select 同纪律：getBoundingClientRect() 为视口坐标，弹层 Teleport 到 body 下
-  // 绝对定位，须加 window.scrollX/scrollY 换算为文档坐标。仅在 open 变 true 后的
-  // nextTick（客户端交互路径）触达 window，SSR 不经过此处。
-  const rect = trigger.getBoundingClientRect()
-  popupStyle.value = {
-    top: `${rect.bottom + window.scrollY}px`,
-    left: `${rect.left + window.scrollX}px`,
-    minWidth: `${rect.width}px`,
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) void nextTick(updatePosition)
+/**
+ * 浮层接入 shared 引擎 useFloatingLayer（dropdown 策略）：打开时等 Teleport 落地后
+ * 按触发器 rect + 页面滚动偏移换算文档坐标定位（top/left/minWidth 内联写入）；
+ * document（capture）点击外部关闭，目标落在根容器或弹层内则放行。Esc 在键盘状态机
+ * 内受理，不走引擎（closeOnEscape=false）。
+ */
+const { floatingStyle } = useFloatingLayer({
+  isOpen: () => open.value,
+  anchor: () => triggerEl.value,
+  strategy: 'dropdown',
+  closeOnOutsideClick: true,
+  insideElements: () => [rootEl.value, menuEl.value],
+  closeOnEscape: false,
+  onRequestClose: () => closeList(),
 })
 
 function onTriggerBlur(): void {
@@ -175,22 +172,8 @@ function onCheckboxChange(depth: number, index: number): void {
   togglePath(optionPath(depth, index))
 }
 
-/** 点击外部关闭：目标在根容器或弹层内则交由内部处理器，否则关闭。 */
-function onDocumentClick(event: MouseEvent): void {
-  if (!open.value) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (rootEl.value?.contains(target) || menuEl.value?.contains(target)) return
-  closeList()
-}
-
 onMounted(() => {
   mounted.value = true
-  document.addEventListener('click', onDocumentClick, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick, true)
 })
 
 function focus(options?: FocusOptions): void {
@@ -246,7 +229,7 @@ defineExpose<CascaderExpose>({ focus, blur })
       </svg>
     </button>
     <Teleport v-if="mounted && open" to="body">
-      <div ref="menuEl" :id="menuId" class="ui-cascader__menu" :style="popupStyle" @mousedown.prevent>
+      <div ref="menuEl" :id="menuId" class="ui-cascader__menu" :style="floatingStyle" @mousedown.prevent>
         <template v-if="rootOptions.length > 0">
           <div
             v-for="(panel, depth) in panels"

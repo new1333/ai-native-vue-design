@@ -5,8 +5,9 @@
  *   1. 开合状态（open）与高亮链（activeIndexes：每一层面板内的高亮下标）；
  *   2. 面板推导（panels）：根级面板 + 高亮链上每个含 children 节点的子面板
  *      （展开跟随高亮：高亮移动到无子级的节点时深层面板自动收起）；
- *   3. 导航：↓/↑ 当前面板内移动（跳过 disabled，两端夹住）、→ 进入子级、
- *      ← 返回上级、Home/End 首尾；
+ *   3. 导航：↓/↑ 当前面板内移动（跳过 disabled，两端夹住）与 Home/End 首尾的
+ *      下标数学收口于 shared useListNavigation（可选集合 = 当前导航面板）；→ 进入
+ *      子级、← 返回上级与多面板展开推导是级联特有逻辑，留在本文件；
  *   4. 提交出口：叶子提交路径并关闭（单选）/ 勾选路径（多选，弹层保持打开）；
  *      changeOnSelect 时父节点也可提交路径（单选，提交后仍展开下级）；
  *   5. 键盘状态机：Enter/Space 打开或提交、Esc 关闭，受理键一律 preventDefault。
@@ -15,6 +16,7 @@
  */
 import { computed, ref, toValue } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useListNavigation } from '../shared/useListNavigation'
 import { CASCADER_NAVIGATION_KEYS } from './Cascader.constants'
 import type { CascaderModelValue, CascaderOption, CascaderPath, CascaderValue } from './Cascader.types'
 
@@ -175,35 +177,58 @@ export function useCascader(setup: UseCascaderOptions): UseCascaderReturn {
 
   const displayLabels = computed<string[][]>(() => selectedPaths.value.map(labelsForPath))
 
-  function enabledIndexes(list: CascaderOption[]): number[] {
-    return list.flatMap((option, index) => (option.disabled ? [] : [index]))
-  }
+/** 某一面板选项列表中非 disabled 选项的下标全集，导航只在其中移动。 */
+function enabledIndexesOf(list: CascaderOption[]): number[] {
+  return list.flatMap((option, index) => (option.disabled ? [] : [index]))
+}
 
-  /** 把高亮链截断到 depth 并落位 index（更深的高亮随之丢弃，深层面板按推导收起/更新）。 */
-  function setIndex(depth: number, index: number): void {
-    const next = activeIndexes.value.slice(0, depth)
-    next.push(index)
-    activeIndexes.value = next
-  }
+/**
+ * 高亮导航引擎（shared useListNavigation）：可选集合 = 当前导航面板（高亮链尾层）
+ * 的非禁用下标（链空 = 无当前面板，集合为空）；已选下标来源 = 链尾。↓/↑ 的步进
+ * 数学与 Home/End 的端点跳转由引擎承担；面板间移动（→/←）与整链落位是级联特有
+ * 逻辑，留在本文件。
+ */
+const navigation = useListNavigation({
+  enabledIndexes: () => {
+    const depth = activeIndexes.value.length - 1
+    return depth < 0 ? [] : enabledIndexesOf(panels.value[depth] ?? [])
+  },
+  selectedIndex: () => activeIndexes.value[activeIndexes.value.length - 1] ?? -1,
+})
+
+/**
+ * 高亮链整体落位（本 composable 内一切链变更的唯一入口）：写入链的同时把链尾
+ * 同步给导航引擎，引擎的步进/端点数学始终以链尾为「当前高亮」。
+ */
+function applyIndexes(next: number[]): void {
+  activeIndexes.value = next
+  navigation.setActive(next[next.length - 1] ?? -1)
+}
+
+/** 把高亮链截断到 depth 并落位 index（更深的高亮随之丢弃，深层面板按推导收起/更新）。 */
+function setIndex(depth: number, index: number): void {
+  applyIndexes([...activeIndexes.value.slice(0, depth), index])
+}
 
   function openList(): void {
     if (disabled.value || open.value) return
     open.value = true
-    // 高亮落位：已选路径链优先（面板直接展示已选链），否则首个可选根项。
+    // 高亮落位：已选路径链优先（面板直接展示已选链），否则首个可选根项。落位是
+    // 整链语义（引擎 initialActiveIndex 只做单层落位，不适配，见文件头）。
     const seed = selectedPaths.value[0]
     const resolved = seed === undefined ? null : resolveIndexes(seed)
     if (resolved !== null && resolved.length > 0) {
-      activeIndexes.value = resolved
+      applyIndexes(resolved)
       return
     }
-    const enabled = enabledIndexes(optionList.value)
-    activeIndexes.value = enabled.length > 0 ? [enabled[0]] : []
+    const enabled = enabledIndexesOf(optionList.value)
+    applyIndexes(enabled.length > 0 ? [enabled[0]] : [])
   }
 
   function closeList(): void {
     if (!open.value) return
     open.value = false
-    activeIndexes.value = []
+    applyIndexes([])
   }
 
   function toggleList(): void {
@@ -214,24 +239,16 @@ export function useCascader(setup: UseCascaderOptions): UseCascaderReturn {
   function moveActive(step: 1 | -1): void {
     const depth = activeIndexes.value.length - 1
     if (depth < 0) return
-    const enabled = enabledIndexes(panels.value[depth] ?? [])
-    if (enabled.length === 0) return
-    const current = enabled.indexOf(activeIndexes.value[depth] ?? -1)
-    const next =
-      current === -1
-        ? step === 1
-          ? 0
-          : enabled.length - 1
-        : Math.min(Math.max(current + step, 0), enabled.length - 1)
-    setIndex(depth, enabled[next])
+    // 步进数学（跳过 disabled、两端夹住、不环绕）收口于导航引擎，结果写回当前面板层。
+    navigation.moveActive(step)
+    setIndex(depth, navigation.activeIndex.value)
   }
 
   function toEdge(edge: CascaderNavigationEdge): void {
     const depth = activeIndexes.value.length - 1
     if (depth < 0) return
-    const enabled = enabledIndexes(panels.value[depth] ?? [])
-    if (enabled.length === 0) return
-    setIndex(depth, edge === 'first' ? enabled[0] : enabled[enabled.length - 1])
+    navigation.toEdge(edge)
+    setIndex(depth, navigation.activeIndex.value)
   }
 
   function expandActive(): void {
@@ -239,13 +256,14 @@ export function useCascader(setup: UseCascaderOptions): UseCascaderReturn {
     if (depth < 0) return
     const node = panels.value[depth]?.[activeIndexes.value[depth] ?? -1]
     if (node === undefined || isLeaf(node)) return
-    const enabled = enabledIndexes(node.children ?? [])
+    // 子级落位为级联特有：全禁用时仍落 0（引擎 toEdge 在空集合 no-op，不适配）。
+    const enabled = enabledIndexesOf(node.children ?? [])
     setIndex(depth + 1, enabled.length > 0 ? enabled[0] : 0)
   }
 
   function collapseActive(): void {
     if (activeIndexes.value.length <= 1) return
-    activeIndexes.value = activeIndexes.value.slice(0, -1)
+    applyIndexes(activeIndexes.value.slice(0, -1))
   }
 
   function highlightAt(depth: number, index: number): void {

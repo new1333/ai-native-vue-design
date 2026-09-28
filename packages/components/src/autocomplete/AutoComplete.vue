@@ -3,21 +3,23 @@
  * AutoComplete —— 带建议列表的可输入选择器：可编辑输入框（combobox 语义）
  * + Teleport 弹层（listbox 语义）+ Paper 视觉（token-only）。
  *
- * - 状态机（建议过滤/开合/高亮/键盘/防抖）在 useAutoComplete.ts（纯逻辑，无 DOM）；
- *   本组件只承接 DOM 副作用：弹层定位（打开时按输入框 rect 计算）、高亮项滚动入
- *   弹层视口（aria-activedescendant 模式焦点不随高亮移动，浏览器不会自动滚动非焦点
- *   元素，须手动 scrollIntoView）、document 点击外部关闭、焦点管理、卸载时取消
+ * - 状态机（建议过滤/开合/高亮/键盘/防抖）在 useAutoComplete.ts（纯逻辑，无 DOM；
+ *   高亮下标数学收口于 shared 导航引擎 useListNavigation）；本组件只承接 DOM
+ *   副作用：弹层定位与点击外部关闭（shared 浮层引擎 useFloatingLayer，dropdown
+ *   策略）、高亮项滚动入弹层视口（aria-activedescendant 模式焦点不随高亮移动，
+ *   浏览器不会自动滚动非焦点元素，须手动 scrollIntoView）、焦点管理、卸载时取消
  *   未决防抖 search。
  * - 值模型：modelValue 即输入框文本（值+文本合一）；选中建议后文本同步为该建议
  *   label，机器值经 select 事件负载传递。
  * - 焦点模型遵循 WAI-ARIA combobox + listbox popup（aria-activedescendant）：
  *   焦点始终停留在输入框上，建议不进 Tab 序，弹层 mousedown preventDefault；
  *   Tab/Home/End/Space 保留文本编辑原义，不劫持。
- * - SSR：弹层仅客户端渲染（mounted 门控 + Teleport）；document 监听只在
- *   onMounted 注册、onBeforeUnmount 移除。
+ * - SSR：弹层仅客户端渲染（mounted 门控 + Teleport）；document 点击监听的
+ *   onMounted 注册 / onBeforeUnmount 移除由浮层引擎收口。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useSlots, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, useSlots, watch } from 'vue'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   AUTOCOMPLETE_CLEAR_ARIA_LABEL,
   AUTOCOMPLETE_DEBOUNCE_DEFAULT,
@@ -103,26 +105,21 @@ const listboxEl = ref<HTMLDivElement | null>(null)
 /** 弹层仅客户端：SSR 输出中不出现弹层。 */
 const mounted = ref(false)
 
-/** 弹层内联定位：打开时按输入框 rect + 页面滚动偏移计算（文档坐标 top/left + minWidth）。 */
-const popupStyle = ref<Record<string, string>>({})
-
-function updatePosition(): void {
-  const input = inputEl.value
-  if (!input) return
-  // getBoundingClientRect() 为视口坐标；弹层 Teleport 到 body 下绝对定位，包含块是
-  // 初始包含块（文档原点），须加 window.scrollX/scrollY 换算为文档坐标——否则页面
-  // 滚动后打开时面板漂到文档顶部。打开期间弹层与文档同滚，无需滚动监听跟随。
-  // 仅在 open 变 true 后的 nextTick（客户端交互路径）触达 window，SSR 不经过此处。
-  const rect = input.getBoundingClientRect()
-  popupStyle.value = {
-    top: `${rect.bottom + window.scrollY}px`,
-    left: `${rect.left + window.scrollX}px`,
-    minWidth: `${rect.width}px`,
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) void nextTick(updatePosition)
+// 弹层定位与点击外部关闭收口于 shared 浮层引擎 useFloatingLayer（dropdown 策略）：
+// 打开后 nextTick 按输入框 rect + window.scrollX/scrollY 换算文档坐标（top/left/
+// minWidth）内联写入——视口坐标 → 文档坐标的换算理由见引擎内注释；打开期间弹层与
+// 文档同滚，不跟随重排。document（capture）点击落在根容器或弹层（insideElements）
+// 之外时 closeList（清空按钮在根容器内，天然放行）；Esc 由自身键盘状态机受理，
+// 引擎侧关闭（closeOnEscape=false）。getBoundingClientRect 仅在 open 变 true 后的
+// nextTick（客户端交互路径）触达，SSR 不经过此处。
+const { floatingStyle: popupStyle } = useFloatingLayer({
+  isOpen: () => open.value,
+  anchor: () => inputEl.value,
+  strategy: 'dropdown',
+  closeOnOutsideClick: true,
+  insideElements: () => [rootEl.value, listboxEl.value],
+  closeOnEscape: false,
+  onRequestClose: () => closeList(),
 })
 
 /**
@@ -173,22 +170,13 @@ function onClear(): void {
   inputEl.value?.focus()
 }
 
-/** 点击外部关闭：目标在根容器或弹层内则交由内部处理器，否则关闭。 */
-function onDocumentClick(event: MouseEvent): void {
-  if (!open.value) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (rootEl.value?.contains(target) || listboxEl.value?.contains(target)) return
-  closeList()
-}
-
+// 点击外部关闭监听（document capture）由浮层引擎在 onMounted 注册、onBeforeUnmount
+// 移除；此处的 mounted 只作 Teleport 的客户端渲染门控，卸载清理只剩未决防抖 search。
 onMounted(() => {
   mounted.value = true
-  document.addEventListener('click', onDocumentClick, true)
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick, true)
   cancelPendingSearch()
 })
 
@@ -395,9 +383,9 @@ defineExpose<AutoCompleteExpose>({ focus, blur })
   color: var(--ui-text-1);
 }
 
-/* ── 弹层：Teleport body + 绝对定位（top/left/minWidth 由打开时的输入框
-   rect + 页面滚动偏移换算的文档坐标内联写入）；与输入框的间距走 margin-top token，
-   定位与面板视觉随 Select 先例 ── */
+/* ── 弹层：Teleport body + 绝对定位（top/left/minWidth 由 shared 浮层引擎
+   dropdown 策略按打开时的输入框 rect + 页面滚动偏移换算的文档坐标内联写入）；
+   与输入框的间距走 margin-top token，面板视觉随 Select 先例 ── */
 .ui-autocomplete__listbox {
   position: absolute;
   /* 坐标原点为结构性取值，实际 top/left 由内联定位覆盖 */

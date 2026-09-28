@@ -3,10 +3,13 @@
  * 与树扁平化、级联勾选的纯函数集合。
  *
  * 收口树形下拉的全部纯逻辑，不含任何 DOM / 浏览器 API：
- *   1. 开合状态（open）与高亮下标（activeIndex，指向可见扁平列表）；
- *   2. 展开集合（expanded）：→ 展开/进子级、← 折叠/回父级；
- *   3. 高亮导航：↓/↑ 逐个可见节点移动（跳过 disabled，两端夹住）、Home/End 首尾；
- *   4. 打开落位：已选值优先（自动展开其父链），否则 edge 端首个可选节点；
+ *   1. 开合状态（open）与高亮下标（activeIndex，指向可见扁平列表）——高亮状态与
+ *      ↓/↑/Home/End 的下标数学收口于 shared useListNavigation；
+ *   2. 展开集合（expanded）：→ 展开/进子级、← 折叠/回父级（树特有，留在本文件）；
+ *   3. 高亮导航：↓/↑ 逐个可见节点移动（跳过 disabled，两端夹住）、Home/End 首尾
+ *      （引擎 moveActive/toEdge，enabledIndexes = 可见且非有效禁用节点下标集）；
+ *   4. 打开落位：树特有前置——展开已选值父链让其进入可见列表，已选下标（若可选）
+ *      经引擎优先返回，否则 edge 端首个可选节点；
  *   5. 激活出口：onActivate 回调（组件把单选/多选/复选语义挂到这里），
  *      stayOpen=false（单选）时激活即关闭；
  *   6. 键盘状态机：Enter/Space 打开或激活、Esc 关闭，受理键一律 preventDefault。
@@ -19,6 +22,7 @@
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
 import { computed, ref, toValue } from 'vue'
+import { useListNavigation } from '../shared/useListNavigation'
 import { TREE_SELECT_NAVIGATION_KEYS } from './TreeSelect.constants'
 import type {
   TreeSelectNavigationEdge,
@@ -168,7 +172,6 @@ export function computeTreeSelectCheckedValues(
  */
 export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn {
   const open = ref(false)
-  const activeIndex = ref(-1)
   const expanded = ref<ReadonlySet<TreeSelectNodeValue>>(new Set())
 
   const optionTree = computed(() => toValue(config.options) ?? [])
@@ -191,6 +194,15 @@ export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn
     )
   }
 
+  // 高亮下标状态与无差异的下标数学（逐项移动/边缘跳转/打开落位「已选优先，否则
+  // 端点」）收口于 shared 导航引擎；树特有逻辑（父链展开落位、→/← 进出层级、
+  // 激活出口、展开集合推导）仍留在本文件。
+  const navigation = useListNavigation({
+    enabledIndexes: () => enabledIndexes.value,
+    selectedIndex: () => primaryVisibleIndex(),
+  })
+  const { activeIndex, moveActive, toEdge } = navigation
+
   function expand(value: TreeSelectNodeValue): void {
     if (!expanded.value.has(value)) expanded.value = new Set([...expanded.value, value])
   }
@@ -208,31 +220,32 @@ export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn
     else expand(value)
   }
 
-  /** 打开时的高亮落位：已选值（展开其父链后定位，若可选）优先，否则 edge 端首个可选。 */
-  function initialActiveIndex(edge: TreeSelectNavigationEdge): number {
+  /** 打开落位参考：已选值（若可见且可选）在可见扁平列表中的下标；否则 -1。 */
+  function primaryVisibleIndex(): number {
     const primary = toValue(config.primaryValue) ?? null
-    if (primary !== null) {
-      const record = records.value.get(primary)
-      if (record !== undefined) {
-        // 展开父链让已选节点可见（展开状态持久，关闭再开不丢失）。
-        let ancestor = record.parent
-        while (ancestor !== null) {
-          expand(ancestor.value)
-          ancestor = records.value.get(ancestor.value)?.parent ?? null
-        }
-        const index = visibleNodes.value.findIndex((node) => node.option.value === primary)
-        if (isEnabled(index)) return index
-      }
+    if (primary === null) return -1
+    const index = visibleNodes.value.findIndex((node) => node.option.value === primary)
+    return isEnabled(index) ? index : -1
+  }
+
+  /** 树特有落位前置：展开已选节点父链，让已选节点进入可见列表（展开状态持久，关闭再开不丢失）。 */
+  function expandAncestorsOfPrimary(): void {
+    const primary = toValue(config.primaryValue) ?? null
+    if (primary === null) return
+    const record = records.value.get(primary)
+    if (record === undefined) return
+    let ancestor = record.parent
+    while (ancestor !== null) {
+      expand(ancestor.value)
+      ancestor = records.value.get(ancestor.value)?.parent ?? null
     }
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return -1
-    return edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
   }
 
   function openList(edge: TreeSelectNavigationEdge = 'first'): void {
     if (disabled.value || open.value) return
+    expandAncestorsOfPrimary()
     open.value = true
-    activeIndex.value = initialActiveIndex(edge)
+    activeIndex.value = navigation.initialActiveIndex(edge)
   }
 
   function closeList(): void {
@@ -244,25 +257,6 @@ export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn
   function toggleList(): void {
     if (open.value) closeList()
     else openList()
-  }
-
-  function moveActive(step: 1 | -1): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    const current = enabled.indexOf(activeIndex.value)
-    const next =
-      current === -1
-        ? step === 1
-          ? 0
-          : enabled.length - 1
-        : Math.min(Math.max(current + step, 0), enabled.length - 1)
-    activeIndex.value = enabled[next]
-  }
-
-  function toEdge(edge: TreeSelectNavigationEdge): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    activeIndex.value = edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
   }
 
   /** 高亮进入活动节点的首个可见子节点（仅当其已展开且子节点紧随其后）。 */

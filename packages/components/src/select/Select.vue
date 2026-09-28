@@ -3,15 +3,18 @@
  * Select —— 单选下拉组件：触发器（combobox 语义）+ Teleport 弹层（listbox 语义）
 * + Paper 视觉（token-only）。
  *
- * - 状态机在 useSelect.ts（纯逻辑，无 DOM）；本组件只承接 DOM 副作用：
- *   弹层定位（打开时按触发器 rect 计算）、document 点击外部关闭、焦点管理。
+ * - 状态机在 useSelect.ts（纯逻辑，无 DOM）；本组件只承接 DOM 副作用与焦点管理。
+ * - 弹层定位与点击外部关闭收口于 shared 浮层引擎 useFloatingLayer（dropdown
+ *   策略）：按触发器 rect + 页面滚动偏移换算文档坐标输出 top/left 与 minWidth；
+ *   document（capture）外点监听，目标落在根容器/弹层内放行，否则关闭。
  * - 焦点模型遵循 WAI-ARIA combobox + listbox popup（aria-activedescendant）：
  *   焦点始终停留在触发器上，选项不进 Tab 序，弹层 mousedown preventDefault。
- * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；document 监听只在
+ * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；引擎的 document 监听只在
  *   onMounted 注册、onBeforeUnmount 移除。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   SELECT_CLEAR_ARIA_LABEL,
   SELECT_EMPTY_TEXT_DEFAULT,
@@ -72,26 +75,19 @@ const listboxEl = ref<HTMLDivElement | null>(null)
 /** 浮层仅客户端：SSR 输出中不出现弹层。 */
 const mounted = ref(false)
 
-/** 弹层内联定位：打开时按触发器 rect + 页面滚动偏移计算（文档坐标 top/left + minWidth）。 */
-const popupStyle = ref<Record<string, string>>({})
-
-function updatePosition(): void {
-  const trigger = triggerEl.value
-  if (!trigger) return
-  // getBoundingClientRect() 为视口坐标；弹层 Teleport 到 body 下绝对定位，包含块是
-  // 初始包含块（文档原点），须加 window.scrollX/scrollY 换算为文档坐标——否则页面
-  // 滚动后打开时面板漂到文档顶部。打开期间弹层与文档同滚，无需滚动监听跟随。
-  // 仅在 open 变 true 后的 nextTick（客户端交互路径）触达 window，SSR 不经过此处。
-  const rect = trigger.getBoundingClientRect()
-  popupStyle.value = {
-    top: `${rect.bottom + window.scrollY}px`,
-    left: `${rect.left + window.scrollX}px`,
-    minWidth: `${rect.width}px`,
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) void nextTick(updatePosition)
+// 弹层定位与外点关闭收口于 shared 浮层引擎（dropdown 策略）：按触发器 rect 的
+// 视口坐标加 window.scrollX/scrollY 换算为文档坐标，输出 top/left 与 minWidth
+// （对齐触发器宽度）；打开时等 Teleport 内容落地后（nextTick）重排。外点在
+// document（capture）监听，目标落在根容器或弹层内则放行，否则 closeList。
+// Esc 已在 useSelect 键盘状态机内受理，引擎侧 closeOnEscape: false。
+const { floatingStyle: popupStyle } = useFloatingLayer({
+  isOpen: () => open.value,
+  anchor: () => triggerEl.value,
+  strategy: 'dropdown',
+  closeOnOutsideClick: true,
+  insideElements: () => [rootEl.value, listboxEl.value],
+  closeOnEscape: false,
+  onRequestClose: () => closeList(),
 })
 
 function onTriggerBlur(): void {
@@ -110,22 +106,8 @@ function onClear(): void {
   triggerEl.value?.focus()
 }
 
-/** 点击外部关闭：目标在根容器或弹层内则交由内部处理器，否则关闭。 */
-function onDocumentClick(event: MouseEvent): void {
-  if (!open.value) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (rootEl.value?.contains(target) || listboxEl.value?.contains(target)) return
-  closeList()
-}
-
 onMounted(() => {
   mounted.value = true
-  document.addEventListener('click', onDocumentClick, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick, true)
 })
 
 function focus(options?: FocusOptions): void {

@@ -1,17 +1,21 @@
 /**
- * useSelect —— Select 的开合/高亮/键盘状态机 composable（headless）。
+ * useSelect —— Select 的开合/键盘状态机 composable（headless）。
  *
- * 收口单选下拉的全部纯逻辑，不含任何 DOM / 浏览器 API：
- *   1. 开合状态（open）与高亮下标（activeIndex）；
- *   2. 高亮导航：↓/↑ 逐项移动（跳过 disabled，两端夹住）、Home/End 首尾；
- *   3. 打开落位：已选值优先，否则首个（ArrowUp 打开时为末个）可选选项；
- *   4. 选中出口：select(index) → onSelect 回调（组件把 update:modelValue 挂这里）；
- *   5. 键盘状态机：Enter/Space 打开或选中、Esc 关闭，受理键一律 preventDefault。
+ * 收口单选下拉的组件差异逻辑，不含任何 DOM / 浏览器 API：
+ *   1. 开合状态（open）与高亮下标（activeIndex，透传 shared 引擎）；
+ *   2. 选中出口：select(index) → onSelect 回调（组件把 update:modelValue 挂这里）；
+ *   3. 键盘状态机：Enter/Space 打开或选中、Esc 关闭，受理键一律 preventDefault。
+ *
+ * 高亮导航数学（↓/↑ 逐项移动跳过 disabled、Home/End 首尾、打开落位已选优先）
+ * 收口于 shared 列表导航引擎 useListNavigation：本文件只按 Select 语义提供
+ * enabledIndexes（disabled 闸门过滤）与 selectedIndex（已选下标，未选 -1），
+ * 并透传引擎的 moveActive/toEdge/activeIndex 实现。
  *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
 import { computed, ref, toValue } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useListNavigation } from '../shared/useListNavigation'
 import { SELECT_NAVIGATION_KEYS } from './Select.constants'
 import type { SelectOption, SelectValue } from './Select.types'
 
@@ -62,10 +66,9 @@ function isNavigationKey(key: string): boolean {
   return SELECT_NAVIGATION_KEYS.includes(key)
 }
 
-/** Select 开合/高亮/键盘状态机（纯逻辑，无 DOM）。 */
+/** Select 开合/键盘状态机（纯逻辑，无 DOM）。 */
 export function useSelect(options: UseSelectOptions): UseSelectReturn {
   const open = ref(false)
-  const activeIndex = ref(-1)
 
   const optionList = computed(() => toValue(options.options) ?? [])
   const disabled = computed(() => toValue(options.disabled) === true)
@@ -81,33 +84,26 @@ export function useSelect(options: UseSelectOptions): UseSelectReturn {
     optionList.value.flatMap((option, index) => (option.disabled ? [] : [index])),
   )
 
-  function isEnabled(index: number): boolean {
-    const option = optionList.value[index]
-    return option !== undefined && option.disabled !== true
-  }
-
-  /** 打开时的高亮落位：已选值（若可选）优先，否则 edge 端首个可选。 */
-  function initialActiveIndex(edge: SelectNavigationEdge): number {
-    const selected = selectedOption.value
-    if (selected !== null) {
-      const selectedIndex = optionList.value.indexOf(selected)
-      if (isEnabled(selectedIndex)) return selectedIndex
-    }
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return -1
-    return edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
-  }
+  // 高亮导航数学收口于 shared 列表导航引擎：enabledIndexes 为 Select 的禁用闸门
+  // 过滤结果；selectedIndex 为已选选项下标（未选/未命中 -1），打开落位时优先。
+  const { activeIndex, setActive, initialActiveIndex, moveActive, toEdge } = useListNavigation({
+    enabledIndexes: () => enabledIndexes.value,
+    selectedIndex: () => {
+      const selected = selectedOption.value
+      return selected === null ? -1 : optionList.value.indexOf(selected)
+    },
+  })
 
   function openList(edge: SelectNavigationEdge = 'first'): void {
     if (disabled.value || open.value) return
     open.value = true
-    activeIndex.value = initialActiveIndex(edge)
+    setActive(initialActiveIndex(edge))
   }
 
   function closeList(): void {
     if (!open.value) return
     open.value = false
-    activeIndex.value = -1
+    setActive(-1)
   }
 
   function toggleList(): void {
@@ -120,25 +116,6 @@ export function useSelect(options: UseSelectOptions): UseSelectReturn {
     if (option === undefined || option.disabled === true) return
     options.onSelect?.(option.value)
     closeList()
-  }
-
-  function moveActive(step: 1 | -1): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    const current = enabled.indexOf(activeIndex.value)
-    const next =
-      current === -1
-        ? step === 1
-          ? 0
-          : enabled.length - 1
-        : Math.min(Math.max(current + step, 0), enabled.length - 1)
-    activeIndex.value = enabled[next]
-  }
-
-  function toEdge(edge: SelectNavigationEdge): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    activeIndex.value = edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
   }
 
   function handleKeydown(event: KeyboardEvent): void {

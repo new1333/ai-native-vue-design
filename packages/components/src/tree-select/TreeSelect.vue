@@ -4,19 +4,22 @@
  * + Paper 视觉（token-only）。
  *
  * - 组合形态（设计文档 §11.6）：Select 触发器 + 树面板；状态机在 useTreeSelect.ts
- *   （纯逻辑，无 DOM），本组件只承接 DOM 副作用：弹层定位（打开时按触发器 rect
- *   计算）、document 点击外部关闭、焦点管理。
+ *   （纯逻辑，无 DOM），本组件只承接 DOM 副作用：Teleport 弹层渲染、焦点管理。
+ *   弹层定位（dropdown 策略：文档坐标 top/left/minWidth）与点击外部关闭收口于
+ *   shared 浮层引擎 useFloatingLayer；Esc 关闭在 useTreeSelect 键盘状态机内
+ *   受理，引擎的 Esc 路径关闭（closeOnEscape: false）。
  * - 选中语义在组件侧收口：
  *     单选（默认）    → 激活节点即选中并关闭，值为 TreeSelectNodeValue | null；
  *     multiple        → 激活节点切换选中，弹层保持打开，值为数组；
  *     checkable       → 节点渲染复选框，父子级联（父全选才记勾选、部分为半选），值为数组。
  * - 焦点模型遵循 WAI-ARIA combobox + tree popup（aria-activedescendant）：
  *   焦点始终停留在触发器上，节点不进 Tab 序，弹层 mousedown preventDefault。
- * - SSR：弹层仅客户端渲染（mounted 门控 + Teleport）；document 监听只在
- *   onMounted 注册、onBeforeUnmount 移除。
+ * - SSR：弹层仅客户端渲染（mounted 门控 + Teleport）；浮层引擎的 document 监听
+ *   只在其 onMounted 注册、onBeforeUnmount 移除，组件自身不直接触达浏览器 API。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   TREE_SELECT_CLEAR_ARIA_LABEL,
   TREE_SELECT_EMPTY_TEXT_DEFAULT,
@@ -222,26 +225,18 @@ const treeEl = ref<HTMLDivElement | null>(null)
 /** 弹层仅客户端：SSR 输出中不出现弹层。 */
 const mounted = ref(false)
 
-/** 弹层内联定位：打开时按触发器 rect + 页面滚动偏移计算（文档坐标 top/left + minWidth）。 */
-const popupStyle = ref<Record<string, string>>({})
-
-function updatePosition(): void {
-  const trigger = triggerEl.value
-  if (!trigger) return
-  // getBoundingClientRect() 为视口坐标；弹层 Teleport 到 body 下绝对定位，包含块是
-  // 初始包含块（文档原点），须加 window.scrollX/scrollY 换算为文档坐标——否则页面
-  // 滚动后打开时面板漂到文档顶部。打开期间弹层与文档同滚，无需滚动监听跟随。
-  // 仅在 open 变 true 后的 nextTick（客户端交互路径）触达 window，SSR 不经过此处。
-  const rect = trigger.getBoundingClientRect()
-  popupStyle.value = {
-    top: `${rect.bottom + window.scrollY}px`,
-    left: `${rect.left + window.scrollX}px`,
-    minWidth: `${rect.width}px`,
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) void nextTick(updatePosition)
+// 弹层定位与点击外部关闭收口于 shared 浮层引擎：dropdown 策略（Teleport 到 body
+// 下绝对定位，引擎按触发器 rect + window.scrollX/scrollY 换算文档坐标 top/left +
+// minWidth，打开后在 nextTick 重排）；根容器与树面板都算「内部」，点击其余处关闭。
+// Esc 不走引擎（closeOnEscape: false）——本组件 Esc 在 useTreeSelect 键盘状态机内受理。
+const { floatingStyle: popupStyle } = useFloatingLayer({
+  isOpen: () => open.value,
+  anchor: () => triggerEl.value,
+  strategy: 'dropdown',
+  closeOnOutsideClick: true,
+  insideElements: () => [rootEl.value, treeEl.value],
+  closeOnEscape: false,
+  onRequestClose: closeList,
 })
 
 function onTriggerBlur(): void {
@@ -270,22 +265,10 @@ function onClear(): void {
   triggerEl.value?.focus()
 }
 
-/** 点击外部关闭：目标在根容器或弹层内则交由内部处理器，否则关闭。 */
-function onDocumentClick(event: MouseEvent): void {
-  if (!open.value) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (rootEl.value?.contains(target) || treeEl.value?.contains(target)) return
-  closeList()
-}
+/** 点击外部关闭已收口于浮层引擎（closeOnOutsideClick），此处不再自持监听。 */
 
 onMounted(() => {
   mounted.value = true
-  document.addEventListener('click', onDocumentClick, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick, true)
 })
 
 function focus(options?: FocusOptions): void {

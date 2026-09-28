@@ -1,8 +1,8 @@
 /**
  * useModelSelector —— ModelSelector 的开合/高亮/键盘状态机 composable（headless）。
  *
- * 与 Select 的 useSelect 同一套键盘与浮层纪律（WAI-ARIA combobox + listbox 弹出
- * 模式，aria-activedescendant 焦点模型），在此按 AI 模型切换的契约收口：
+ * 与 Select 同一套键盘与浮层纪律（WAI-ARIA combobox + listbox 弹出模式，
+ * aria-activedescendant 焦点模型），在此按 AI 模型切换的契约收口：
  *   1. 开合状态（open）与高亮下标（activeIndex）；
  *   2. 高亮导航：↓/↑ 逐项移动（跳过 disabled 模型，两端夹住）、Home/End 首尾；
  *   3. 打开落位：已选模型优先，否则首个（ArrowUp 打开时为末个）可选模型；
@@ -12,10 +12,16 @@
  *      开合仍放行（弹层显示加载反馈）；
  *   6. 键盘状态机：Enter/Space 打开或选中、Esc 关闭，受理键一律 preventDefault。
  *
+ * 高亮下标数学（逐项移动/首尾跳转/打开落位）已收口于 shared useListNavigation；
+ * 本文件持有 ModelSelector 特有契约：loading/disabled 闸门（enabledIndexes 过滤
+ * 与 select 拦截）与键盘状态机。弹层定位与外点关闭由 SFC 侧 shared
+ * useFloatingLayer（dropdown 策略）承担。
+ *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
 import { computed, ref, toValue } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useListNavigation } from '../shared/useListNavigation'
 import { MODEL_SELECTOR_NAVIGATION_KEYS } from './ModelSelector.constants'
 import type { ModelSelectorModel, ModelSelectorValue } from './ModelSelector.types'
 
@@ -71,7 +77,6 @@ function isNavigationKey(key: string): boolean {
 /** ModelSelector 开合/高亮/键盘状态机（纯逻辑，无 DOM）。 */
 export function useModelSelector(options: UseModelSelectorOptions): UseModelSelectorReturn {
   const open = ref(false)
-  const activeIndex = ref(-1)
 
   const modelList = computed(() => toValue(options.models) ?? [])
   const disabled = computed(() => toValue(options.disabled) === true)
@@ -89,33 +94,27 @@ export function useModelSelector(options: UseModelSelectorOptions): UseModelSele
     return modelList.value.flatMap((model, index) => (model.disabled ? [] : [index]))
   })
 
-  function isEnabled(index: number): boolean {
-    const model = modelList.value[index]
-    return model !== undefined && model.disabled !== true
-  }
-
-  /** 打开时的高亮落位：已选模型（若可选）优先，否则 edge 端首个可选。 */
-  function initialActiveIndex(edge: ModelSelectorNavigationEdge): number {
-    const selected = selectedModel.value
-    if (selected !== null) {
-      const selectedIndex = modelList.value.indexOf(selected)
-      if (isEnabled(selectedIndex)) return selectedIndex
-    }
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return -1
-    return edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
-  }
+  /* 高亮下标数学收口于 shared useListNavigation：loading 闸门过滤保留在本侧
+     computed 后以 enabledIndexes 传入；已选下标（未选/未命中为 -1）作打开落位
+     优先来源（engine 侧判定其是否仍在可选集合内）。 */
+  const { activeIndex, setActive, initialActiveIndex, moveActive, toEdge } = useListNavigation({
+    enabledIndexes: () => enabledIndexes.value,
+    selectedIndex: () => {
+      const selected = selectedModel.value
+      return selected === null ? -1 : modelList.value.indexOf(selected)
+    },
+  })
 
   function openList(edge: ModelSelectorNavigationEdge = 'first'): void {
     if (disabled.value || open.value) return
     open.value = true
-    activeIndex.value = initialActiveIndex(edge)
+    setActive(initialActiveIndex(edge))
   }
 
   function closeList(): void {
     if (!open.value) return
     open.value = false
-    activeIndex.value = -1
+    setActive(-1)
   }
 
   function toggleList(): void {
@@ -130,25 +129,6 @@ export function useModelSelector(options: UseModelSelectorOptions): UseModelSele
     if (model === undefined || model.disabled === true) return
     options.onSelect?.(model)
     closeList()
-  }
-
-  function moveActive(step: 1 | -1): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    const current = enabled.indexOf(activeIndex.value)
-    const next =
-      current === -1
-        ? step === 1
-          ? 0
-          : enabled.length - 1
-        : Math.min(Math.max(current + step, 0), enabled.length - 1)
-    activeIndex.value = enabled[next]
-  }
-
-  function toEdge(edge: ModelSelectorNavigationEdge): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    activeIndex.value = edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
   }
 
   function handleKeydown(event: KeyboardEvent): void {

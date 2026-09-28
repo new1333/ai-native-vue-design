@@ -5,8 +5,11 @@
  *   1. 建议派生：options 归一化（value 缺省回退 label）→ 按过滤策略得到 suggestions；
  *      过滤策略 undefined = 默认本地包含匹配（不区分大小写）、false = 不过滤（远程模式）、
  *      函数 = 自定义本地过滤；
- *   2. 开合状态（open）与高亮下标（activeIndex，作用于 suggestions 下标）；
- *   3. 打开落位：edge 端首个可选建议（↓/键入路径 first，↑ 路径 last）；
+ *   2. 开合状态（open）与高亮下标（activeIndex，作用于 suggestions 下标）；高亮
+ *      数学（edge 落位、逐项移动跳过 disabled、两端夹住）收口于 shared 导航引擎
+ *      useListNavigation（headless，无 DOM）；
+ *   3. 打开落位：edge 端首个可选建议（↓/键入路径 first，↑ 路径 last；本组件无
+ *      已选下标语义，引擎 selectedIndex 恒 -1，已选优先落位分支不生效）；
  *   4. 关键词变更路径（键入/清空共用）：打开面板 + 高亮落位 + 调度防抖 search；
  *   5. 选中出口：select(index) → onSelect 回调（组件把 update:modelValue/select 的 emit
  *      挂到这里），并取消未决 search（防选中后的陈旧关键词补发）；
@@ -19,6 +22,7 @@
  */
 import { computed, ref, toValue, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useListNavigation } from '../shared/useListNavigation'
 import {
   AUTOCOMPLETE_DEBOUNCE_DEFAULT,
   AUTOCOMPLETE_HANDLED_KEYS,
@@ -96,7 +100,6 @@ function defaultFilter(option: AutoCompleteSelectedOption, keyword: string): boo
 /** AutoComplete 建议/开合/高亮/键盘/防抖状态机（纯逻辑，无 DOM）。 */
 export function useAutoComplete(options: UseAutoCompleteOptions): UseAutoCompleteReturn {
   const open = ref(false)
-  const activeIndex = ref(-1)
 
   const disabled = computed(() => toValue(options.disabled) === true)
   const keyword = computed(() => toValue(options.modelValue) ?? '')
@@ -117,36 +120,27 @@ export function useAutoComplete(options: UseAutoCompleteOptions): UseAutoComplet
     suggestions.value.flatMap((option, index) => (option.disabled ? [] : [index])),
   )
 
-  /** 打开时的高亮落位：edge 端首个可选建议。 */
-  function initialActiveIndex(edge: AutoCompleteEdge): number {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return -1
-    return edge === 'first' ? enabled[0] : enabled[enabled.length - 1]
-  }
+  // 高亮数学收口于 shared 导航引擎 useListNavigation：enabledIndexes 的过滤逻辑
+  // （disabled 建议不可导航）本组件自持后以 getter 传入；本组件无「已选下标」语义
+  // ——modelValue 是文本而非下标，selectedIndex 恒 -1，引擎的已选优先落位分支
+  // 不生效，落位恒为 edge 端首个可选建议（与收口前逐值一致）。onActiveIndexChange
+  // 不接：高亮项滚动跟随由 SFC 侧 watch（flush post）复刻原触发点（含 index=-1
+  // 复位时不滚动的早退语义）。
+  const { activeIndex, setActive, initialActiveIndex, moveActive } = useListNavigation({
+    enabledIndexes: () => enabledIndexes.value,
+    selectedIndex: () => -1,
+  })
 
   function openList(edge: AutoCompleteEdge = 'first'): void {
     if (disabled.value) return
     open.value = true
-    activeIndex.value = initialActiveIndex(edge)
+    setActive(initialActiveIndex(edge))
   }
 
   function closeList(): void {
     if (!open.value) return
     open.value = false
-    activeIndex.value = -1
-  }
-
-  function moveActive(step: 1 | -1): void {
-    const enabled = enabledIndexes.value
-    if (enabled.length === 0) return
-    const current = enabled.indexOf(activeIndex.value)
-    const next =
-      current === -1
-        ? step === 1
-          ? 0
-          : enabled.length - 1
-        : Math.min(Math.max(current + step, 0), enabled.length - 1)
-    activeIndex.value = enabled[next]
+    setActive(-1)
   }
 
   let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -231,7 +225,7 @@ export function useAutoComplete(options: UseAutoCompleteOptions): UseAutoComplet
     const invalid =
       current >= list.length || (current >= 0 && list[current]?.disabled === true)
     if (invalid) {
-      activeIndex.value = list.findIndex((option) => option.disabled !== true)
+      setActive(list.findIndex((option) => option.disabled !== true))
     }
   })
 

@@ -3,17 +3,20 @@
  * DatePicker —— 日期选择器：触发器（dialog 弹出语义）+ Teleport 弹层面板
  * （role=grid 月视图 + roving 键盘）+ Paper 视觉（token-only）。
  *
- * - 状态机在 useDatePicker.ts（纯逻辑，无 DOM）；本组件只承接 DOM 副作用：
- *   弹层定位（打开时按触发器 rect 计算）、document 点击外部关闭、roving 焦点落位。
+ * - 状态机在 useDatePicker.ts（纯逻辑，无 DOM）；弹层定位（dropdown 策略：文档
+ *   坐标 top/left + minWidth 对齐触发器宽度）与点击外部关闭收口于 shared 浮层
+ *   引擎 useFloatingLayer；本组件承接的 DOM 副作用只剩 roving 焦点落位、Tab
+ *   圈定与面板自身键盘处理（Esc 在面板内受理，不走引擎）。
  * - 焦点模型遵循 WAI-ARIA date-picker dialog（modal dialog）：触发器原生 button
  *   （aria-haspopup="dialog"），打开后焦点移入月网格（roving tabindex），面板
  *   aria-modal + Tab 在面板内首尾环绕圈定（不逃逸到背景页面），Esc/Tab（触发器上）/
  *   点击外部关闭并把焦点交还触发器。
- * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；document 监听只在
- *   onMounted 注册、onBeforeUnmount 移除。
+ * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；引擎的 document 点击
+ *   监听在引擎侧 onMounted 注册、onBeforeUnmount 移除，本组件不再直接触碰。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useId, watch } from 'vue'
+import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   DATE_PICKER_CLEAR_ARIA_LABEL,
   DATE_PICKER_FOCUSABLE_SELECTOR,
@@ -121,22 +124,22 @@ const canClear = computed(
   () => props.clearable && props.modelValue !== null && !props.disabled && !props.loading,
 )
 
-/** 弹层内联定位：打开时按触发器 rect + 页面滚动偏移计算（文档坐标 top/left + minWidth）。 */
-const popupStyle = ref<Record<string, string>>({})
-
-function updatePosition(): void {
-  const trigger = triggerEl.value
-  if (!trigger) return
-  // getBoundingClientRect() 为视口坐标；弹层 Teleport 到 body 下绝对定位，包含块是
-  // 初始包含块（文档原点），须加 window.scrollX/scrollY 换算为文档坐标。仅在 open 变
-  // true 后的 nextTick（客户端交互路径）触达 window，SSR 不经过此处。
-  const rect = trigger.getBoundingClientRect()
-  popupStyle.value = {
-    top: `${rect.bottom + window.scrollY}px`,
-    left: `${rect.left + window.scrollX}px`,
-    minWidth: `${rect.width}px`,
-  }
-}
+/**
+ * 弹层定位与点击外部关闭收口于 shared useFloatingLayer（dropdown 策略）：打开时
+ * 等面板 Teleport 落地后按触发器 rect + 页面滚动偏移换算文档坐标（top/left +
+ * minWidth 对齐触发器宽度）；document（capture）点击落在根容器或面板内放行，
+ * 否则关闭。Esc 不走引擎（closeOnEscape false），在面板自身键盘处理内受理并
+ * 把焦点交还触发器（见 onPanelKeydown）。
+ */
+const { floatingStyle } = useFloatingLayer({
+  isOpen: () => open.value,
+  anchor: () => triggerEl.value,
+  strategy: 'dropdown',
+  closeOnOutsideClick: true,
+  insideElements: () => [rootEl.value, panelEl.value],
+  closeOnEscape: false,
+  onRequestClose: () => closePanel(),
+})
 
 /** 打开时把焦点移入月网格的 roving 高亮格（tabindex=0 的唯一格子）。 */
 function focusActiveCell(): void {
@@ -146,10 +149,8 @@ function focusActiveCell(): void {
 
 watch(open, (isOpen) => {
   if (!isOpen) return
-  void nextTick(() => {
-    updatePosition()
-    focusActiveCell()
-  })
+  // 面板定位由引擎侧在打开后的 nextTick 重排；此处只承接 roving 焦点落位。
+  void nextTick(focusActiveCell)
 })
 
 function onTriggerClick(): void {
@@ -225,22 +226,8 @@ function onClear(): void {
   triggerEl.value?.focus()
 }
 
-/** 点击外部关闭：目标在根容器或面板内则交由内部处理器，否则关闭。 */
-function onDocumentClick(event: MouseEvent): void {
-  if (!open.value) return
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (rootEl.value?.contains(target) || panelEl.value?.contains(target)) return
-  closePanel()
-}
-
 onMounted(() => {
   mounted.value = true
-  document.addEventListener('click', onDocumentClick, true)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick, true)
 })
 
 /** 单格类名：邻接月/今天/选中/禁用/范围起止/之间。 */
@@ -350,7 +337,7 @@ defineExpose<DatePickerExpose>({ focus, blur })
         aria-modal="true"
         :aria-label="DATE_PICKER_PANEL_LABELS[props.type]"
         tabindex="-1"
-        :style="popupStyle"
+        :style="floatingStyle"
         @keydown="onPanelKeydown"
       >
         <div class="ui-date-picker__header">
@@ -550,8 +537,8 @@ defineExpose<DatePickerExpose>({ focus, blur })
   color: var(--ui-text-1);
 }
 
-/* ── 面板：Teleport body + 绝对定位（top/left/minWidth 由打开时的触发器
-   rect + 页面滚动偏移换算的文档坐标内联写入）；与触发器的间距走 margin-top token ── */
+/* ── 面板：Teleport body + 绝对定位（top/left/minWidth 由 shared 浮层引擎按打开时
+   的触发器 rect + 页面滚动偏移换算的文档坐标内联写入）；与触发器的间距走 margin-top token ── */
 .ui-date-picker__panel {
   position: absolute;
   /* 坐标原点为结构性取值，实际 top/left 由内联定位覆盖 */
