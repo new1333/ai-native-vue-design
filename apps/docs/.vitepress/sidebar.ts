@@ -1,16 +1,20 @@
 /**
- * 侧边栏自动生成：扫描 packages/components/src/<dir>/<Pascal>.meta.ts，
+ * 侧边栏自动生成：扫描 packages/components/src/<dir>/，解析各目录主 meta，
  * 提取 identity.name / identity.category 生成分组导航；条目展示名优先取
  * 组件页 md frontmatter 的 title，缺失时回退 identity.name。
  *
+ * 主 meta 解析与 tooling/sync-registry.mjs 同一规则（见 resolvePrimaryMeta）：
+ * 只读 readdir 的真实文件名，不做「目录名 → 文件名」推导，因此对大小写
+ * （AutoComplete vs Autocomplete）与家族式命名（toast → ToastHost）天然免疫。
+ *
  * - 组件页文件位于 src/zh/components/<category>/<dir>.md；尚无对应 md 的组件
  *   （文档未写）自动跳过，因此试点阶段只出现已交付页面，写完即自动挂上。
- * - meta 缺失/无法解析时直接抛错：门禁期失败优于静默漏挂。
+ * - meta 缺失/无法解析/解析歧义时直接抛错：门禁期失败优于静默漏挂。
  * - buildHomeDirectory() 与侧边栏同源，为首页「组件家族」目录供数。
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import type { DefaultTheme } from 'vitepress'
 
 const DOCS_ROOT = fileURLToPath(new URL('../', import.meta.url))
@@ -28,20 +32,56 @@ export const CATEGORY_ORDER: Array<{ key: string; label: string }> = [
   { key: 'navigation', label: '导航' },
 ]
 
-function pascalize(dir: string): string {
-  return dir.replace(/(^|-)([a-z])/g, (_, __, char: string) => char.toUpperCase())
+const META_FILE_RE = /\.meta\.ts$/
+/** stem 归一化：忽略大小写与分隔符（kebab / Pascal 互通），如 input-otp ↔ InputOtp */
+const normStem = (s: string): string => s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+
+/** 目录内全部 meta（主 + 子组件）的绝对路径；字典序排序，结果与 OS 无关 */
+export function componentMetaFiles(dir: string): string[] {
+  const dirPath = join(COMPONENTS_SRC, dir)
+  return readdirSync(dirPath)
+    .filter((file) => META_FILE_RE.test(file))
+    .sort()
+    .map((file) => join(dirPath, file))
 }
 
-/** 主 meta 与目录名不一致的组件：显式登记，缺省按 <Pascal(dir)>.meta.ts 查找。 */
-const PRIMARY_META: Record<string, string> = {
-  toast: 'ToastHost.meta.ts',
-  typography: 'Text.meta.ts',
+/** 从 meta 源码提取 identity.category；无法解析时返回空串（视为未知，参与歧义判定） */
+function metaCategory(metaPath: string): string {
+  return readFileSync(metaPath, 'utf8').match(/identity:\s*\{[\s\S]*?category:\s*'([^']+)'/)?.[1] ?? ''
 }
 
-/** 目录名 → 主 meta 文件绝对路径（侧边栏扫描与搜索语料提取共用） */
-export function metaPathForDir(dir: string): string {
-  const metaFile = PRIMARY_META[dir] ?? `${pascalize(dir)}.meta.ts`
-  return join(COMPONENTS_SRC, dir, metaFile)
+/**
+ * 目录 → 主 meta 绝对路径。规则与 tooling/sync-registry.mjs 的主记录判定同族：
+ *
+ * 1. 文件名 stem 与目录名归一化后一致 → 即主 meta（button/Button、
+ *    autocomplete/AutoComplete——后者是 Windows 本地大小写不敏感能过、
+ *    Linux CI 报缺 meta 的事故形态，本规则使其在结构上不可能再发生）；
+ * 2. 无 stem 命中 → 取排序首个（家族式目录：toast → ToastHost、
+ *    typography → Heading），与 sync-registry「无同名文件时取排序后第一个」一致；
+ * 3. 歧义闸：候选 meta 的 identity.category 不一致时抛错。主 meta 决定侧边栏
+ *    归属分类，静默选错即静默漏挂，宁可门禁期失败并给出修复指引。
+ *
+ * 任何分支无法唯一确定都抛错；未来新增组件遵循 CONVENTIONS 命名约定时零配置。
+ */
+export function resolvePrimaryMeta(dir: string): string {
+  const metas = componentMetaFiles(dir)
+  if (metas.length === 0) {
+    throw new Error(`[docs sidebar] 组件目录没有任何 *.meta.ts：packages/components/src/${dir}/`)
+  }
+  const stemMatch = metas.filter((path) => normStem(basename(path).replace(META_FILE_RE, '')) === normStem(dir))
+  if (stemMatch.length === 1) return stemMatch[0]
+  if (stemMatch.length > 1) {
+    throw new Error(`[docs sidebar] 目录「${dir}」主 meta 歧义（多个同名 stem）：${stemMatch.map((p) => basename(p)).join(' / ')}`)
+  }
+  const categories = new Set(metas.map(metaCategory))
+  if (categories.size > 1) {
+    throw new Error(
+      `[docs sidebar] 目录「${dir}」无法唯一确定主 meta（候选：${metas.map((p) => basename(p)).join(' / ')}；` +
+      `identity.category 不一致：${Array.from(categories).join(' / ')}）。` +
+      `请将主 meta 文件名对齐目录名（忽略大小写/分隔符），或统一候选 meta 的 category`,
+    )
+  }
+  return metas[0]
 }
 
 interface ComponentEntry {
@@ -63,7 +103,7 @@ function scanComponents(): Array<Omit<ComponentEntry, 'label'>> {
   const entries: Array<Omit<ComponentEntry, 'label'>> = []
   for (const dir of readdirSync(COMPONENTS_SRC, { withFileTypes: true })) {
     if (!dir.isDirectory() || dir.name === 'shared') continue
-    const metaPath = metaPathForDir(dir.name)
+    const metaPath = resolvePrimaryMeta(dir.name)
     if (!existsSync(metaPath)) {
       throw new Error(`[docs sidebar] 缺少主组件 meta：${metaPath}`)
     }

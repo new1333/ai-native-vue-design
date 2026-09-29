@@ -9,11 +9,11 @@
  * 注意：_render 是 vitepress 未文档化的内部钩子（1.6.4 已验证）；
  * 升级 vitepress 后必须回归验收项。下划线 key 不会被序列化进客户端。
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { DefaultTheme } from 'vitepress'
-import { metaPathForDir } from './sidebar'
+import { componentMetaFiles } from './sidebar'
 
 const DOCS_ROOT = fileURLToPath(new URL('../', import.meta.url))
 const PAPER_CSS_PATH = resolve(DOCS_ROOT, '../../packages/tokens/src/paper.css')
@@ -43,16 +43,19 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * 从 meta 源码提取全部单引号字符串作为语料：覆盖 props/slots/events 的
- * 名称、类型、默认值、描述与 states/agent 提示。meta 是纯数据对象
- * （仅 import type），此提取稳定；若未来 meta 引入运行时字符串拼接，需回归。
+ * 从组件目录全部 meta（主 + 子组件，如 button/ 的 Button 与 ButtonGroup）
+ * 源码提取单引号字符串作为语料：覆盖 props/slots/events 的名称、类型、
+ * 默认值、描述与 states/agent 提示。收录全部 meta 使语料不依赖「谁是主
+ * meta」的解析结果，家族子组件（无独立文档页）也能在其家族页被搜到。
+ * meta 是纯数据对象（仅 import type），此提取稳定；若未来 meta 引入
+ * 运行时字符串拼接，需回归。
  */
 function searchableTextFromMeta(dir: string): string {
-  const metaPath = metaPathForDir(dir)
-  if (!existsSync(metaPath)) return ''
-  const source = readFileSync(metaPath, 'utf8')
   const values = new Set<string>()
-  for (const match of source.matchAll(/'([^'\n]+)'/g)) values.add(match[1])
+  for (const metaPath of componentMetaFiles(dir)) {
+    const source = readFileSync(metaPath, 'utf8')
+    for (const match of source.matchAll(/'([^'\n]+)'/g)) values.add(match[1])
+  }
   return Array.from(values).join('\n')
 }
 
