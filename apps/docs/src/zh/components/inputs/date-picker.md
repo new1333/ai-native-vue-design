@@ -46,7 +46,7 @@ import statesSrc from '@docs-demos/date-picker/States.vue?raw'
 
   <Demo
     title="禁用 / 加载 / 受控"
-    anchor="states"
+    anchor="states-demo"
     description="整体 disabled 用原生 disabled（移出 Tab 序、拦截开合与键盘、不渲染清空按钮）；loading 呈现 aria-busy=&quot;true&quot; 与 wait 光标、面板不可打开；受控模式用 :model-value + @update:model-value 显式接管值变化。"
     :src="statesSrc"
   >

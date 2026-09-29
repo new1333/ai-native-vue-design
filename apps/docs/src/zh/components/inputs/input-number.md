@@ -57,7 +57,7 @@ import statesSrc from '@docs-demos/input-number/States.vue?raw'
 
   <Demo
     title="禁用、无按钮与越界受控值"
-    anchor="states"
+    anchor="states-demo"
     description="disabled 用原生属性拦截全部步进与提交路径；controls=false 只保留键盘步进；受控值超出 [min,max] 时展示与 aria 按钳制值呈现，下一次提交/步进时回写。"
     :src="statesSrc"
   >

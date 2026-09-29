@@ -59,7 +59,7 @@ import nodeSlotSrc from '@docs-demos/tree/NodeSlot.vue?raw'
 
   <Demo
     title="加载、禁用与空态"
-    anchor="states"
+    anchor="states-demo"
     description="loading 渲染 3 行骨架行并置 aria-busy；节点声明 disabled 后不可选/不可勾（仍可展开折叠）；data 为空时渲染 empty 插槽（缺省「暂无数据」）。"
     :src="statesSrc"
   >

@@ -204,7 +204,17 @@ describe('Button ssr', () => {
 - demo 中的视觉值同样只允许 `var(--ui-*)` token；demo 属于使用方代码，可按需使用局部 `<style scoped>`。
 - demo 参与 `pnpm -C apps/docs typecheck`（vue-tsc）与 `pnpm docs:build` 门禁。
 
-### 9.3 门禁
+### 9.3 页面构建块（Blocks）
+
+- 构建块是**页面级组合**的展示与分发单元：登录页、仪表盘、AI 工作台等由多个组件拼成、复制即用的完整页面片段（对齐设计文档 §15 的 Block 层；未来可升级为 `@ui/blocks` 包，当前为文档站内容层交付）。
+- 源码：`apps/docs/src/blocks/<Name>Block.vue`（srcDir 之外，不产生路由；`@docs-blocks` 别名引入）。**单文件自包含**——只允许 import `@ui/components`（类型亦然），不得引用其他本地文件；页面内交互为演示实现，但必须真实可操作。
+- 页面：`src/zh/blocks/<name>.md`，frontmatter 必须含 `title`（侧边栏展示名）与 `description`（一句话简介，llms.txt 索引复用）。统一用全局 `BlockPreview` 组件编排：`<BlockPreview :src="xxxSrc">` + slot 放活组件，源码以 `?raw` 导入保证预览与源码同源。
+- 命名映射是硬约定（sidebar / llms 自动推导）：页面 stem `<name>` ↔ 源码 `<Pascal(Name)>Block.vue`，如 `ai-workspace` ↔ `AiWorkspaceBlock.vue`；源码缺失时 llms 门禁直接抛错。
+- 样式纪律与 demo 相同：token-only、根类 `ui-block-<kebab>`；高度等布局值用 `calc(var(--ui-space-N) * M)` 表达；设备视口宽度（如预览档 768 / 390）属功能断点，不视为裸视觉值。浏览器 API 仍仅限 `onMounted` 与事件回调内。
+- 页面 markdown 中的组件链接必须指向真实存在的组件页（受 `docs:build` dead-link 门禁约束）。
+- blocks 参与 `pnpm -C apps/docs typecheck` 与 `pnpm docs:build` 门禁；llms 构建产物含 `blocks/<name>.md`（完整 SFC 源码）。
+
+### 9.4 门禁
 
 - `pnpm -C apps/docs typecheck` 与 `pnpm docs:build` 必须全绿且退出码 0。
 - 文档站任务不得改动 `packages/components` 内任何文件；token 缺值（如等宽字体栈 `--ui-font-mono`）时在任务结果中提出需求。

@@ -5,7 +5,8 @@
     "types": ["vite/client", "node"],
     "paths": {
       "@comp-src/*": ["../../packages/components/src/*"],
-      "@docs-demos/*": ["./src/demos/*"]
+      "@docs-demos/*": ["./src/demos/*"],
+      "@docs-blocks/*": ["./src/blocks/*"]
     }
   },
   "include": [

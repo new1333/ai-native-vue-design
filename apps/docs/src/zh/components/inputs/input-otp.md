@@ -57,7 +57,7 @@ import statesSrc from '@docs-demos/input-otp/States.vue?raw'
 
   <Demo
     title="受控回写与校验期间禁用"
-    anchor="states"
+    anchor="states-demo"
     description="受控 v-model 下外部改值立即回落各格；填满触发 complete 后模拟提交，校验期间以 disabled 锁定（原生 disabled 移出 Tab 序、拦截输入 / 粘贴 / 键盘路径）。组件不内置 loading / 自动提交（见 meta 何时不用）。"
     :src="statesSrc"
   >

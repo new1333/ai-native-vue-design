@@ -35,6 +35,8 @@ export default defineConfigWithTheme<SiteThemeConfig>({
       alias: {
         // demo 文件（srcDir 之外，不产生页面路由）
         '@docs-demos': fileURLToPath(new URL('../src/demos', import.meta.url)),
+        // 页面构建块源码（srcDir 之外，不产生页面路由；单文件自包含 SFC）
+        '@docs-blocks': fileURLToPath(new URL('../src/blocks', import.meta.url)),
         // 组件包源码：源码查看（?raw）与类型引用
         '@comp-src': fileURLToPath(new URL('../../../packages/components/src', import.meta.url)),
       },
@@ -44,6 +46,7 @@ export default defineConfigWithTheme<SiteThemeConfig>({
     nav: [
       { text: '指南', link: '/guide/installation', activeMatch: '/guide/' },
       { text: '组件', link: '/components/general/button', activeMatch: '/components/' },
+      { text: '构建块', link: '/blocks/', activeMatch: '/blocks/' },
       { text: '设计 Token', link: '/tokens/', activeMatch: '/tokens/' },
     ],
     sidebar: buildSidebar(),

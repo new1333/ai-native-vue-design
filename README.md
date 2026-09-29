@@ -7,7 +7,7 @@
 - **`apps/playground`** —— 最小 Vite + Vue + TS 演示应用（消费方）。
 - **`tooling/`** —— 确定性工具：视觉裸值静态审计（`audit.mjs`）与组件 registry CLI（`cli/ui.mjs`）。
 
-组件职责、何时用/不该用、完整 API 与最小用例见 [`docs/components/`](docs/components/)（每个组件一篇）。系统设计基线见根目录《AI-native-Vue-Design-System-设计方案 .md》，组件编写规约见 [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md)。
+组件职责、何时用/不该用、完整 API 与最小用例见文档站组件页（全量 65 个组件，源码在 [`apps/docs`](apps/docs/)，部署于 <https://new1333.github.io/ai-native-vue-design/>）；[`docs/components/`](docs/components/) 保留初版 25 个组件的手写契约文档。系统设计基线见根目录《AI-native-Vue-Design-System-设计方案 .md》，组件编写规约见 [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md)。
 
 ## 环境
 
@@ -50,9 +50,11 @@ const open = ref(false)
 </template>
 ```
 
-## 组件清单（25 个，按 8 个产品族）
+## 组件清单
 
-详细文档见 `docs/components/<Name>.md`。
+组件库现有 **65 个组件**，按 7 个产品分类（inputs / general / data / overlay / navigation / feedback / typography）。全量组件文档见文档站；每个组件的机器可读契约见 `packages/components/src/<组件目录>/*.meta.ts`，亦可用 `node tooling/cli/ui.mjs inspect <Name>` 查看。
+
+下表为初版 25 个组件的手写契约文档（`docs/components/<Name>.md`），内容已与实现对照核验；其余约 40 个组件暂无手写契约文档，以 meta 契约与文档站页面为准。
 
 ### 01 Foundations（7）
 
@@ -109,13 +111,9 @@ const open = ref(false)
 | DropdownMenu | [DropdownMenu.md](docs/components/DropdownMenu.md) | 动作下拉菜单（WAI-ARIA menu 键盘契约） |
 | Tooltip | [Tooltip.md](docs/components/Tooltip.md) | 纯文字提示浮层（hover/focus 驱动） |
 
-### 07 Patterns（0）
+### 关于原规划的 07 Patterns / 08 AI UI
 
-规划中，暂无组件。
-
-### 08 AI UI（0）
-
-规划中（PromptInput、StreamingText、ChatMessage 等为第二阶段独立产品族），暂无组件。
+设计方案原按 8 族规划；落地时组件按语义归入上述 7 个分类，未启用独立的 Patterns / AI UI 分类。原第二阶段规划的 AI 原生组件均已交付并归入现有分类：PromptInput / ModelSelector / Suggestion → inputs，Message / MessageList / StreamingText / ToolCallCard → data，Reasoning / AgentStatus → feedback，Artifact → overlay。
 
 ## CLI 用法
 

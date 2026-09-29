@@ -20,6 +20,7 @@ import type { DefaultTheme } from 'vitepress'
 const DOCS_ROOT = fileURLToPath(new URL('../', import.meta.url))
 const COMPONENTS_SRC = resolve(DOCS_ROOT, '../../packages/components/src')
 const PAGES_DIR = resolve(DOCS_ROOT, 'src/zh/components')
+const BLOCKS_PAGES_DIR = resolve(DOCS_ROOT, 'src/zh/blocks')
 
 /** 分类固定顺序与中文标签（与设计文档的产品族划分对应；llms.ts 生成器共用）。 */
 export const CATEGORY_ORDER: Array<{ key: string; label: string }> = [
@@ -130,6 +131,12 @@ export function buildSidebar(): DefaultTheme.Sidebar {
       },
     ],
     '/components/': buildComponentGroups(),
+    '/blocks/': [
+      {
+        text: '页面构建块',
+        items: scanBlocks().map(({ label, link }) => ({ text: label, link })),
+      },
+    ],
     '/tokens/': [
       { text: '设计 Token', items: [{ text: 'Token 总览', link: '/tokens/' }] },
     ],
@@ -168,6 +175,37 @@ function buildComponentGroups(): ComponentSidebarGroup[] {
 }
 
 /* ============================================================
+ * 页面构建块（Blocks）：页面级组合的自包含单文件 SFC，源码位于
+ * apps/docs/src/blocks/<Name>Block.vue，页面位于 src/zh/blocks/<name>.md。
+ * 扫描与组件同哲学：有页面才有导航；frontmatter title 为展示名，
+ * description 为一句话简介（供 llms.txt 索引复用）。
+ * ============================================================ */
+
+export interface BlockEntry {
+  /** 页面 stem（即块的 kebab 名），如 login */
+  name: string
+  /** 侧边栏 / 首页展示名：页面 frontmatter title */
+  label: string
+  /** 一句话简介：页面 frontmatter description */
+  description: string
+  link: string
+}
+
+/** 扫描 blocks 页面（index.md 为总览页，不作为条目）；stem 字典序与 OS 无关。 */
+export function scanBlocks(): BlockEntry[] {
+  return readdirSync(BLOCKS_PAGES_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'index.md')
+    .map((entry) => ({ entry, name: entry.name.replace(/\.md$/, '') }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(({ entry, name }) => {
+      const source = readFileSync(join(BLOCKS_PAGES_DIR, entry.name), 'utf8')
+      const title = source.match(/^title:\s*(.+)$/m)?.[1]?.trim()
+      const description = source.match(/^description:\s*(.+)$/m)?.[1]?.trim() ?? ''
+      return { name, label: title ?? name, description, link: `/blocks/${name}` }
+    })
+}
+
+/* ============================================================
  * 首页「组件家族」目录数据：与侧边栏同源（同一扫描、同一存在性
  * 过滤），经 config.ts 注入 themeConfig.homeDirectory 供首页
  * ComponentDirectory / AiWorkbench 消费，双侧永不漂移。
@@ -189,16 +227,24 @@ export interface HomeDirectoryData {
   families: number
   /** 已交付文档页的组件总数 */
   total: number
+  /** 页面构建块数（计入 groups，不计入 families / total） */
+  blocks: number
 }
 
 export function buildHomeDirectory(): HomeDirectoryData {
-  const groups: HomeDirectoryGroup[] = buildComponentGroups().map((group) => ({
+  const componentGroups = buildComponentGroups()
+  const groups: HomeDirectoryGroup[] = componentGroups.map((group) => ({
     label: group.text,
     items: group.items.map((item) => ({ label: item.text, link: item.link })),
   }))
+  const blocks = scanBlocks()
+  if (blocks.length > 0) {
+    groups.push({ label: '页面构建块', items: blocks.map(({ label, link }) => ({ label, link })) })
+  }
   return {
     groups,
-    families: groups.length,
-    total: groups.reduce((sum, group) => sum + group.items.length, 0),
+    families: componentGroups.length,
+    total: componentGroups.reduce((sum, group) => sum + group.items.length, 0),
+    blocks: blocks.length,
   }
 }

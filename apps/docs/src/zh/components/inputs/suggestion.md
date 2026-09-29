@@ -37,7 +37,7 @@ import slotsSrc from '@docs-demos/suggestion/Slots.vue?raw'
 
   <Demo
     title="禁用与加载"
-    anchor="states"
+    anchor="states-demo"
     description="disabled 整组禁用（原生属性，移出 Tab 序）；item.disabled 禁用单条；loading 为建议生成中：根级 aria-busy，拦截一切选中路径但 chips 保持可聚焦。"
     :src="statesSrc"
   >

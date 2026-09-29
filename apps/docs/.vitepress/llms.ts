@@ -20,13 +20,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { ComponentDefinition } from '@comp-src/shared/meta'
-import { CATEGORY_ORDER } from './sidebar'
+import { CATEGORY_ORDER, scanBlocks } from './sidebar'
 
 const DOCS_ROOT = fileURLToPath(new URL('../', import.meta.url))
 const REGISTRY_DIR = resolve(DOCS_ROOT, '../../registry')
 const COMPONENTS_SRC = resolve(DOCS_ROOT, '../../packages/components/src')
 const PAGES_DIR = resolve(DOCS_ROOT, 'src/zh/components')
 const GUIDE_DIR = resolve(DOCS_ROOT, 'src/zh/guide')
+const BLOCKS_SRC_DIR = resolve(DOCS_ROOT, 'src/blocks')
 
 /** 站点部署域：GitHub Project Pages（勿单侧改动，见 config.ts base 注释）。 */
 const SITE_ORIGIN = 'https://new1333.github.io'
@@ -318,6 +319,64 @@ function guideMarkdown(name: string): string {
     .trimStart()
 }
 
+// ── 页面构建块渲染 ────────────────────────────────────────────
+
+interface BlockDoc {
+  /** 页面 stem（块的 kebab 名），如 login */
+  name: string
+  /** 页面 frontmatter title */
+  title: string
+  /** 页面 frontmatter description（一句话简介） */
+  description: string
+  /** 源码文件名，如 LoginBlock.vue */
+  file: string
+  /** 完整 SFC 源码 */
+  source: string
+}
+
+/** kebab 名 → 源码文件名：login → LoginBlock.vue、ai-workspace → AiWorkspaceBlock.vue */
+function blockSourceFile(name: string): string {
+  const pascal = name
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('')
+  return `${pascal}Block.vue`
+}
+
+/**
+ * 读取全部构建块（扫描与 sidebar 同源）。源码文件缺失时抛错：
+ * 页面存在但 SFC 缺失即「文档说有、复制拿不到」，门禁期失败优于静默漏挂。
+ */
+function readBlocks(): BlockDoc[] {
+  return scanBlocks().map((block) => {
+    const file = blockSourceFile(block.name)
+    const path = join(BLOCKS_SRC_DIR, file)
+    if (!existsSync(path)) {
+      throw new Error(`[llms] 构建块「${block.name}」缺少源码文件：${path}（约定为 <Pascal>Block.vue 单文件 SFC）`)
+    }
+    return {
+      name: block.name,
+      title: block.label,
+      description: block.description,
+      file,
+      source: readFileSync(path, 'utf8'),
+    }
+  })
+}
+
+function renderBlockDoc(block: BlockDoc, pageUrl: string): string {
+  return joinBlocks([
+    `# ${block.title}（页面构建块）`,
+    block.description && `> ${block.description}`,
+    [
+      `- 在线文档：${pageUrl}`,
+      '- 依赖：`@ui/components` + `@ui/tokens/paper.css`（应用入口引入一次）',
+      '- 单文件自包含 SFC，复制到项目即可作为页面起点；交互为演示实现，替换为真实接口',
+    ].join('\n'),
+    `## 源码（${block.file}）\n\n\`\`\`vue\n${block.source.trim()}\n\`\`\``,
+  ])
+}
+
 // ── llms.txt / llms-full.txt ──────────────────────────────────
 
 /** 页面 frontmatter title（侧边栏同款回退规则：缺失时用 meta 名）。 */
@@ -351,13 +410,14 @@ function siteUrl(base: string, path: string): string {
 function renderLlmsIndex(
   componentsFile: ComponentsFile,
   tokensFile: TokensFile,
+  blocks: BlockDoc[],
   mdUrl: (path: string) => string,
 ): string {
   const groups = groupByCategory(componentsFile.components)
   const subTotal = componentsFile.components.reduce((n, c) => n + c.subComponents.length, 0)
   return joinBlocks([
     '# 纸面 Paper —— AI-native Vue 3 组件库',
-    `> ${componentsFile.count} 个 Vue 3 组件（另含 ${subTotal} 个子组件契约），全部以结构化 meta（机器可读契约）驱动：token-only 视觉（--ui-*）、a11y / SSR 就绪。每个链接指向该组件完整契约的 Markdown 版（API / 状态 / 无障碍 / Agent 选型与生成提示）。`,
+    `> ${componentsFile.count} 个 Vue 3 组件（另含 ${subTotal} 个子组件契约）${blocks.length > 0 ? `与 ${blocks.length} 个页面构建块` : ''}，全部以结构化 meta（机器可读契约）驱动：token-only 视觉（--ui-*）、a11y / SSR 就绪。每个链接指向该组件完整契约的 Markdown 版（API / 状态 / 无障碍 / Agent 选型与生成提示）。`,
     `本文件由 VitePress 构建钩子自动生成，请勿手改。registry 与组件实现的一致性由 meta 契约对账测试与 validate-registry 双向校验保障；原始 JSON 数据见仓库 registry/ 目录（components.json / tokens.json）。Profile 主题共 ${tokensFile.count} 个 --ui-* token。`,
     `## 指南\n\n${GUIDE_PAGES.map((page) => `- [${page.title}](${mdUrl(`guide/${page.name}.md`)}): ${page.summary}`).join('\n')}`,
     `## 设计 Token\n\n- [Token 总览](${mdUrl('tokens.md')}): ${tokensFile.count} 个 --ui-* token（primitive / semantic / component 三层）完整清单与用法`,
@@ -368,16 +428,23 @@ function renderLlmsIndex(
         return `- [${labelText}](${mdUrl(path)}): ${record.identity.description}`
       }).join('\n')}`,
     ),
+    blocks.length > 0 &&
+      `## 页面构建块\n\n${blocks.map((block) => `- [${block.title}](${mdUrl(`blocks/${block.name}.md`)}): ${block.description}`).join('\n')}`,
   ])
 }
 
-function renderLlmsFull(componentsFile: ComponentsFile, tokensFile: TokensFile, base: string): string {
+function renderLlmsFull(
+  componentsFile: ComponentsFile,
+  tokensFile: TokensFile,
+  blocks: BlockDoc[],
+  base: string,
+): string {
   const groups = groupByCategory(componentsFile.components)
   const subTotal = componentsFile.components.reduce((n, c) => n + c.subComponents.length, 0)
   return joinBlocks([
     '# 纸面 Paper —— 组件库完整文档（llms-full）',
-    `> 本文件为全量单文件版：内容等于 llms.txt 所列全部 .md 之和（指南 + ${componentsFile.count} 个组件契约 + ${tokensFile.count} 个 token）。由 VitePress 构建钩子自动生成，请勿手改。`,
-    `- 组件：${componentsFile.count} 个主组件 / ${subTotal} 个子组件 · token：${tokensFile.count} 个 · 分类：${groups.map((group) => group.key).join(' / ')}`,
+    `> 本文件为全量单文件版：内容等于 llms.txt 所列全部 .md 之和（指南 + ${componentsFile.count} 个组件契约 + ${tokensFile.count} 个 token${blocks.length > 0 ? ` + ${blocks.length} 个页面构建块` : ''}）。由 VitePress 构建钩子自动生成，请勿手改。`,
+    `- 组件：${componentsFile.count} 个主组件 / ${subTotal} 个子组件 · token：${tokensFile.count} 个 · 分类：${groups.map((group) => group.key).join(' / ')}${blocks.length > 0 ? ` · 构建块：${blocks.length} 个` : ''}`,
     `- 原始 JSON（机器可读 registry）：仓库 registry/ 目录（components.json / tokens.json）`,
     '## 指南',
     ...GUIDE_PAGES.map((page) => guideMarkdown(page.name)),
@@ -386,6 +453,7 @@ function renderLlmsFull(componentsFile: ComponentsFile, tokensFile: TokensFile, 
         renderRecordDoc(record, siteUrl(base, `components/${record.identity.category}/${record.source.dir}.html`)),
       ),
     ),
+    ...blocks.map((block) => renderBlockDoc(block, siteUrl(base, `blocks/${block.name}.html`))),
     renderTokensDoc(tokensFile, siteUrl(base, 'tokens/')),
   ])
 }
@@ -405,12 +473,13 @@ function writeFile(outDir: string, relPath: string, content: string): void {
 export async function emitLlmsArtifacts(siteConfig: LlmsSiteConfig): Promise<void> {
   const componentsFile = readComponentsRegistry()
   const tokensFile = readTokensRegistry()
+  const blocks = readBlocks()
   const { outDir } = siteConfig
   const base = siteConfig.site.base
   const mdUrl = (path: string): string => siteUrl(base, path)
 
-  writeFile(outDir, 'llms.txt', renderLlmsIndex(componentsFile, tokensFile, mdUrl))
-  const fullTxt = renderLlmsFull(componentsFile, tokensFile, base)
+  writeFile(outDir, 'llms.txt', renderLlmsIndex(componentsFile, tokensFile, blocks, mdUrl))
+  const fullTxt = renderLlmsFull(componentsFile, tokensFile, blocks, base)
   writeFile(outDir, 'llms-full.txt', fullTxt)
   writeFile(outDir, 'tokens.md', renderTokensDoc(tokensFile, siteUrl(base, 'tokens/')))
 
@@ -427,8 +496,16 @@ export async function emitLlmsArtifacts(siteConfig: LlmsSiteConfig): Promise<voi
     writeFile(outDir, `guide/${page.name}.md`, guideMarkdown(page.name))
     fileTotal += 1
   }
+  for (const block of blocks) {
+    writeFile(
+      outDir,
+      `blocks/${block.name}.md`,
+      renderBlockDoc(block, siteUrl(base, `blocks/${block.name}.html`)),
+    )
+    fileTotal += 1
+  }
 
   console.log(
-    `[llms] 已生成 llms.txt / llms-full.txt + ${componentsFile.components.length} 个组件 .md + tokens.md + 指南 ${GUIDE_PAGES.length} 页（共 ${fileTotal} 个文件，llms-full ${fullTxt.length} 字符）→ ${outDir}`,
+    `[llms] 已生成 llms.txt / llms-full.txt + ${componentsFile.components.length} 个组件 .md + tokens.md + 指南 ${GUIDE_PAGES.length} 页 + 构建块 ${blocks.length} 个（共 ${fileTotal} 个文件，llms-full ${fullTxt.length} 字符）→ ${outDir}`,
   )
 }

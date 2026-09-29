@@ -46,7 +46,7 @@ import compositionSrc from '@docs-demos/skeleton/Composition.vue?raw'
 
   <Demo
     title="组合排版"
-    anchor="composition"
+    anchor="composition-demo"
     description="卡片占位（媒体 rect + 文本 line）与列表占位（头像 circle + 两行 line）——形状尽量贴近真实内容，减少加载完成后的布局抖动。"
     :src="compositionSrc"
   >

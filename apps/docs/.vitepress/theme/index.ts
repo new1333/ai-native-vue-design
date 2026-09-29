@@ -12,6 +12,8 @@ import './paper-theme.css'
 import AgentHints from './components/AgentHints.vue'
 import ApiTables from './components/ApiTables.vue'
 import AiWorkbench from './components/AiWorkbench.vue'
+import BlockGallery from './components/BlockGallery.vue'
+import BlockPreview from './components/BlockPreview.vue'
 import ComponentDirectory from './components/ComponentDirectory.vue'
 import ComponentDoc from './components/ComponentDoc.vue'
 import Demo from './components/Demo.vue'
@@ -30,6 +32,8 @@ export default {
   Layout,
   enhanceApp({ app }) {
     app.component('Demo', Demo)
+    app.component('BlockPreview', BlockPreview)
+    app.component('BlockGallery', BlockGallery)
     app.component('ComponentDoc', ComponentDoc)
     app.component('MetaIntent', MetaIntent)
     app.component('ApiTables', ApiTables)

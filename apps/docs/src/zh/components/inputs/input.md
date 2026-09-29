@@ -57,7 +57,7 @@ import statesSrc from '@docs-demos/input/States.vue?raw'
 
   <Demo
     title="禁用、只读与错误态"
-    anchor="states"
+    anchor="states-demo"
     description="disabled 用原生属性移出 Tab 序；readonly 可聚焦可选中、不可编辑；status='error' 时描边转 danger 并推导 aria-invalid，aria-describedby 经 attrs 直达原生 input。"
     :src="statesSrc"
   >

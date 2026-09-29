@@ -1,3 +1,9 @@
+<script setup lang="ts">
+// withBase：站点部署在 base 子路径（/ai-native-vue-design/，本地 dev/preview 同），
+// 手写 <a href> 不会像 markdown 链接那样自动带 base，必须显式包裹。
+import { withBase } from 'vitepress'
+</script>
+
 <template>
   <!-- 覆盖默认主题的英文 404：dev 与客户端路由下的未知路径由此渲染；
        静态托管仍由 src/zh/404.md 构建出的 404.html 兜底，两处文案保持一致 -->
@@ -6,9 +12,9 @@
     <h1 class="ui-docs-notfound__title">这一页不在纸面上</h1>
     <p class="ui-docs-notfound__desc">可能已被移动或删除。</p>
     <nav class="ui-docs-notfound__links">
-      <a href="/">首页</a>
-      <a href="/guide/quickstart">快速开始</a>
-      <a href="/components/general/button">组件文档</a>
+      <a :href="withBase('/')">首页</a>
+      <a :href="withBase('/guide/quickstart')">快速开始</a>
+      <a :href="withBase('/components/general/button')">组件文档</a>
     </nav>
   </div>
 </template>

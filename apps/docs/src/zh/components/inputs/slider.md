@@ -57,7 +57,7 @@ import statesSrc from '@docs-demos/slider/States.vue?raw'
 
   <Demo
     title="禁用、加载与受控"
-    anchor="states"
+    anchor="states-demo"
     description="disabled：柄移出 Tab 序（tabindex='-1'）+ aria-disabled='true'，一切取值路径拦截；loading：aria-busy='true' 且拦截取值但保持可聚焦（同 Switch 先例，不落 disabled）；受控值可由外部状态直接驱动。"
     :src="statesSrc"
   >

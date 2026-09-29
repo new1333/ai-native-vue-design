@@ -15,7 +15,7 @@ import lifecycleSrc from '@docs-demos/agent-status/Lifecycle.vue?raw'
 <ComponentDoc :meta="agentStatusMeta" dir="agent-status">
   <Demo
     title="八档状态总览"
-    anchor="states"
+    anchor="states-demo"
     description="status 对齐 §14 state semantics 八档生命周期状态：排队 / 运行 / 流式输出 / 等待工具 / 工具执行 / 已完成 / 已失败 / 已取消。运行三档自带 Spinner 指示，failed 走 danger（destructive）token；detail 提供第二行补充说明，#icon 插槽可替换前置图形。"
     :src="basicSrc"
   >

@@ -46,7 +46,7 @@ import statesSrc from '@docs-demos/prompt-input/States.vue?raw'
 
   <Demo
     title="加载与禁用"
-    anchor="states"
+    anchor="states-demo"
     description="loading 期间发送按钮切换为停止（aria-label 同步切换、保持键盘可达，点击发出 cancel），Enter 不再发送；disabled 用原生属性移出 Tab 序，发送按钮同步禁用。"
     :src="statesSrc"
   >

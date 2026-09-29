@@ -35,7 +35,7 @@ import statesSrc from '@docs-demos/icon-button/States.vue?raw'
 
   <Demo
     title="加载与禁用"
-    anchor="states"
+    anchor="states-demo"
     description="loading 图标让位于旋转指示、置 aria-busy，点击与 Enter/Space 均不触发 click 且保持可聚焦；disabled 用原生属性移出 Tab 序。不要用 disabled 表达 loading。"
     :src="statesSrc"
   >

@@ -18,9 +18,10 @@ const modules = import.meta.glob<string>('@comp-src/**/*.{vue,ts}', {
   import: 'default',
 })
 
-function pascalize(dir: string): string {
-  return dir.replace(/(^|-)([a-z])/g, (_, __, char: string) => char.toUpperCase())
-}
+// 主组件识别走 stem 归一化（忽略大小写与分隔符），与 sidebar 的 resolvePrimaryMeta
+// 同一规则：AutoComplete / ToastHost 等文件名与目录名不同形的也能正确置顶。
+const normStem = (s: string): string => s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+const mainStem = normStem(props.dir)
 
 interface SourceFile {
   key: string
@@ -34,11 +35,11 @@ const files: SourceFile[] = Object.keys(modules)
   .filter(key => !/\.spec\.ts$/.test(key) && !/\.meta\.ts$/.test(key))
   .map((key) => {
     const name = key.slice(key.lastIndexOf('/') + 1)
-    const main = `${pascalize(props.dir)}.vue`
+    const stem = name.endsWith('.vue') ? normStem(name.slice(0, -4)) : ''
     return {
       key,
       name,
-      order: name === main ? 0 : name.endsWith('.vue') ? 1 : 2,
+      order: stem === mainStem ? 0 : name.endsWith('.vue') ? 1 : 2,
       github: `${GITHUB_BASE}${props.dir}/${name}`,
     }
   })

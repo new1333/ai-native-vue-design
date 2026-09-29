@@ -134,3 +134,31 @@ body {
   }
 }
 
+/* ============================================================
+ * blocks 页「试试」动手提示行：md 内以
+ * <p class="block-try"><span class="block-try__label">试试</span>…</p>
+ * 使用。浅底细描边的轻提示（动手指引），与结论性的 ::: tip 容器区分；
+ * 加 .vp-doc 前缀抬高特异性，覆盖默认主题的段落 margin。
+ * ============================================================ */
+.vp-doc .block-try {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-3);
+  margin: 0 0 var(--ui-space-4);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  font-size: var(--ui-text-sm);
+  line-height: var(--ui-leading-body);
+  color: var(--ui-text-2);
+}
+
+.vp-doc .block-try__label {
+  flex: none;
+  font-weight: var(--ui-font-weight-semibold);
+  color: var(--ui-accent);
+  padding-right: var(--ui-space-3);
+  border-right: 1px solid var(--ui-border);
+}
+

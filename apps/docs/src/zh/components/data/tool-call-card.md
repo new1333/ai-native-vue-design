@@ -28,7 +28,7 @@ import customSrc from '@docs-demos/tool-call-card/Custom.vue?raw'
 
   <Demo
     title="五种状态"
-    anchor="states"
+    anchor="states-demo"
     description="status 为受控枚举：queued / running / completed / failed / waitingApproval（对齐设计文档 §14 state semantics——表达真实状态而非视觉特效）。状态徽标复用 Badge 档位语义（neutral / info / success / danger / warning，soft 底 + 同系文字色 + 装饰圆点）；failed 时结果区文字转 danger 语义色表达错误输出；disabled 仅作用于 waitingApproval 的审批按钮。"
     :src="statesSrc"
   >

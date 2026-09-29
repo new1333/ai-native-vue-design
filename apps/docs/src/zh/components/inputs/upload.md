@@ -48,7 +48,7 @@ import slotsSrc from '@docs-demos/upload/Slots.vue?raw'
 
   <Demo
     title="禁用、数量上限与受控"
-    anchor="states"
+    anchor="states-demo"
     description="disabled 时触发器与条目按钮全部原生 disabled，一切变更路径拦截；maxCount 超限整批拒绝并发出 exceed；列表由外部状态驱动，外部可自由增删条目与推进状态。"
     :src="statesSrc"
   >

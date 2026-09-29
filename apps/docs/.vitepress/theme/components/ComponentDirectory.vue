@@ -9,18 +9,23 @@ import type { HomeDirectoryData } from '../../sidebar'
 
 const { theme } = useData<{ homeDirectory?: HomeDirectoryData }>()
 
-const EMPTY: HomeDirectoryData = { groups: [], families: 0, total: 0 }
+const EMPTY: HomeDirectoryData = { groups: [], families: 0, total: 0, blocks: 0 }
 const directory = computed<HomeDirectoryData>(() => theme.value.homeDirectory ?? EMPTY)
 
 const groups = computed(() => directory.value.groups)
 const total = computed(() => directory.value.total)
 const families = computed(() => directory.value.families)
+const heading = computed(() => {
+  const parts = [`${families.value} 个家族`, `${total.value} 个组件`]
+  if (directory.value.blocks > 0) parts.push(`${directory.value.blocks} 个页面构建块`)
+  return parts.join('，')
+})
 </script>
 
 <template>
   <section class="ui-directory">
     <header class="ui-directory__head">
-      <h2>{{ families }} 个家族，{{ total }} 个组件</h2>
+      <h2>{{ heading }}</h2>
       <p>
         每个组件都附带结构化 meta（props / slots / events / 何时用 / 何时不用）与
         api · behavior · a11y · ssr 四类测试——本站的 API 文档全部由 meta 自动渲染。

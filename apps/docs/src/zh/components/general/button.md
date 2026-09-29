@@ -39,7 +39,7 @@ import groupSrc from '@docs-demos/button/Group.vue?raw'
 
   <Demo
     title="加载与禁用"
-    anchor="states"
+    anchor="states-demo"
     description="loading 显示旋转指示并置 aria-busy，拦截一切激活路径但保持可聚焦；disabled 用原生属性，移出 Tab 序。不要用 disabled 表达 loading。"
     :src="statesSrc"
   >

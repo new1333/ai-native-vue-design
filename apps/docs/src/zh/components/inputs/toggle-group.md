@@ -48,7 +48,7 @@ import disabledSrc from '@docs-demos/toggle-group/Disabled.vue?raw'
 
   <Demo
     title="手动组合与 item 插槽"
-    anchor="composition"
+    anchor="composition-demo"
     description="默认插槽手动放置 ToggleItem 子组件（label prop 或默认插槽提供可读名称）；items prop 配合 #item 作用域插槽可渲染图标 + 文本的富内容（图标 svg 须 aria-hidden）。"
     :src="compositionSrc"
   >
