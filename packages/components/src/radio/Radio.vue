@@ -96,7 +96,8 @@ defineExpose<RadioExpose>({ focus, blur })
 }
 
 .ui-radio:hover:not(.ui-radio--checked):not(.ui-radio--disabled) .ui-radio__box::before {
-  border-color: var(--ui-border-strong);
+  /* hover 描边用 control-strong 档：相对 rest 描边真实加深一档，两档主题下均有可见分层 */
+  border-color: var(--ui-border-control-strong);
 }
 
 /* ── 圆形框：自绘视觉的定位容器（16px = 图标最小档，结构性尺寸） ────── */
@@ -116,7 +117,8 @@ defineExpose<RadioExpose>({ focus, blur })
   inset: 0;
   border-width: 1px; /* 结构性细线（无 --ui-border-width token，随 Button/Input/Checkbox 先例提出需求） */
   border-style: solid;
-  border-color: var(--ui-border-strong);
+  /* 未选态描边用 control 专用档（对底色 ≥3:1，WCAG 1.4.11 非文本对比），不用通用 line-strong */
+  border-color: var(--ui-border-control);
   /* 16px 方寸下半径 8px 即圆形（无圆形半径 token，半径取自间距 token 的二分之一） */
   border-radius: calc(var(--ui-space-4) / 2);
   background-color: var(--ui-surface);

@@ -61,8 +61,8 @@ export const meta: ComponentDefinition = {
     preferred: ['必须提供可读名称（label prop 或默认插槽），无名称时由使用方经 attrs 提供 aria-label', '级联勾选在子项变化时由使用方计算父项 modelValue 与 indeterminate'],
   },
   states: {
-    default: '未选：surface 方块 + line-strong 描边；选中/半选：accent 实底 + on-accent 对勾/短横线。',
-    hover: '方块描边加深为 --ui-border-strong（未选态）；disabled 不响应 hover。',
+    default: '未选：surface 方块 + --ui-border-control 描边；选中/半选：accent 实底 + on-accent 对勾/短横线。',
+    hover: '未选态方块描边加深一档为 --ui-border-control-strong；disabled 不响应 hover。',
     focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），绘制在原生控件热区（与视觉方块重合）；组件不改写 outline 与 tabindex。',
     active: '无按压位移反馈；点击即切换（原生 checkbox 激活路径），视觉随受控值即时翻转。',
     disabled: '方块灰化（sand 底 + line 描边）、标记转 text-3、文本 text-3 + not-allowed 光标；原生 disabled 移出 Tab 序并拦截一切切换路径。',
@@ -75,7 +75,7 @@ export const meta: ComponentDefinition = {
   performance:
     '无监听器、无测量、无定时器；仅一个 watch 同步 indeterminate property 与 computed 派生根类。动效只有 border-color / background-color / opacity 过渡（--ui-motion-fast token），prefers-reduced-motion 下随 token 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：方块描边 --ui-border-strong、选中底 --ui-accent、标记色 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、间距 --ui-space-2、圆角 --ui-radius-xs、字号 --ui-text-md、动效 --ui-motion-fast/--ui-ease-out。结构性例外：border-width: 1px（无 --ui-border-width token，与 Button/Input 同一缺口，已提出需求）；原生控件 opacity: 0 为结构性隐藏（非视觉取值），方块尺寸取 --ui-space-4（16px，图标最小档）。',
+    '视觉只消费 --ui-* token（paper.css）：未选方块描边 --ui-border-control（hover 加深为 --ui-border-control-strong，control 专用描边档，非文本对比 ≥3:1）、选中底 --ui-accent、标记色 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、间距 --ui-space-2、圆角 --ui-radius-xs、字号 --ui-text-md、动效 --ui-motion-fast/--ui-ease-out。结构性例外：border-width: 1px（无 --ui-border-width token，与 Button/Input 同一缺口，已提出需求）；原生控件 opacity: 0 为结构性隐藏（非视觉取值），方块尺寸取 --ui-space-4（16px，图标最小档）。',
   examples: [
     "<Checkbox v-model='agreed' label='我已阅读并同意服务条款' />",
     "<Checkbox v-model='all' :indeterminate='isPart' @update:model-value='toggleAll'>全选</Checkbox>",

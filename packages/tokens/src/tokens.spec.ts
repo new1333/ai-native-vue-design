@@ -23,18 +23,26 @@ const rootDecls = declarationsOf(rootBlock)
 const themeDecls = declarationsOf(themeBlock)
 
 const semanticTokens: readonly Token[] = collectTokens(semantic)
+// 表单控件描边语义对的 TS 定义（semantic.ts）不在本次修复的文件域内，暂未纳入
+// semantic 对象；先以手工清单并入「语义 token 全集」，保证下面三处
+// 「重声明全部语义 token」用例覆盖它们。待 semantic.ts 扩展后可收敛回 collectTokens(semantic)。
+const semanticNames: readonly string[] = [
+  ...semanticTokens.map((t) => t.name),
+  '--ui-border-control',
+  '--ui-border-control-strong',
+]
 const allNames: readonly string[] = allTokens.map((t) => t.name)
 
 describe('@ui/tokens · 语义 token ↔ CSS 变量', () => {
   it('每个语义 token 都以 --ui- 命名并在 paper.css :root 中有对应 CSS 变量', () => {
     expect(semanticTokens.length).toBe(22)
-    const missing = semanticTokens.filter((t) => !t.name.startsWith('--ui-') || !rootDecls.has(t.name))
-    expect(missing.map((t) => t.name)).toEqual([])
+    const missing = semanticNames.filter((name) => !name.startsWith('--ui-') || !rootDecls.has(name))
+    expect(missing).toEqual([])
   })
 
   it(':root[data-theme=paper] 显式 Profile 块重新声明全部语义 token', () => {
-    const missing = semanticTokens.filter((t) => !themeDecls.has(t.name))
-    expect(missing.map((t) => t.name)).toEqual([])
+    const missing = semanticNames.filter((name) => !themeDecls.has(name))
+    expect(missing).toEqual([])
   })
 
   it('组件级最小集（button/input）也在两个块中声明', () => {
@@ -152,6 +160,13 @@ describe('@ui/tokens · 档位钉子（设计文档 §6.2 规定值）', () => {
 })
 
 describe('@ui/tokens · paper.css 全局约定', () => {
+  it('两档 color-scheme：浅档 light / 深档 dark（原生控件 / UA 弹层 / 文本选区高亮随档翻转）', () => {
+    expect(rootBlock).toContain('color-scheme: light')
+    expect(themeBlock).toContain('color-scheme: light')
+    const dark = paperCss.match(/:root\.dark,\s*:root\[data-theme='paper-dark'\]\s*\{([\s\S]*?)\}/)?.[1] ?? ''
+    expect(dark).toContain('color-scheme: dark')
+  })
+
   it(':focus-visible 使用 2px solid var(--ui-accent) 与 2px offset', () => {
     const focusBlock = paperCss.match(/:focus-visible\s*\{[^}]*\}/)?.[0] ?? ''
     expect(focusBlock).toContain('outline: 2px solid var(--ui-accent)')
@@ -204,8 +219,10 @@ describe('@ui/tokens · 深色 Profile（夜纸）', () => {
   })
 
   it('重声明全部语义 token 与 component 别名（Profile 档独立成立）', () => {
-    const missing = [...semanticTokens, ...collectTokens(component)].filter((t) => !darkDecls.has(t.name))
-    expect(missing.map((t) => t.name)).toEqual([])
+    const missing = [...semanticNames, ...collectTokens(component).map((t) => t.name)].filter(
+      (name) => !darkDecls.has(name),
+    )
+    expect(missing).toEqual([])
   })
 
   it('不随档变的 primitive 亦全量重声明（不依赖默认档铺底）', () => {
@@ -228,17 +245,18 @@ describe('@ui/tokens · 深色 Profile（夜纸）', () => {
     expect(darkDecls.get('--ui-surface-muted')).toBe('var(--ui-color-dusk)')
     expect(darkDecls.get('--ui-text-1')).toBe('var(--ui-color-mist-100)')
     expect(darkDecls.get('--ui-text-2')).toBe('var(--ui-color-mist-300)')
-    expect(darkDecls.get('--ui-text-3')).toBe('var(--ui-color-ink-400)')
+    expect(darkDecls.get('--ui-text-3')).toBe('var(--ui-color-ink-300)')
     expect(darkDecls.get('--ui-accent')).toBe('var(--ui-color-pine-600)')
     expect(darkDecls.get('--ui-on-accent')).toBe('var(--ui-color-white)')
   })
 
-  it('深色新槽位与重落位值（夜纸三级 / 雾纸 / 前景反转 / 提亮松绿 / 深阴影）', () => {
+  it('深色新槽位与重落位值（夜纸三级 / 雾纸 / 提亮弱墨 / 前景反转 / 提亮松绿 / 深阴影）', () => {
     expect(darkDecls.get('--ui-color-night')).toBe('#1B1A16')
     expect(darkDecls.get('--ui-color-night-raised')).toBe('#23221D')
     expect(darkDecls.get('--ui-color-dusk')).toBe('#2A2924')
     expect(darkDecls.get('--ui-color-mist-100')).toBe('#EDEAE0')
     expect(darkDecls.get('--ui-color-mist-300')).toBe('#B3AFA3')
+    expect(darkDecls.get('--ui-color-ink-300')).toBe('#948F82')
     expect(darkDecls.get('--ui-color-white')).toBe('#22211C')
     expect(darkDecls.get('--ui-color-pine-600')).toBe('#7FAE97')
     expect(darkDecls.get('--ui-shadow-modal')).toBe('0 8px 24px rgba(0, 0, 0, 0.6)')
@@ -247,6 +265,24 @@ describe('@ui/tokens · 深色 Profile（夜纸）', () => {
   it('tooltip 对仗：浅色档墨片 ink-950 ↔ 深色档纸片 paper（墨上纸 ↔ 纸上墨）', () => {
     expect(rootDecls.get('--ui-tooltip')).toBe('var(--ui-color-ink-950)')
     expect(darkDecls.get('--ui-tooltip')).toBe('var(--ui-color-paper)')
+  })
+
+  it('表单控件描边：line-control 槽位与 --ui-border-control 语义别名在浅暗两档落位', () => {
+    // 浅色档：rest 与 line-strong 同值（视觉不变），strong 深一档形成真实 hover 分层
+    expect(rootDecls.get('--ui-color-line-control')).toBe('#D5D1C6')
+    expect(rootDecls.get('--ui-color-line-control-strong')).toBe('#BEB9AC')
+    expect(themeDecls.get('--ui-color-line-control')).toBe('#D5D1C6')
+    expect(themeDecls.get('--ui-color-line-control-strong')).toBe('#BEB9AC')
+    expect(rootDecls.get('--ui-border-control')).toBe('var(--ui-color-line-control)')
+    expect(rootDecls.get('--ui-border-control-strong')).toBe('var(--ui-color-line-control-strong)')
+    expect(themeDecls.get('--ui-border-control')).toBe('var(--ui-color-line-control)')
+    expect(themeDecls.get('--ui-border-control-strong')).toBe('var(--ui-color-line-control-strong)')
+    // 深色档：control 对夜底 / 抬升底 / dusk 实测 3.75 / 3.43 / 3.13:1（WCAG 1.4.11 ≥3），
+    // strong 为 hover 提亮档（≥4:1）
+    expect(darkDecls.get('--ui-color-line-control')).toBe('#7A7466')
+    expect(darkDecls.get('--ui-color-line-control-strong')).toBe('#948F82')
+    expect(darkDecls.get('--ui-border-control')).toBe('var(--ui-color-line-control)')
+    expect(darkDecls.get('--ui-border-control-strong')).toBe('var(--ui-color-line-control-strong)')
   })
 
   it('有意保持浅色的槽位不随档反转（代码块深底浅字设计依赖 ink-950/paper）', () => {

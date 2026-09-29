@@ -106,7 +106,9 @@ async function copyImport(): Promise<void> {
 }
 
 .ui-docs-pagedoc__copy:hover {
-  color: var(--ui-surface);
+  /* hover 色与常态同用 --ui-color-paper（两档恒浅）：原 --ui-surface 在夜纸档解析
+     #23221D，落 ink-950 #26262A 底仅 1.06:1，hover 瞬间文字隐身 */
+  color: var(--ui-color-paper);
   border-color: var(--ui-color-paper);
 }
 

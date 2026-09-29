@@ -82,6 +82,8 @@ async function copyToken(name: string): Promise<void> {
 
 <template>
   <div class="ui-docs-tokens">
+    <!-- 本面板固定解析 paper.css 首个 :root（浅色档），夜纸档下与页面实况不符：补一行弱化说明，不改运行时解析 -->
+    <p class="ui-docs-tokens__hint">固定展示默认 paper 档值；夜纸档值见 paper.css 的 :root.dark 块。</p>
     <section v-for="group in groups" :key="group.title" class="ui-docs-tokens__group">
       <h3>{{ group.title }}</h3>
       <ul class="ui-docs-tokens__list">
@@ -112,6 +114,13 @@ async function copyToken(name: string): Promise<void> {
 <style scoped>
 .ui-docs-tokens__group {
   margin-bottom: var(--ui-space-6);
+}
+
+/* 档位说明：text-3 / text-xs 量级弱化呈现，仅提示样块固定为浅色档 */
+.ui-docs-tokens__hint {
+  margin: 0 0 var(--ui-space-4);
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-3);
 }
 
 .ui-docs-tokens__group h3 {

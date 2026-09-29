@@ -125,7 +125,8 @@ defineExpose<CheckboxExpose>({ focus, blur })
 }
 
 .ui-checkbox:hover:not(.ui-checkbox--disabled) .ui-checkbox__box::before {
-  border-color: var(--ui-border-strong);
+  /* hover 描边用 control-strong 档：相对 rest 描边真实加深一档，两档主题下均有可见分层 */
+  border-color: var(--ui-border-control-strong);
 }
 
 /* ── 方块：自绘视觉的定位容器（16px = 图标最小档，结构性尺寸） ──────── */
@@ -146,7 +147,8 @@ defineExpose<CheckboxExpose>({ focus, blur })
   inset: 0;
   border-width: 1px; /* 结构性细线（无 --ui-border-width token，随 Button/Input 先例提出需求） */
   border-style: solid;
-  border-color: var(--ui-border-strong);
+  /* 未选态描边用 control 专用档（对底色 ≥3:1，WCAG 1.4.11 非文本对比），不用通用 line-strong */
+  border-color: var(--ui-border-control);
   border-radius: var(--ui-radius-xs);
   background-color: var(--ui-surface);
   transition:

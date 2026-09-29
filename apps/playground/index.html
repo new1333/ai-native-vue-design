@@ -3,7 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>纸面 Paper · Playground</title>
+    <script>
+      // 无闪烁主题初始化：首帧渲染前把档位挂到 <html>（paper.css 的 :root.dark 入口）。
+      // 优先读 localStorage('ui-theme')（'dark' | 'light'）；未设置时回退系统偏好
+      // prefers-color-scheme: dark。切换入口在 App.vue 头部的主题按钮。
+      (function () {
+        var stored = null
+        try {
+          stored = localStorage.getItem('ui-theme')
+        } catch (e) {
+          /* localStorage 不可用（隐私模式等）时视为未设置 */
+        }
+        var isDark =
+          stored === 'dark'
+            ? true
+            : stored === 'light'
+              ? false
+              : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', isDark)
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

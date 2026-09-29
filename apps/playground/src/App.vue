@@ -5,7 +5,7 @@
  * 视觉一律由组件自身样式（var(--ui-*) token）承担；本文件只保留少量
  * 布局辅助类（flex/grid 间距、间距 token），不定义组件视觉。
  */
-import { computed, h, onUnmounted, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref } from 'vue'
 import type { FunctionalComponent } from 'vue'
 import {
   Accordion,
@@ -734,12 +734,33 @@ const artifactCode = `export function sortByTitle<T extends { title: string }>(i
 
 /* ── Popconfirm 气泡确认 ── */
 const lastConfirm = ref('（尚未操作）')
+
+/* ── 主题切换（夜纸 ↔ 纸面）：初始档由 index.html 内联脚本无闪烁写入，这里只做读写同步 ── */
+const isDark = ref(false)
+onMounted(() => {
+  isDark.value = document.documentElement.classList.contains('dark')
+})
+function toggleTheme(): void {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('ui-theme', isDark.value ? 'dark' : 'light')
+}
 </script>
 
 <template>
   <!-- 壳用 div 而非 main：Layout 演示的 LayoutContent 渲染 <main>，全页仅保留这一个 main 地标 -->
   <div class="play">
     <header class="play-head">
+      <!-- 主题切换：夜纸深色 ↔ 纸面浅色（fixed 右上角，长页滚动时始终可点） -->
+      <Button
+        class="play-theme-toggle"
+        variant="secondary"
+        size="sm"
+        :aria-pressed="isDark"
+        @click="toggleTheme"
+      >
+        {{ isDark ? '纸面' : '夜纸' }}
+      </Button>
       <Heading as="h1" size="3xl">纸面 Paper · Playground</Heading>
       <Text as="p" color="text-2">
         AI-native Vue 3 组件库单页演示：25 个组件按产品族分区。视觉由组件与 paper.css 承担，页面自身只使用少量 --ui-* 布局 token。
@@ -2131,6 +2152,13 @@ const lastConfirm = ref('（尚未操作）')
   display: flex;
   align-items: center;
   gap: var(--ui-space-3);
+}
+/* 主题切换按钮：fixed 右上角，层位走 --ui-z-sticky */
+.play-theme-toggle {
+  position: fixed;
+  inset-block-start: var(--ui-space-5);
+  inset-inline-end: var(--ui-space-5);
+  z-index: var(--ui-z-sticky);
 }
 </style>
 

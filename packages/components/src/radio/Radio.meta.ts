@@ -57,8 +57,8 @@ export const meta: ComponentDefinition = {
     preferred: ['value 必须在组内唯一；label prop 或插槽必须提供其一，否则读屏无可读名称'],
   },
   states: {
-    default: '未选：surface 圆框 + line-strong 描边；选中：accent 实底 + on-accent 圆点。',
-    hover: '未选且未禁用时圆框描边加深为 --ui-border-strong；选中/禁用不响应 hover。',
+    default: '未选：surface 圆框 + --ui-border-control 描边；选中：accent 实底 + on-accent 圆点。',
+    hover: '未选且未禁用时圆框描边加深一档为 --ui-border-control-strong；选中/禁用不响应 hover。',
     focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），绘制在原生 radio 热区（与视觉圆框重合）；不改写 outline 与 tabindex。',
     active: '无按压位移反馈；选中视觉随受控值以 opacity 过渡切换（--ui-motion-fast）。',
     disabled: '圆框灰化（sand 底 + line 描边）、圆点转 text-3、文本 text-3 + not-allowed 光标；原生 disabled 移出 Tab 序、不参与方向键导航。',
@@ -71,7 +71,7 @@ export const meta: ComponentDefinition = {
   performance:
     '无监听器（仅原生 change 转发）、无测量、无定时器；仅 computed 派生选中/禁用/类名。动效只有 border-color / background-color / opacity 过渡（--ui-motion-fast token），prefers-reduced-motion 下随 token 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：圆框描边 --ui-border-strong、选中底 --ui-accent、圆点 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、间距 --ui-space-2、字号 --ui-text-md、动效 --ui-motion-fast/--ui-ease-out。结构性例外：border-width 1px（无 --ui-border-width token）；圆形半径取 calc(var(--ui-space-4) / 2)（无圆形半径 token，已在任务结果中提出需求）；原生控件 opacity: 0 为结构性隐藏（非视觉取值）。',
+    '视觉只消费 --ui-* token（paper.css）：未选圆框描边 --ui-border-control（hover 加深为 --ui-border-control-strong，control 专用描边档，非文本对比 ≥3:1）、选中底 --ui-accent、圆点 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、间距 --ui-space-2、字号 --ui-text-md、动效 --ui-motion-fast/--ui-ease-out。结构性例外：border-width 1px（无 --ui-border-width token）；圆形半径取 calc(var(--ui-space-4) / 2)（无圆形半径 token，已在任务结果中提出需求）；原生控件 opacity: 0 为结构性隐藏（非视觉取值）。',
   examples: [
     "<RadioGroup v-model='plan' name='plan'>\n  <Radio value='free' label='免费版' />\n  <Radio value='pro' label='专业版' />\n</RadioGroup>",
     "<Radio value='beta'>\n  Beta 通道（<a href='/notes'>更新说明</a>）\n</Radio>",

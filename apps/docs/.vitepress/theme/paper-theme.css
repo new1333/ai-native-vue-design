@@ -16,11 +16,20 @@
   --vp-c-gray-1: var(--ui-surface-muted);
   --vp-c-gray-2: var(--ui-border);
   --vp-c-gray-3: var(--ui-border-strong);
+  /* 悬浮菜单等抬升表面：随档走夜纸 --ui-surface，防止 VitePress 默认冷灰 #202127 漏出 */
+  --vp-c-bg-elv: var(--ui-surface);
+  /* features 图标底 / 开关轨道 soft 底：改用暖纸中性 --ui-surface-muted（无既有映射，grep 已核实），
+     避免 VitePress 默认冷灰蓝半透明在夜纸档发灰发蓝 */
+  --vp-c-gray-soft: var(--ui-surface-muted);
+  --vp-c-default-soft: var(--ui-surface-muted);
 
   /* 文本 */
   --vp-c-text-1: var(--ui-text-1);
   --vp-c-text-2: var(--ui-text-2);
   --vp-c-text-3: var(--ui-text-3);
+  /* 中性/反转对（外观切换开关圆钮等）：夜纸档下默认纯黑圆钮近消失，统一走 text-1 与 on-accent 反转 */
+  --vp-c-neutral: var(--ui-text-1);
+  --vp-c-neutral-inverse: var(--ui-on-accent);
 
   /* 品牌色：松绿（hero 渐变两端同色，呈现为纯色） */
   --vp-c-brand-1: var(--ui-accent);
@@ -36,6 +45,10 @@
   --vp-button-brand-hover-border: transparent;
   --vp-button-brand-hover-bg: var(--ui-accent-hover);
   --vp-button-brand-hover-text: var(--ui-on-accent);
+  /* active 组：VitePress 默认 active 文字为白，夜纸档落浅绿底仅 2.50:1，与 hover 统一锁 on-accent/accent-hover */
+  --vp-button-brand-active-border: transparent;
+  --vp-button-brand-active-bg: var(--ui-accent-hover);
+  --vp-button-brand-active-text: var(--ui-on-accent);
   --vp-button-alt-border: var(--ui-border);
   --vp-button-alt-bg: var(--ui-surface);
   --vp-button-alt-text: var(--ui-text-1);
@@ -52,6 +65,10 @@
   --vp-code-bg: var(--ui-surface-muted);
   --vp-code-block-bg: var(--ui-color-ink-950);
   --vp-code-line-highlight-color: var(--ui-color-ink-900);
+  /* 复制按钮（原无映射）：夜纸档 VitePress 默认底与代码块底 ink-950 #26262A 几乎同亮度不可辨，
+     改用两档恒浅 #F1EFE9 的 sand，hover 再抬到 paper */
+  --vp-code-copy-code-bg: var(--ui-color-sand);
+  --vp-code-copy-code-hover-bg: var(--ui-color-paper);
 
   /* 自定义容器 ::: tip / info / warning / danger */
   --vp-custom-block-info-code-bg: var(--ui-info-soft);

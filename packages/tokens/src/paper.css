@@ -24,6 +24,9 @@
  * 1) 默认档：Paper 值
  * ============================================================ */
 :root {
+  /* color-scheme：浅色档显式声明，原生控件 / UA 弹层 / 文本选区高亮随档呈浅色 */
+  color-scheme: light;
+
   /* ── Primitive · 原始色板 ─────────────────────────── */
   --ui-color-white: #FFFFFF;
   --ui-color-paper: #F7F6F2;
@@ -31,6 +34,10 @@
   --ui-color-sand: #F1EFE9;
   --ui-color-line: #E6E3DB;
   --ui-color-line-strong: #D5D1C6;
+  /* 表单控件未选态描边专用：WCAG 1.4.11 非文本 3:1 达标，与全系统弱细线（--ui-border）分层；
+     rest 与 line-strong 同值（浅档视觉不变），strong 深一档形成真实 hover 分层 */
+  --ui-color-line-control: #D5D1C6;
+  --ui-color-line-control-strong: #BEB9AC;
   --ui-color-ink-950: #26262A;
   --ui-color-ink-900: #2C2A25;
   --ui-color-ink-600: #6E6A60;
@@ -54,6 +61,8 @@
   --ui-surface-muted: var(--ui-color-sand);
   --ui-border: var(--ui-color-line);
   --ui-border-strong: var(--ui-color-line-strong);
+  --ui-border-control: var(--ui-color-line-control);
+  --ui-border-control-strong: var(--ui-color-line-control-strong);
   --ui-text-1: var(--ui-color-ink-900);
   --ui-text-2: var(--ui-color-ink-600);
   --ui-text-3: var(--ui-color-ink-400);
@@ -139,6 +148,9 @@
  * 2) Profile 档：显式 paper（全量重声明）与深色 paper-dark（夜纸）
  * ============================================================ */
 :root[data-theme='paper'] {
+  /* color-scheme：浅色档显式声明，原生控件 / UA 弹层 / 文本选区高亮随档呈浅色 */
+  color-scheme: light;
+
   /* ── Primitive · 原始色板 ─────────────────────────── */
   --ui-color-white: #FFFFFF;
   --ui-color-paper: #F7F6F2;
@@ -146,6 +158,10 @@
   --ui-color-sand: #F1EFE9;
   --ui-color-line: #E6E3DB;
   --ui-color-line-strong: #D5D1C6;
+  /* 表单控件未选态描边专用：WCAG 1.4.11 非文本 3:1 达标，与全系统弱细线（--ui-border）分层；
+     rest 与 line-strong 同值（浅档视觉不变），strong 深一档形成真实 hover 分层 */
+  --ui-color-line-control: #D5D1C6;
+  --ui-color-line-control-strong: #BEB9AC;
   --ui-color-ink-950: #26262A;
   --ui-color-ink-900: #2C2A25;
   --ui-color-ink-600: #6E6A60;
@@ -169,6 +185,8 @@
   --ui-surface-muted: var(--ui-color-sand);
   --ui-border: var(--ui-color-line);
   --ui-border-strong: var(--ui-color-line-strong);
+  --ui-border-control: var(--ui-color-line-control);
+  --ui-border-control-strong: var(--ui-color-line-control-strong);
   --ui-text-1: var(--ui-color-ink-900);
   --ui-text-2: var(--ui-color-ink-600);
   --ui-text-3: var(--ui-color-ink-400);
@@ -266,23 +284,38 @@
  *
  *     有意保持浅色值的槽位：paper / paper-raised / sand / ink-*。
  *     文档站代码块与源码面板的「深底浅字」设计（ink-950 底 +
- *     paper 字）依赖它们不随档反转；ink-400 为深浅两档通用的弱化灰。
+ *     paper 字）依赖它们不随档反转；ink-400 槽位本身仍为深浅两档
+ *     通用的弱化灰（供直引场景如 Timeline 圆点），但暗档 --ui-text-3
+ *     语义改锚提亮的新槽位 ink-300：ink-400 对抬升底仅 4.39:1（<4.5），
+ *     ink-300 达 4.94:1，占位 / 空态 / 弱文字由此达标。
  *     间距 / 圆角 / 字体 / 动效 / 层级不随档变，按 Profile 档全量
  *     重声明（data-theme='paper-dark' 独立成立，不依赖默认档铺底）。
  * ------------------------------------------------------------ */
 :root.dark,
 :root[data-theme='paper-dark'] {
-  /* ── Primitive · 深色新槽位：夜纸三级底 + 雾纸文字 ──── */
+  /* color-scheme：深色档显式声明，原生控件 / UA 弹层 / 文本选区高亮随档翻转呈深色 */
+  color-scheme: dark;
+
+  /* ── Primitive · 深色新槽位：夜纸三级底 + 雾纸文字 + 提亮弱墨 ──── */
   --ui-color-night: #1B1A16;
   --ui-color-night-raised: #23221D;
   --ui-color-dusk: #2A2924;
   --ui-color-mist-100: #EDEAE0;
   --ui-color-mist-300: #B3AFA3;
+  /* 弱墨提亮档：暗档 --ui-text-3 语义锚定于此
+     （实测对抬升底 #23221D 4.94:1、对 dusk #2A2924 4.52:1，≥4.5 达标）；
+     ink-400 槽位本身仍保持浅色两档通用（见块首注释），勿与本槽位混用 */
+  --ui-color-ink-300: #948F82;
 
   /* ── Primitive · 槽位重落位（同名槽位换深色值） ────── */
   --ui-color-white: #22211C;
   --ui-color-line: #3B3931;
   --ui-color-line-strong: #4D4A40;
+  /* 表单控件未选态描边专用：WCAG 1.4.11 非文本 3:1 达标，与全系统弱细线（--ui-border）分层；
+     实测：control 对夜底 3.75:1 / 抬升底 3.43:1 / dusk 3.13:1（均 ≥3），
+     strong 为 hover 提亮档，对抬升底 4.94:1（≥4） */
+  --ui-color-line-control: #7A7466;
+  --ui-color-line-control-strong: #948F82;
   --ui-color-pine-50: #25332C;
   --ui-color-pine-600: #7FAE97;
   --ui-color-pine-700: #93C0AA;
@@ -311,9 +344,11 @@
   --ui-surface-muted: var(--ui-color-dusk);
   --ui-border: var(--ui-color-line);
   --ui-border-strong: var(--ui-color-line-strong);
+  --ui-border-control: var(--ui-color-line-control);
+  --ui-border-control-strong: var(--ui-color-line-control-strong);
   --ui-text-1: var(--ui-color-mist-100);
   --ui-text-2: var(--ui-color-mist-300);
-  --ui-text-3: var(--ui-color-ink-400);
+  --ui-text-3: var(--ui-color-ink-300);
   --ui-accent: var(--ui-color-pine-600);
   --ui-accent-hover: var(--ui-color-pine-700);
   --ui-accent-soft: var(--ui-color-pine-50);

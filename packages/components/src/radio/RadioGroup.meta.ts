@@ -57,8 +57,8 @@ export const meta: ComponentDefinition = {
     preferred: ['每组必须给唯一 name；value 建议用稳定业务标识（字符串/数字）', '选项带辅助说明时把说明文案放进 Radio 默认插槽'],
   },
   states: {
-    default: '组容器只负责排布（纵向，间距 --ui-space-2）；选项视觉由 Radio 表达（未选 surface 底 + line-strong 圆描边）。',
-    hover: '容器无 hover 态；选项 hover 描边加深为 --ui-border-strong（选中与禁用除外）。',
+    default: '组容器只负责排布（纵向，间距 --ui-space-2）；选项视觉由 Radio 表达（未选 surface 底 + --ui-border-control 圆描边）。',
+    hover: '容器无 hover 态；选项 hover 描边加深为 --ui-border-control-strong（选中与禁用除外）。',
     focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css），绘制在原生 radio 热区上；组件不改写 outline 与 tabindex。',
     active: '无按压位移反馈；点击/方向键选中即以 accent 实底 + on-accent 圆点表达。',
     disabled: '整组禁用：选项圆框灰化（sand 底 + line 描边）、圆点转 text-3、文本 text-3 + not-allowed 光标；原生 disabled 移出 Tab 序。',
@@ -71,7 +71,7 @@ export const meta: ComponentDefinition = {
   performance:
     '无监听器、无测量、无定时器；上下文为 3 个 computed + 1 个函数。选项动效只有 border-color / background-color / opacity 过渡（--ui-motion-fast token），prefers-reduced-motion 下随 token 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：组间距 --ui-space-2、圆框描边 --ui-border-strong、选中底 --ui-accent、圆点 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、字号 --ui-text-md。结构性例外：border-width 1px（无 --ui-border-width token）；圆形半径取 calc(var(--ui-space-4) / 2)（无圆形半径 token）；原生控件 opacity: 0 为结构性隐藏。',
+    '视觉只消费 --ui-* token（paper.css）：组间距 --ui-space-2、未选圆框描边 --ui-border-control（hover 加深为 --ui-border-control-strong）、选中底 --ui-accent、圆点 --ui-on-accent、禁用底 --ui-surface-muted、弱文字 --ui-text-3、字号 --ui-text-md。结构性例外：border-width 1px（无 --ui-border-width token）；圆形半径取 calc(var(--ui-space-4) / 2)（无圆形半径 token）；原生控件 opacity: 0 为结构性隐藏。',
   examples: [
     "<RadioGroup v-model='shipping' name='shipping'>\n  <Radio value='express' label='快递' />\n  <Radio value='pickup' label='自提' />\n</RadioGroup>",
     "<RadioGroup v-model='scope' name='scope' disabled>\n  <Radio value='private' label='仅自己可见' />\n  <Radio value='public' label='所有人可见' />\n</RadioGroup>",
