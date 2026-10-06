@@ -1,6 +1,12 @@
 /**
  * useImage —— Image 的状态机 composable：loading/loaded/error 流转、
- * lazy 懒加载（IntersectionObserver）与大图预览开关（焦点移入/回归、Esc 关闭、Tab 圈定）。
+ * lazy 懒加载（IntersectionObserver）与大图预览开关（焦点移入/回归、Esc 关闭、Tab 圈定、
+ * body 滚动锁定——shared/useModalLayer 模块级计数，与 Dialog/Drawer 混合嵌套互不干扰）。
+ *
+ * 预览对共享模态层的消费范围（有意收窄）：只用其滚动锁与焦点记录/还原；
+ * 焦点移入策略仍是「移入面板自身」（预览面板 tabindex="-1"，契约见 meta accessibility），
+ * 与共享层默认的「首个可聚焦元素」不同，故 panel 传 null、移入由本文件自持；
+ * Esc（需 preventDefault 消费事件）与 Tab 圈定语义亦由本文件自持。
  *
  * SSR 安全：模块顶层不访问任何浏览器 API；IntersectionObserver 只在
  * 由 onMounted 调用的 startLazyObserver 中创建、由 onBeforeUnmount 调用的
@@ -9,9 +15,11 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
+import { useModalLayer } from '../shared/useModalLayer'
 import {
   IMAGE_ESCAPE_KEY,
   IMAGE_PREVIEW_FOCUSABLE_SELECTOR,
+  IMAGE_SCROLL_LOCK_CLASS,
   IMAGE_STATUS_ERROR,
   IMAGE_STATUS_LOADED,
   IMAGE_STATUS_LOADING,
@@ -53,9 +61,9 @@ export interface UseImageReturn {
   onImgLoad: (event: Event) => void
   /** 绑定 img @error。 */
   onImgError: (event: Event) => void
-  /** 打开预览（仅 preview 且 loaded 时生效）。 */
+  /** 打开预览（仅 preview 且 loaded 时生效）：锁定 body 滚动并记录焦点。 */
   openPreview: () => void
-  /** 关闭预览并还原焦点（幂等）。 */
+  /** 关闭预览：解锁 body 滚动并还原焦点（幂等）。 */
   closePreview: () => void
   /** 绑定预览浮层 @keydown：Esc 关闭、Tab 圈定。 */
   onPreviewKeydown: (event: KeyboardEvent) => void
@@ -142,31 +150,37 @@ export function useImage(options: UseImageOptions): UseImageReturn {
     status.value = IMAGE_STATUS_ERROR
   }
 
-  /* ── 大图预览：开关与焦点管理 ─────────────────────────── */
+  /* ── 大图预览：开关、滚动锁与焦点管理 ───────────────────── */
 
   const previewOpen = ref(false)
 
-  /** 打开前的焦点元素（关闭时还原）。 */
-  let previouslyFocused: HTMLElement | null = null
+  /**
+   * 共享模态层实例（shared/useModalLayer）：本组件只消费其滚动锁（持有者 class
+   * IMAGE_SCROLL_LOCK_CLASS，与 Dialog/Drawer 同一模块级计数，混合嵌套全关才还原）
+   * 与焦点记录/还原；焦点移入不走共享层（panel 传 null，见文件头注释）。
+   */
+  const previewLayer = useModalLayer({
+    panel: () => null,
+    onEscape: () => closePreview(),
+    scrollLockClass: IMAGE_SCROLL_LOCK_CLASS,
+  })
 
-  /** 打开预览：记录当前焦点，渲染就绪后把焦点移入浮层面板。 */
+  /** 打开预览：锁定 body 滚动、记录当前焦点，渲染就绪后把焦点移入浮层面板。 */
   function openPreview(): void {
     if (props.preview !== true || status.value !== IMAGE_STATUS_LOADED || previewOpen.value) return
-    previouslyFocused =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // 滚动锁/焦点记录走共享模态层：与 Dialog/Drawer 共享同一全局计数，混合嵌套全关才还原。
+    previewLayer.activate()
     previewOpen.value = true
     void nextTick(() => {
       if (previewOpen.value) previewPanelRef.value?.focus()
     })
   }
 
-  /** 关闭预览并还原焦点（幂等；焦点元素已脱离文档时仅关闭）。 */
+  /** 关闭预览：解锁 body 滚动并还原焦点（幂等；焦点元素已脱离文档时仅关闭）。 */
   function closePreview(): void {
     if (!previewOpen.value) return
     previewOpen.value = false
-    const toRestore = previouslyFocused
-    previouslyFocused = null
-    if (toRestore !== null && toRestore.isConnected) toRestore.focus()
+    previewLayer.deactivate()
   }
 
   /** 预览内 Tab 圈定：焦点在浮层内可聚焦元素间首尾环绕，不逃逸。 */

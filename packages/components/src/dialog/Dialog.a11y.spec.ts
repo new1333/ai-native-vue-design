@@ -13,9 +13,14 @@ function overlayWrapper(): DOMWrapper<HTMLElement> {
 
 const wrappers: Array<{ unmount: () => void }> = []
 /** 打开一个含正文输入框的对话框：可聚焦序 = [正文 input, footer 默认关闭按钮]。 */
-async function mountDialog(props: Record<string, unknown> = {}, slots: Record<string, unknown> = {}) {
+async function mountDialog(
+  props: Record<string, unknown> = {},
+  slots: Record<string, unknown> = {},
+  attrs: Record<string, unknown> = {},
+) {
   const wrapper = mount(Dialog, {
     props: { modelValue: true, ...props },
+    attrs,
     slots: { default: () => h('input', { type: 'text' }), ...slots } as never,
   })
   wrappers.push(wrapper)
@@ -58,9 +63,39 @@ describe('Dialog a11y', async () => {
     expect(document.body.querySelector<HTMLElement>(`#${labelledBy}`)?.textContent).toBe('插槽标题')
   })
 
-  it('无标题时不出具 aria-labelledby（使用方应自行提供可访问名称来源）', async () => {
+  it('无标题且无任何 aria 标注时：不出具 aria-labelledby 与 aria-label（可访问名交给兜底路径之外的使用方）', async () => {
     await mountDialog()
-    expect(document.body.querySelector('.ui-dialog__panel')?.getAttribute('aria-labelledby')).toBeNull()
+    const panel = document.body.querySelector('.ui-dialog__panel')
+    expect(panel?.getAttribute('aria-labelledby')).toBeNull()
+    expect(panel?.getAttribute('aria-label')).toBeNull()
+  })
+
+  it('无标题 + ariaLabel prop：role="dialog" 面板携带该可访问名（aria-label 兜底）', async () => {
+    await mountDialog({ ariaLabel: '确认操作' })
+    const panel = document.body.querySelector<HTMLElement>('.ui-dialog__panel')
+    expect(panel?.getAttribute('role')).toBe('dialog')
+    expect(panel?.getAttribute('aria-label')).toBe('确认操作')
+    expect(panel?.getAttribute('aria-labelledby')).toBeNull()
+  })
+
+  it('无标题 + attrs 写 aria-label：同名受理进 ariaLabel prop 兜底路径', async () => {
+    await mountDialog({}, {}, { 'aria-label': '来自 attrs' })
+    expect(document.body.querySelector('.ui-dialog__panel')?.getAttribute('aria-label')).toBe('来自 attrs')
+  })
+
+  it('无标题 + attrs 透传 aria-labelledby：落到面板（引用使用方自备的命名元素）', async () => {
+    await mountDialog({}, {}, { 'aria-labelledby': 'external-title' })
+    expect(document.body.querySelector('.ui-dialog__panel')?.getAttribute('aria-labelledby')).toBe('external-title')
+  })
+
+  it('有标题时标题关联优先：ariaLabel prop 与 attrs 标注均不渲染', async () => {
+    await mountDialog({ title: '标题', ariaLabel: '兜底名' }, {}, { 'aria-labelledby': 'external-title' })
+    const panel = document.body.querySelector<HTMLElement>('.ui-dialog__panel')
+    expect(panel?.getAttribute('aria-label')).toBeNull()
+    const labelledBy = panel?.getAttribute('aria-labelledby')
+    expect(labelledBy).toBeTruthy()
+    expect(labelledBy).not.toBe('external-title')
+    expect(document.body.querySelector<HTMLElement>(`#${labelledBy}`)?.classList.contains('ui-dialog__title')).toBe(true)
   })
 
   it('面板 tabindex="-1"：程序化聚焦锚点，不进入 Tab 序', async () => {

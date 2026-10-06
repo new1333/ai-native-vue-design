@@ -1,9 +1,11 @@
-// behavior spec：状态机（loading→loaded/error、fallback 回落）、lazy 门闩、src 切换重置、预览开关。
+// behavior spec：状态机（loading→loaded/error、fallback 回落）、lazy 门闩、src 切换重置、预览开关、
+// 预览 body 滚动锁（shared/useModalLayer 模块级计数：与 Dialog 混合嵌套跨实例计数、全关才还原）。
 // 策略：vitest 的 happy-dom 环境不派发原生图片 load/error 事件（已实测：12 个宏任务后仍无事件），
 // 因此用 img.trigger('load'/'error') 同步派发合成事件驱动状态机，断言确定、无真实网络时序。
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { Dialog } from '../dialog'
 import Image from './Image.vue'
 import { IMAGE_ERROR_TEXT } from './Image.constants'
 
@@ -281,7 +283,7 @@ describe('Image behavior', () => {
     wrapper.unmount()
   })
 
-  it('preview：src 变化时已打开的浮层自动关闭并还原焦点', async () => {
+  it('preview：src 变化时已打开的浮层自动关闭并还原焦点（同时释放滚动锁）', async () => {
     const wrapper = mount(Image, {
       props: { src: GOOD_SRC, preview: true },
       attachTo: document.body,
@@ -291,11 +293,85 @@ describe('Image behavior', () => {
     ;(trigger.element as HTMLElement).focus()
     await trigger.trigger('click')
     expect(document.querySelector('.ui-image__preview')).not.toBeNull()
+    expect(document.body.style.overflow).toBe('hidden')
 
     await wrapper.setProps({ src: GOOD_SRC + '#changed' })
     await nextTick()
     expect(document.querySelector('.ui-image__preview')).toBeNull()
     expect(document.activeElement).toBe(trigger.element)
+    expect(document.body.style.overflow).toBe('')
+    expect(document.body.classList.contains('ui-image-scroll-lock')).toBe(false)
     wrapper.unmount()
+  })
+
+  it('body 滚动锁：预览打开锁定（overflow hidden + 持有者 class），关闭还原', async () => {
+    expect(document.body.style.overflow).toBe('')
+    const wrapper = mount(Image, {
+      props: { src: GOOD_SRC, preview: true },
+      attachTo: document.body,
+    })
+    await wrapper.find('img.ui-image__img').trigger('load')
+    await wrapper.find('button.ui-image__trigger').trigger('click')
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.body.classList.contains('ui-image-scroll-lock')).toBe(true)
+
+    // Esc 关闭：锁释放、class 移除、body 行内 overflow 还原
+    ;(document.querySelector('.ui-image__preview') as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    expect(document.body.style.overflow).toBe('')
+    expect(document.body.classList.contains('ui-image-scroll-lock')).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('body 滚动锁：打开状态下卸载组件也释放锁（不泄漏持有计数）', async () => {
+    const wrapper = mount(Image, {
+      props: { src: GOOD_SRC, preview: true },
+      attachTo: document.body,
+    })
+    await wrapper.find('img.ui-image__img').trigger('load')
+    await wrapper.find('button.ui-image__trigger').trigger('click')
+    expect(document.body.style.overflow).toBe('hidden')
+    wrapper.unmount()
+    expect(document.body.style.overflow).toBe('')
+    expect(document.body.classList.contains('ui-image-scroll-lock')).toBe(false)
+  })
+
+  it('body 滚动锁与 Dialog 混合嵌套：先关预览，Dialog 仍持有锁，全关才还原', async () => {
+    // Dialog 先打开（首个持有者：挂 ui-dialog-scroll-lock 并行内锁定 overflow）
+    const dialog = mount(Dialog, {
+      props: { modelValue: true, title: '确认操作' },
+      attachTo: document.body,
+    })
+    await nextTick()
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.body.classList.contains('ui-dialog-scroll-lock')).toBe(true)
+
+    // 叠开图片预览（第二个持有者）：共享层计数 +1，body 仍锁定
+    const image = mount(Image, {
+      props: { src: GOOD_SRC, preview: true },
+      attachTo: document.body,
+    })
+    await image.find('img.ui-image__img').trigger('load')
+    await image.find('button.ui-image__trigger').trigger('click')
+    expect(document.querySelector('.ui-image__preview')).not.toBeNull()
+    expect(document.body.style.overflow).toBe('hidden')
+
+    // 先关预览：Dialog 仍持有锁 → body 不还原
+    ;(document.querySelector('.ui-image__preview') as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await nextTick()
+    expect(document.querySelector('.ui-image__preview')).toBeNull()
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.body.classList.contains('ui-dialog-scroll-lock')).toBe(true)
+
+    // 再关 Dialog：全关 → body 还原
+    await dialog.setProps({ modelValue: false })
+    expect(document.body.style.overflow).toBe('')
+    expect(document.body.classList.contains('ui-dialog-scroll-lock')).toBe(false)
+    image.unmount()
+    dialog.unmount()
   })
 })

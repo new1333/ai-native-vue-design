@@ -16,6 +16,8 @@ export interface DialogProps {
   modelValue?: boolean
   /** 标题文本；无 title 插槽时作为回退内容渲染。 */
   title?: string
+  /** 无标题时的面板可访问名兜底（渲染为 aria-label）；有标题时以标题关联优先。attrs 写 aria-label 亦被本 prop 同名受理。 */
+  ariaLabel?: string
   /** 尺寸档位，默认 'md'。 */
   size?: DialogSize
   /** 点击遮罩是否请求关闭，默认 true。 */

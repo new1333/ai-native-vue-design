@@ -6,27 +6,27 @@ import type { ComponentDefinition } from '../shared/meta'
 
 export const meta: ComponentDefinition = {
   id: 'ui-image',
-  version: '0.1.0',
+  version: '0.2.0',
   identity: {
     name: 'Image',
     package: '@ui/components',
     export: 'Image',
     category: 'data',
-    description: '纸面图片：懒加载（IntersectionObserver）、加载占位/失败回退（fallback + error 插槽）与大图预览（dialog 浮层，Esc 关闭 + 焦点回归），状态机 loading/loaded/error。',
+    description: '纸面图片：懒加载（IntersectionObserver）、加载占位/失败回退（fallback + error 插槽）与大图预览（dialog 浮层，Esc 关闭 + 焦点回归 + body 滚动锁定），状态机 loading/loaded/error。',
   },
   intent: {
-    what: '内容图片展示：lazy 进入视口才请求；加载中显示占位（placeholder 插槽）、失败自动回落 fallback 或显示失败视图（error 插槽）；preview 开启后点击图片在全屏浮层放大查看。',
+    what: '内容图片展示：lazy 进入视口才请求；加载中显示占位（placeholder 插槽）、失败自动回落 fallback 或显示失败视图（error 插槽）；preview 开启后点击图片在全屏浮层放大查看（打开期间锁定 body 滚动）。',
     when: [
       '正文/卡片/详情页中的内容图片，需要占位避免加载期布局塌陷',
       '长列表/首屏外的图片懒加载（lazy，IntersectionObserver 进入视口才请求）',
       '图片可能加载失败且需要兜底（fallback 回落图或自定义 error 视图）',
-      '需要放大查看细节（preview：Esc/遮罩/关闭按钮关闭，焦点回归触发器）',
+      '需要放大查看细节（preview：Esc/遮罩/关闭按钮关闭，焦点回归触发器，body 滚动锁定）',
     ],
     whenNot: [
       '纯加载占位（无图可展示）用 Skeleton：Image 的 loading 态只是图片自身请求的过渡',
       '头像等固定形状裁剪用 Avatar：Image 不做形状裁剪，fit 仅在成框时控制填充方式',
       '不需要放大、回退、懒加载的极简图片场景可直接用原生 img（alt 必给）',
-      '预览浮层不做多图画廊切换、不锁定页面滚动；图片编辑（裁剪/滤镜）不在职责内',
+      '预览浮层不做多图画廊切换；图片编辑（裁剪/滤镜）不在职责内',
     ],
     userTask: '用户需要查看页面中的图片内容：加载期间看到占位、失败时看到回退，并能放大查看细节后返回原位',
   },
@@ -36,7 +36,7 @@ export const meta: ComponentDefinition = {
       { name: 'alt', type: 'string', default: "''", description: '替代文本，缺省为空字符串（装饰性图片，读屏跳过）；内容图必须显式传入。同时用作预览浮层与触发器的可读名。' },
       { name: 'fit', type: "'contain' | 'cover' | 'fill' | 'none' | 'scale-down'", default: "'fill'", description: '填充档位（img 的 object-fit）；根框未被约束宽高时与原生 img 行为一致，成框（约束宽高）后控制裁剪方式。' },
       { name: 'lazy', type: 'boolean', default: 'false', description: '懒加载：进入视口（IntersectionObserver，仅 mounted 创建、首次相交即断开）前不渲染 img、不发请求；环境不支持 IO 时降级为立即加载。取初始值。' },
-      { name: 'preview', type: 'boolean', default: 'false', description: '大图预览：图片包裹于原生 button 触发器（加载完成前 disabled），点击打开全屏浮层（Esc / 遮罩 / 关闭按钮关闭，Tab 圈定，焦点回归触发器）。' },
+      { name: 'preview', type: 'boolean', default: 'false', description: '大图预览：图片包裹于原生 button 触发器（加载完成前 disabled），点击打开全屏浮层（Esc / 遮罩 / 关闭按钮关闭，Tab 圈定，焦点回归触发器）；打开期间锁定 body 滚动（shared/useModalLayer 全局计数，与 Dialog/Drawer 混合嵌套互不干扰，全关才还原）。' },
       { name: 'fallback', type: 'string', description: '加载失败回退图：主源失败自动尝试 fallback；fallback 自身失败进入 error 终态。与 src 相同时视同无回退。' },
     ],
     slots: [
@@ -70,7 +70,7 @@ export const meta: ComponentDefinition = {
     hover: '无位移/阴影变化（Paper 静态纸面）；preview 开启时触发器光标为 zoom-in 提示可预览，预览关闭按钮 hover 提面（--ui-surface-muted）。',
     focusVisible: '预览触发器 / 关闭按钮为原生 button，经全局 :focus-visible 获得 2px accent 焦点环（paper.css 约定）；预览面板 tabindex="-1" 仅程序化聚焦不进 Tab 序。',
     active: '不适用：无按压态；预览由 click 一次性触发。',
-    disabled: '组件无 disabled prop；preview 触发器在图片加载完成前为原生 disabled（不进 Tab 序、不可点击、光标回落默认），加载完成后启用；src 变化时已打开的预览浮层自动关闭并还原焦点。',
+    disabled: '组件无 disabled prop；preview 触发器在图片加载完成前为原生 disabled（不进 Tab 序、不可点击、光标回落默认），加载完成后启用；src 变化时已打开的预览浮层自动关闭并还原焦点（同时释放滚动锁）。',
     loading: 'muted 面（--ui-surface-muted）+ aria-hidden 图片图标，占位插槽可覆盖；lazy 未进入视口同为 loading，且不渲染 img、不发请求。',
     error: 'danger 软面（--ui-danger-soft）+ 破图图标 + 「加载失败」文案，error 插槽可覆盖；配置 fallback 时先回落（回落期间保持 loading）。',
   },
@@ -105,7 +105,7 @@ export const meta: ComponentDefinition = {
       'src 必填；空字符串直接落 error 态；src 动态变化会重置状态机并关闭已打开的预览',
       'lazy 取初始值，挂载后切换不追溯；IO 不可用环境自动降级为立即加载',
       'load 在 fallback 回落成功时也会触发；error 在每次失败尝试都会触发（主源 + fallback 各一次）',
-      'preview 浮层 Teleport 到 body、z-index 走 --ui-z-modal；不锁定页面滚动、无多图画廊',
+      'preview 浮层 Teleport 到 body、z-index 走 --ui-z-modal；打开期间锁定 body 滚动（持有者 class ui-image-scroll-lock，与 Dialog/Drawer 同走 shared/useModalLayer 全局计数，混合嵌套全关才还原；关闭/卸载/src 切换均释放）；无多图画廊',
     ],
   },
 }

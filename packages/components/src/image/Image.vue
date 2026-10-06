@@ -7,7 +7,8 @@
  * - fallback：主源失败自动回落；回落也失败落 error（error 插槽可覆盖默认视图）。
  * - preview：图片包裹在原生 button 触发器中（加载完成前 disabled，Enter/Space 原生激活），
  *   打开全屏浮层（role="dialog" aria-modal，Teleport 到 body）：焦点移入面板、
- *   Esc / 遮罩点击 / 关闭按钮关闭、Tab 在浮层内圈定、关闭后焦点回归触发器。
+ *   Esc / 遮罩点击 / 关闭按钮关闭、Tab 在浮层内圈定、关闭后焦点回归触发器；
+ *   打开期间锁定 body 滚动（shared/useModalLayer 全局计数，与 Dialog/Drawer 互不干扰）。
  * - 状态流转语义（load/error emits、focus/Esc 路径）见 useImage.ts；
  *   一切颜色、间距、圆角、动效时长、z-index 均消费 var(--ui-*) token（paper.css）。
  */
@@ -66,6 +67,8 @@ onMounted(() => {
   startLazyObserver()
 })
 onBeforeUnmount(() => {
+  // 卸载兜底：预览打开状态下卸载也要解除 body 滚动锁（先例：Dialog 的 deactivate 兜底）。
+  closePreview()
   stopLazyObserver()
 })
 

@@ -4,12 +4,15 @@
  *
  * - 受控可见性 v-model（modelValue）；遮罩点击关闭可配（closeOnScrim，默认开）；
  *   Esc 关闭；footer 插槽缺省时渲染默认「关闭」按钮（复用本库 Button）。
+ * - 可访问名：有标题时 aria-labelledby 关联标题元素；无标题时兜底到 ariaLabel prop
+ *   （attrs 写 aria-label 同名受理）或 attrs 透传的 aria-labelledby（引用使用方
+ *   自备的命名元素），避免 role="dialog" 无可访问名。
  * - 焦点契约：打开时焦点移入面板并 Tab 循环圈定，关闭后焦点还原到打开前元素。
  * - body 滚动锁定：打开期间挂 class + 行内 overflow 兜底，关闭/卸载时清理。
  * - SSR：挂载前不渲染浮层，仅输出 hidden 占位（ui-dialog 根类），
  *   renderToString 输出稳定；Teleport 只在客户端激活后生效。
  */
-import { computed, onBeforeUnmount, onMounted, ref, useId, useSlots, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useAttrs, useId, useSlots, watch } from 'vue'
 import { Button } from '../button'
 import {
   DIALOG_CLOSE_BUTTON_TEXT,
@@ -37,6 +40,7 @@ const emit = defineEmits<DialogEmits>()
 defineSlots<DialogSlots>()
 
 const slots = useSlots()
+const attrs = useAttrs()
 const titleId = useId()
 
 /** 客户端已挂载：SSR 期间恒为 false，浮层分支不渲染。 */
@@ -45,6 +49,24 @@ const panelEl = ref<HTMLDivElement | null>(null)
 
 const hasTitle = computed(() => Boolean(props.title) || Boolean(slots.title))
 const rootClasses = computed(() => ['ui-dialog', `ui-dialog--${props.size}`])
+
+/**
+ * 面板可访问名兜底：有标题时一律以标题关联优先；无标题时落到 attrs 透传的
+ * aria-labelledby（使用方自备命名元素的引用），否则落到 ariaLabel prop
+ * （attrs 写 aria-label 会被该 prop 同名受理，两条写法汇入同一兜底）。
+ */
+const panelLabelledBy = computed(() => {
+  if (hasTitle.value) return titleId
+  const declared = attrs['aria-labelledby']
+  return typeof declared === 'string' && declared.length > 0 ? declared : undefined
+})
+
+/** aria-label 兜底仅在无标题且非空串时渲染（空串不是合法可访问名）。 */
+const panelAriaLabel = computed(() =>
+  hasTitle.value || props.ariaLabel === undefined || props.ariaLabel.length === 0
+    ? undefined
+    : props.ariaLabel,
+)
 
 function requestClose(reason: DialogCloseReason): void {
   emit('update:modelValue', false)
@@ -95,7 +117,8 @@ defineExpose<DialogExpose>({ focus: focusDialog })
         class="ui-dialog__panel"
         role="dialog"
         aria-modal="true"
-        :aria-labelledby="hasTitle ? titleId : undefined"
+        :aria-labelledby="panelLabelledBy"
+        :aria-label="panelAriaLabel"
         tabindex="-1"
       >
         <header v-if="hasTitle" class="ui-dialog__header">

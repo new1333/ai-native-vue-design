@@ -6,7 +6,7 @@ import type { ComponentDefinition } from '../shared/meta'
 
 export const meta: ComponentDefinition = {
   id: 'ui-dialog',
-  version: '0.1.0',
+  version: '0.1.1',
   identity: {
     name: 'Dialog',
     package: '@ui/components',
@@ -32,7 +32,8 @@ export const meta: ComponentDefinition = {
   api: {
     props: [
       { name: 'modelValue', type: 'boolean', default: 'false', description: '受控可见性（v-model）：true 时 Teleport 浮层渲染至 body。' },
-      { name: 'title', type: 'string', description: '标题文本；被 title 插槽覆盖，两者皆空则不渲染头部与 aria-labelledby。' },
+      { name: 'title', type: 'string', description: '标题文本；被 title 插槽覆盖，两者皆空则不渲染头部与 aria-labelledby（可访问名转走兜底路径）。' },
+      { name: 'ariaLabel', type: 'string', description: '无标题时的面板可访问名兜底（渲染为 aria-label）；attrs 写 aria-label 同名受理。有标题时以标题 aria-labelledby 关联优先，本 prop 不生效。' },
       { name: 'size', type: "'sm' | 'md' | 'lg'", default: 'md', description: '尺寸档位：面板宽度 sm≈384 / md≈576 / lg≈704（由间距标尺推导），永不超出视口。' },
       { name: 'closeOnScrim', type: 'boolean', default: 'true', description: '点击遮罩是否请求关闭；表单类对话框可置 false 强制走明确动作。' },
     ],
@@ -66,7 +67,7 @@ export const meta: ComponentDefinition = {
     disabled: '组件级无 disabled；内部元素各自的 disabled 语义不受影响（disabled 元素自动移出焦点圈定候选集）。',
   },
   accessibility:
-    'role="dialog" + aria-modal="true"，标题元素 id 由 useId 生成并以 aria-labelledby 关联（title prop/插槽皆适用）。键盘契约：打开时焦点移入（首个可聚焦元素，否则面板），Tab/Shift+Tab 在面板内循环圈定（焦点逃逸即拉回），Esc 请求关闭；关闭后焦点还原到打开前的元素。遮罩为纯 div（无 role、不聚焦、无 tabindex），点击命中关闭逻辑；默认关闭按钮为原生 button。body 在打开期间挂 ui-dialog-scroll-lock class 并行内锁定 overflow。',
+    'role="dialog" + aria-modal="true"，标题元素 id 由 useId 生成并以 aria-labelledby 关联（title prop/插槽皆适用）。无标题时可访问名兜底：ariaLabel prop 渲染为面板 aria-label（attrs 写 aria-label 同名受理），attrs 透传的 aria-labelledby 亦落到面板（引用使用方自备的命名元素）；有标题时标题关联优先。键盘契约：打开时焦点移入（首个可聚焦元素，否则面板），Tab/Shift+Tab 在面板内循环圈定（焦点逃逸即拉回），Esc 请求关闭；关闭后焦点还原到打开前的元素。遮罩为纯 div（无 role、不聚焦、无 tabindex），点击命中关闭逻辑；默认关闭按钮为原生 button。body 在打开期间挂 ui-dialog-scroll-lock class 并行内锁定 overflow（经 shared/useModalLayer 模块级计数：与 Drawer 等模态浮层跨实例共享，全关才还原）。',
   ssr:
     'SSR-safe：setup 与模块顶层不访问浏览器 API；挂载前不渲染浮层，renderToString 仅输出 hidden 的 ui-dialog 占位（输出稳定、含根类），Teleport 与焦点/滚动锁副作用全部推迟到客户端 onMounted 之后；卸载时清理滚动锁并还原焦点。',
   performance:
@@ -89,7 +90,7 @@ export const meta: ComponentDefinition = {
     generationNotes: [
       'v-model 控制显隐；关闭只是发出 update:modelValue false，最终状态由使用方决定',
       'footer 插槽不传时自带「关闭」按钮；自定义动作区会整体替换默认按钮',
-      'title prop 与 #title 插槽二选一即可获得 aria-labelledby 关联',
+      'title prop 与 #title 插槽二选一即可获得 aria-labelledby 关联；都缺时用 ariaLabel prop 或 attrs 的 aria-labelledby 提供可访问名',
       '不要用 Dialog 承载长任务进度（用 Progress/Toast 反馈）',
     ],
   },

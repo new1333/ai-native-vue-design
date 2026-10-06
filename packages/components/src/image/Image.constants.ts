@@ -41,3 +41,9 @@ export const IMAGE_TAB_KEY = 'Tab'
 /** 预览浮层内可聚焦元素选择器（Tab 圈定用）。 */
 export const IMAGE_PREVIEW_FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+
+/**
+ * 预览打开期间的 body 滚动锁持有者 class（shared/useModalLayer 的公开钩子）。
+ * 与 Dialog/Drawer 各自独立 class，经共享层模块级计数互不干扰（全关才还原 body）。
+ */
+export const IMAGE_SCROLL_LOCK_CLASS = 'ui-image-scroll-lock'
