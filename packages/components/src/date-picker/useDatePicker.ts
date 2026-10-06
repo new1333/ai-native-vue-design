@@ -4,7 +4,11 @@
  * 收口日期选择器的全部纯逻辑，不含任何 DOM / 浏览器 API：
  *   1. 序列化：formatDate / parseDate（严格解析，回填格式化结果须与输入一致，
  *      拒绝 2026-13-01、2026-02-30 与未补零输入）；
- *   2. 开合状态（open）与月视图（viewYear/viewMonth，month 1–12）；
+ *   2. 开合状态（open）与月视图（viewYear/viewMonth，month 1–12）；开合受控模型
+ *      收口于 shared useControllableOpen（propName 'open'）：传入 open prop 即受控
+ *      ——open 完全跟随外部值，内部开合路径只经 onOpenChange 上抛；缺省非受控内部
+ *      自管理（onOpenChange 受控与非受控均上抛，语义同 popover/）；受控外部翻转
+ *      open（或初始即开）不经 openPanel，由开合沿 watch 补齐视图/高亮落位；
  *   3. 月网格：42 格（6 周 × 7 列，周一首列），逐格判定 disabled（min/max/disabledDate
  *      并集）、today、邻接月（inMonth）；
  *   4. 选中出口：date/datetime 直接发值（datetime 合并时间输入），range 两段式
@@ -14,8 +18,9 @@
  *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
-import { computed, ref, toValue } from 'vue'
+import { computed, ref, toValue, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useControllableOpen } from '../shared/useControllableOpen'
 import {
   DATE_PICKER_FORMAT_DEFAULTS,
   DATE_PICKER_GRID_CELLS,
@@ -136,6 +141,14 @@ export interface UseDatePickerOptions {
   disabled: MaybeRefOrGetter<boolean>
   /** 加载总闸（响应式）：拦截开合。 */
   loading: MaybeRefOrGetter<boolean>
+  /**
+   * 受控 open 来源（响应式）：传入 open prop 的 getter 即参与受控判定——受控探测
+   * 由 shared useControllableOpen 按原始 vnode props 的 open / onUpdate:open 键
+   * 存在性完成（Boolean prop 布尔转型不能凭值判空），受控时 open 完全跟随该值。
+   */
+  open?: MaybeRefOrGetter<boolean | undefined>
+  /** open 变更出口（组件把 update:open 的 emit 挂到这里；受控与非受控均上抛）。 */
+  onOpenChange?: (value: boolean) => void
   /** 完成选择时的唯一出口回调（组件把 update:modelValue 的 emit 挂到这里）。 */
   onSelect: (value: DatePickerModelValue) => void
   /** 视图年月变化出口回调（组件把 panelChange 的 emit 挂到这里）。 */
@@ -146,8 +159,8 @@ export interface UseDatePickerOptions {
 
 /** useDatePicker 返回值。 */
 export interface UseDatePickerReturn {
-  /** 面板是否打开。 */
-  open: Ref<boolean>
+  /** 面板是否打开（受控 = 外部 open 来源；非受控 = 内部状态）。 */
+  open: ComputedRef<boolean>
   /** 视图年份。 */
   viewYear: Ref<number>
   /** 视图月份（1–12）。 */
@@ -205,7 +218,14 @@ export function useDatePicker(options: UseDatePickerOptions): UseDatePickerRetur
     () => toValue(options.format) ?? DATE_PICKER_FORMAT_DEFAULTS[type.value],
   )
 
-  const open = ref(false)
+  /* ── 开合：受控（open / onUpdate:open 键存在）/非受控收口于 shared
+     useControllableOpen；受控只上抛 onOpenChange，非受控上抛 + 内部落位 ── */
+  const { isOpen: open, setOpen } = useControllableOpen({
+    propName: 'open',
+    modelValue: () => toValue(options.open),
+    onUpdate: (value) => options.onOpenChange?.(value),
+  })
+
   const activeIndex = ref(-1)
   const timeValue = ref('')
   const rangeDraft = ref<[Date, Date] | null>(null)
@@ -346,9 +366,8 @@ export function useDatePicker(options: UseDatePickerOptions): UseDatePickerRetur
     return index
   }
 
-  function openPanel(): void {
-    if (disabled.value || loading.value || open.value) return
-    open.value = true
+  /** 打开落位：视图落位到已选值（否则今天），roving 高亮落到已选格/今天/首个可选格。 */
+  function locateOnOpen(): void {
     rangeDraft.value = null
     const parsed = parseValue(toValue(options.modelValue))
     const base = parsed[0] ?? new Date()
@@ -362,9 +381,15 @@ export function useDatePicker(options: UseDatePickerOptions): UseDatePickerRetur
     activeIndex.value = located ?? (firstEnabledIndex() === -1 ? -1 : firstEnabledIndex())
   }
 
+  function openPanel(): void {
+    if (disabled.value || loading.value || open.value) return
+    setOpen(true)
+    locateOnOpen()
+  }
+
   function closePanel(): void {
     if (!open.value) return
-    open.value = false
+    setOpen(false)
     activeIndex.value = -1
     rangeDraft.value = null
     timeValue.value = ''
@@ -468,6 +493,24 @@ export function useDatePicker(options: UseDatePickerOptions): UseDatePickerRetur
     updated.setHours(time.hours, time.minutes, 0, 0)
     options.onSelect(formatDate(updated, resolvedFormat.value))
   }
+
+  // 开合沿的落位同步：受控外部打开（open false→true，未经 openPanel）时同样落位
+  // 视图/roving 高亮（保证焦点有落点）；外部关闭复位关闭态字段（与 closePanel 对齐，
+  // 不触发 onClose 焦点回交——那是内部关闭路径的语义）。内部路径（openPanel/
+  // closePanel）自行落位后此处空转（纯逻辑，SSR 安全）。
+  watch(
+    open,
+    (isOpen) => {
+      if (isOpen) {
+        if (activeIndex.value < 0) locateOnOpen()
+      } else {
+        activeIndex.value = -1
+        rangeDraft.value = null
+        timeValue.value = ''
+      }
+    },
+    { immediate: true },
+  )
 
   function handleGridKeydown(event: KeyboardEvent): void {
     if (!DATE_PICKER_GRID_KEYS.includes(event.key)) return

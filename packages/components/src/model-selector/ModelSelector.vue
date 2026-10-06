@@ -15,7 +15,7 @@
  *   SSR：浮层仅客户端渲染（mounted 门控 + Teleport）。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onMounted, ref, useId } from 'vue'
 import { Badge } from '../badge'
 import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
@@ -36,6 +36,8 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<ModelSelectorProps>(), {
   modelValue: null,
   models: () => [],
+  // open 不给默认值：受控与否由「是否传入 open / onUpdate:open 键」判定
+  // （收口于 shared useControllableOpen，Boolean prop 布尔转型不能凭值判空）。
   placeholder: MODEL_SELECTOR_PLACEHOLDER_DEFAULT,
   emptyText: MODEL_SELECTOR_EMPTY_TEXT_DEFAULT,
   loadingText: MODEL_SELECTOR_LOADING_TEXT_DEFAULT,
@@ -52,6 +54,8 @@ const { open, activeIndex, selectedModel, toggleList, closeList, select, handleK
   useModelSelector({
     models: () => props.models,
     modelValue: () => props.modelValue,
+    open: () => props.open,
+    onOpenChange: (value) => emit('update:open', value),
     disabled: () => props.disabled,
     loading: () => props.loading,
     onSelect: (model) => {
@@ -92,13 +96,17 @@ const mounted = ref(false)
 
 /* 弹层定位与点击外部关闭收口于 shared 浮层引擎 useFloatingLayer（dropdown 策略，
    与 Select 同纪律）：打开时按触发器 rect + window.scrollX/scrollY 换算文档坐标
-   top/left 并以 minWidth 对齐触发器宽度；document（capture）外点监听，目标落在
-   根容器或弹层面板内则放行（loading/empty 提示行在弹层内，点击不关闭）；Esc 在
-   useModelSelector 键盘状态机内受理，引擎侧关闭（closeOnEscape: false）。 */
-const { floatingStyle } = useFloatingLayer({
+   top/left 并以 minWidth 对齐触发器宽度；弹层与文档同滚，但触发器位于滚动容器内
+   （非文档滚动）或视口 resize 引起重排时会脱锚——传 followViewport 由引擎按
+   scroll（capture）/ resize 跟随重排（isOpen 守卫，关闭态零工作）；document
+   （capture）外点监听，目标落在根容器或弹层面板内则放行（loading/empty 提示行
+   在弹层内，点击不关闭）；Esc 在 useModelSelector 键盘状态机内受理，引擎侧
+   关闭（closeOnEscape: false）。 */
+const { floatingStyle, updatePosition } = useFloatingLayer({
   isOpen: () => open.value,
   anchor: () => triggerEl.value,
   strategy: 'dropdown',
+  followViewport: true,
   closeOnOutsideClick: true,
   insideElements: () => [rootEl.value, popupEl.value],
   closeOnEscape: false,
@@ -116,6 +124,9 @@ function onOptionClick(index: number): void {
 
 onMounted(() => {
   mounted.value = true
+  // 受控初始即打开：引擎侧 watch 不覆盖初始值，等 Teleport 落地后按锚点 rect
+  // 定位（同 popover/ 的受控初始打开路径）。
+  if (open.value) void nextTick().then(updatePosition)
 })
 
 function focus(options?: FocusOptions): void {
@@ -320,7 +331,7 @@ defineExpose<ModelSelectorExpose>({ focus, blur })
   top: 0;
   left: 0;
   margin-top: var(--ui-space-1);
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   box-sizing: border-box;
   padding: var(--ui-space-1);
   background-color: var(--ui-surface);

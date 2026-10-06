@@ -185,6 +185,50 @@ describe('AutoComplete api', () => {
     wrapper.unmount()
   })
 
+  it('update:open 受控：初始 open=true 挂载即打开建议面板（aria-expanded=true）', async () => {
+    const wrapper = mount(AutoComplete, {
+      props: { options: OPTIONS, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    const listbox = document.querySelector('.ui-autocomplete__listbox')
+    expect(listbox).not.toBeNull()
+    expect(listbox?.parentElement).toBe(document.body)
+    expect(findInput(wrapper).attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('update:open 受控：open=false 时点击输入框只派发 update:open(true) 不自行开启；父反射后跟随开合', async () => {
+    const wrapper = mount(AutoComplete, {
+      props: { options: OPTIONS, open: false },
+      attachTo: document.body,
+    })
+    const input = findInput(wrapper)
+    await input.trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true]])
+    expect(document.querySelector('.ui-autocomplete__listbox')).toBeNull() // 完全受控：未反射即不开
+    await wrapper.setProps({ open: true })
+    await nextTick()
+    expect(document.querySelector('.ui-autocomplete__listbox')).not.toBeNull()
+    expect(input.attributes('aria-expanded')).toBe('true')
+    await wrapper.setProps({ open: false })
+    await nextTick()
+    expect(document.querySelector('.ui-autocomplete__listbox')).toBeNull()
+    expect(input.attributes('aria-expanded')).toBe('false')
+    wrapper.unmount()
+  })
+
+  it('update:open 非受控（未传 open）：点击打开/blur 关闭不回归，且完整周期上抛 [true]/[false]', async () => {
+    const wrapper = mount(AutoComplete, { props: { options: OPTIONS }, attachTo: document.body })
+    const input = findInput(wrapper)
+    await input.trigger('click')
+    expect(document.querySelector('.ui-autocomplete__listbox')).not.toBeNull()
+    await input.trigger('blur')
+    expect(document.querySelector('.ui-autocomplete__listbox')).toBeNull()
+    expect(wrapper.emitted('update:open')).toEqual([[true], [false]])
+    wrapper.unmount()
+  })
+
   it('slots：prefix / suffix 渲染于容器两端', () => {
     const wrapper = mount(AutoComplete, {
       slots: {

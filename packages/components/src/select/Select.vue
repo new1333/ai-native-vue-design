@@ -4,16 +4,21 @@
 * + Paper 视觉（token-only）。
  *
  * - 状态机在 useSelect.ts（纯逻辑，无 DOM）；本组件只承接 DOM 副作用与焦点管理。
+ * - 开合受控：v-model:open / :open / @update:open 任一传入即完全受控（open 完全
+ *   跟随外部值，内部交互只 emit update:open）；未传则非受控内部自管理（受控探测
+ *   收口于 shared useControllableOpen，基于原始 vnode props 键存在性）。
  * - 弹层定位与点击外部关闭收口于 shared 浮层引擎 useFloatingLayer（dropdown
- *   策略）：按触发器 rect + 页面滚动偏移换算文档坐标输出 top/left 与 minWidth；
- *   document（capture）外点监听，目标落在根容器/弹层内放行，否则关闭。
+ *   策略）：按触发器 rect + 页面滚动偏移换算文档坐标输出 top/left 与 minWidth，
+ *   弹层与文档同滚；触发器位于滚动容器内或视口 resize 引起重排时由引擎的
+ *   followViewport（scroll capture + resize，isOpen 守卫）重排兜底；document
+ *   （capture）外点监听，目标落在根容器/弹层内放行，否则关闭。
  * - 焦点模型遵循 WAI-ARIA combobox + listbox popup（aria-activedescendant）：
  *   焦点始终停留在触发器上，选项不进 Tab 序，弹层 mousedown preventDefault。
  * - SSR：浮层仅客户端渲染（mounted 门控 + Teleport）；引擎的 document 监听只在
  *   onMounted 注册、onBeforeUnmount 移除。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onMounted, ref, useId } from 'vue'
 import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   SELECT_CLEAR_ARIA_LABEL,
@@ -28,6 +33,8 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<SelectProps>(), {
   modelValue: null,
   options: () => [],
+  // open 不给默认值：受控与否由「是否传入 open / onUpdate:open 键」判定
+  // （收口于 shared useControllableOpen，Boolean prop 布尔转型不能凭值判空）。
   placeholder: SELECT_PLACEHOLDER_DEFAULT,
   emptyText: SELECT_EMPTY_TEXT_DEFAULT,
   disabled: false,
@@ -42,6 +49,8 @@ const { open, activeIndex, selectedOption, toggleList, closeList, select, handle
   {
     options: () => props.options,
     modelValue: () => props.modelValue,
+    open: () => props.open,
+    onOpenChange: (value) => emit('update:open', value),
     disabled: () => props.disabled,
     onSelect: (value) => emit('update:modelValue', value),
   },
@@ -77,13 +86,16 @@ const mounted = ref(false)
 
 // 弹层定位与外点关闭收口于 shared 浮层引擎（dropdown 策略）：按触发器 rect 的
 // 视口坐标加 window.scrollX/scrollY 换算为文档坐标，输出 top/left 与 minWidth
-// （对齐触发器宽度）；打开时等 Teleport 内容落地后（nextTick）重排。外点在
-// document（capture）监听，目标落在根容器或弹层内则放行，否则 closeList。
-// Esc 已在 useSelect 键盘状态机内受理，引擎侧 closeOnEscape: false。
-const { floatingStyle: popupStyle } = useFloatingLayer({
+// （对齐触发器宽度）；打开时等 Teleport 内容落地后（nextTick）重排。弹层与文档
+// 同滚，但触发器位于滚动容器内（非文档滚动）或视口 resize 引起重排时坐标会脱锚
+// ——传 followViewport 由引擎按 scroll（capture）/ resize 跟随重排（isOpen 守卫，
+// 关闭态零工作）。外点在 document（capture）监听，目标落在根容器或弹层内则放行，
+// 否则 closeList。Esc 已在 useSelect 键盘状态机内受理，引擎侧 closeOnEscape: false。
+const { floatingStyle: popupStyle, updatePosition } = useFloatingLayer({
   isOpen: () => open.value,
   anchor: () => triggerEl.value,
   strategy: 'dropdown',
+  followViewport: true,
   closeOnOutsideClick: true,
   insideElements: () => [rootEl.value, listboxEl.value],
   closeOnEscape: false,
@@ -108,6 +120,9 @@ function onClear(): void {
 
 onMounted(() => {
   mounted.value = true
+  // 受控初始即打开：引擎侧 watch 不覆盖初始值，等 Teleport 落地后按锚点 rect
+  // 定位（同 popover/ 的受控初始打开路径）。
+  if (open.value) void nextTick().then(updatePosition)
 })
 
 function focus(options?: FocusOptions): void {
@@ -323,7 +338,7 @@ defineExpose<SelectExpose>({ focus, blur })
   top: 0;
   left: 0;
   margin-top: var(--ui-space-1);
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   box-sizing: border-box;
   max-height: calc(var(--ui-space-8) * 4); /* 长列表滚动（token 推导，先例 Button 旋转时长） */
   overflow-y: auto;

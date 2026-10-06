@@ -52,6 +52,11 @@ export interface AutoCompleteProps {
   modelValue?: string
   /** 建议全集（远程模式下由使用方随 search 结果自行更新）。 */
   options?: AutoCompleteOption[]
+  /**
+   * v-model:open 受控开合：传入即完全受控（open 跟随外部值，内部交互——点击输入框/
+   * 键入/选中/Esc/blur——只发出 update:open）；未传则非受控内部自管理。
+   */
+  open?: boolean
   /** 过滤策略：true（缺省）=默认本地过滤；false=关闭本地过滤（远程模式）；函数=自定义本地过滤，见 AutoCompleteFilter。 */
   filter?: AutoCompleteFilter
   /** search 事件防抖毫秒数；0 表示立即发出（不合并连续击键）。 */
@@ -72,6 +77,8 @@ export interface AutoCompleteProps {
 export interface AutoCompleteEmits {
   /** v-model 更新：键入、清空（''）与选中建议（option.label）时发出。 */
   'update:modelValue': [value: string]
+  /** v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。 */
+  'update:open': [value: boolean]
   /** 关键词变化（键入/清空路径）经 debounce 防抖后发出，载荷为当前文本原文；远程搜索挂这里。 */
   search: [keyword: string]
   /** 选中建议后触发，载荷为归一化建议（value 缺省已回退为 label）；文本已随 update:modelValue 同步为 option.label。 */

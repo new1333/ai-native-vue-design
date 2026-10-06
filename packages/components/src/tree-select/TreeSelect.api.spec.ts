@@ -183,6 +183,42 @@ describe('TreeSelect api', () => {
     wrapper.unmount()
   })
 
+  it('受控初始 open=true：挂载即打开（面板渲染 + 高亮落位，aria-expanded=true）', async () => {
+    const wrapper = mount(TreeSelect, {
+      props: { options: TREE, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    expect(document.querySelector('.ui-tree-select__tree')).not.toBeNull()
+    expect(findTrigger(wrapper).attributes('aria-expanded')).toBe('true')
+    // 受控外部打开同样落位高亮（首个可选节点）→ aria-activedescendant 指向首节点
+    expect(findTrigger(wrapper).attributes('aria-activedescendant')).toContain('node-0')
+    wrapper.unmount()
+  })
+
+  it('受控 open=false：点击触发器只发 update:open(true)，面板不出现；父置 true 后跟随渲染', async () => {
+    const wrapper = mount(TreeSelect, {
+      props: { options: TREE, open: false },
+      attachTo: document.body,
+    })
+    await findTrigger(wrapper).trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true]])
+    expect(document.querySelector('.ui-tree-select__tree')).toBeNull()
+    await wrapper.setProps({ open: true })
+    await nextTick()
+    expect(document.querySelector('.ui-tree-select__tree')).not.toBeNull()
+    expect(findTrigger(wrapper).attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('非受控（不传 open）：完整开合周期发出 update:open [true] 与 [false]', async () => {
+    const wrapper = mount(TreeSelect, { props: { options: TREE }, attachTo: document.body })
+    await findTrigger(wrapper).trigger('click')
+    await findTrigger(wrapper).trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true], [false]])
+    wrapper.unmount()
+  })
+
   it('clear 已声明：点击清空按钮发出（载荷见 behavior spec）', async () => {
     const wrapper = mount(TreeSelect, {
       props: { options: TREE, modelValue: 'design', clearable: true },

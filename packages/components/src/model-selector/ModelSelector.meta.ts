@@ -36,6 +36,7 @@ export const meta: ComponentDefinition = {
     props: [
       { name: 'modelValue', type: 'ModelSelectorValue | null（string | number | null）', default: 'null', description: 'v-model 绑定值；受控，以 === 匹配模型项 value，null 表示未选。' },
       { name: 'models', type: 'ModelSelectorModel[]（{label: string; value: ModelSelectorValue; provider?: string; disabled?: boolean}）', default: '[]', description: '模型全集；value 需唯一（用作 key），provider 渲染为 badge 形态徽标，disabled 项不可被高亮/选中。' },
+      { name: 'open', type: 'boolean', description: 'v-model:open 受控开合：传入（v-model:open / :open / @update:open 任一）即完全受控——open 跟随外部值，内部交互（点击触发器/选中/Esc/外点/blur）只派发 update:open；未传则非受控内部自管理（非受控同样上抛 update:open 全周期）。' },
       { name: 'placeholder', type: 'string', default: "'选择模型'", description: '占位文本（无已选模型时显示在触发器内）；不替代 label。' },
       { name: 'emptyText', type: 'string', default: "'暂无可用模型'", description: '空态文案：models 为空数组且非加载中时弹层内显示。' },
       { name: 'loadingText', type: 'string', default: "'模型列表加载中…'", description: '加载中文案：loading 期间打开弹层显示（替代选项渲染）。' },
@@ -48,6 +49,7 @@ export const meta: ComponentDefinition = {
     ],
     events: [
       { name: 'update:modelValue', payload: 'ModelSelectorValue（string | number）', description: 'v-model 更新：选中某个模型，载荷为其 value。' },
+      { name: 'update:open', payload: 'boolean', description: 'v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。' },
       { name: 'change', payload: 'ModelSelectorModel', description: '选中某个模型后触发（载荷为该模型对象，含 provider/disabled 字段），与 update:modelValue 同一交互路径先后发出；disabled/loading 拦截时不触发。' },
     ],
     exposes: [
@@ -82,9 +84,9 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；弹层由 mounted 门控（Teleport 仅客户端渲染），SSR 输出只有触发器（含 role/aria-expanded/aria-controls、provider 徽标与已选模型名/placeholder 及根级 aria-busy），不出现 listbox/option/loading 文案。document 点击外部关闭监听只在 onMounted 注册、onBeforeUnmount 移除；弹层定位（getBoundingClientRect）只在打开后的 nextTick 内执行。',
   performance:
-    '常态零监听：仅打开期间存在一个 watch 定位（打开后一次 nextTick 计算 rect）；无定时器、无 ResizeObserver。渲染为受控 computed 派生（选中模型/占位/高亮/加载闸门）；动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长模型清单以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动与搜索过滤。',
+    '打开时一次 nextTick 定位（getBoundingClientRect + 内联样式写入）；挂载期间常驻一个 document scroll（capture）与一个 window resize 监听（浮层引擎，回调以 isOpen 守卫短路，关闭态零工作），打开期间视口变化按锚点最新 rect 重排；无定时器、无 ResizeObserver。渲染为受控 computed 派生（选中模型/占位/高亮/加载闸门）；动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长模型清单以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动与搜索过滤。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-dropdown；provider 徽标复用 Badge 组件形态（neutral：--ui-surface-muted 底 + --ui-text-2、--ui-radius-xs、--ui-text-xs）；高亮项 --ui-surface-muted、已选项 --ui-accent-soft/--ui-accent、禁用模型 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
+    '视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-popover（Teleport 到 body 的非模态弹层档，高于 modal）；provider 徽标复用 Badge 组件形态（neutral：--ui-surface-muted 底 + --ui-text-2、--ui-radius-xs、--ui-text-xs）；高亮项 --ui-surface-muted、已选项 --ui-accent-soft/--ui-accent、禁用模型 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
   examples: [
     "<ModelSelector v-model='current' :models=\"[{ label: 'GPT-4o', value: 'gpt-4o', provider: 'OpenAI' }, { label: 'Claude', value: 'claude', provider: 'Anthropic' }]\" />",
     "<ModelSelector v-model='current' :models='models' :loading='fetching' @change='(m) => switchModel(m)' />",

@@ -37,6 +37,8 @@ defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<DatePickerProps>(), {
   modelValue: null,
+  // open 不给默认值：受控与否由「是否传入 open / onUpdate:open 键」判定
+  // （收口于 shared useControllableOpen，Boolean prop 布尔转型不能凭值判空）。
   type: 'date',
   format: undefined,
   min: undefined,
@@ -81,6 +83,8 @@ const {
 } = useDatePicker({
   type: () => props.type,
   modelValue: () => props.modelValue,
+  open: () => props.open,
+  onOpenChange: (value) => emit('update:open', value),
   format: () => props.format,
   min: () => props.min,
   max: () => props.max,
@@ -127,14 +131,17 @@ const canClear = computed(
 /**
  * 弹层定位与点击外部关闭收口于 shared useFloatingLayer（dropdown 策略）：打开时
  * 等面板 Teleport 落地后按触发器 rect + 页面滚动偏移换算文档坐标（top/left +
- * minWidth 对齐触发器宽度）；document（capture）点击落在根容器或面板内放行，
- * 否则关闭。Esc 不走引擎（closeOnEscape false），在面板自身键盘处理内受理并
- * 把焦点交还触发器（见 onPanelKeydown）。
+ * minWidth 对齐触发器宽度）；面板与文档同滚，但触发器位于滚动容器内（非文档滚动）
+ * 或视口 resize 引起重排时会脱锚——传 followViewport 由引擎按 scroll（capture）/
+ * resize 跟随重排（isOpen 守卫，关闭态零工作，不抢网格焦点）；document（capture）
+ * 点击落在根容器或面板内放行，否则关闭。Esc 不走引擎（closeOnEscape false），
+ * 在面板自身键盘处理内受理并把焦点交还触发器（见 onPanelKeydown）。
  */
-const { floatingStyle } = useFloatingLayer({
+const { floatingStyle, updatePosition } = useFloatingLayer({
   isOpen: () => open.value,
   anchor: () => triggerEl.value,
   strategy: 'dropdown',
+  followViewport: true,
   closeOnOutsideClick: true,
   insideElements: () => [rootEl.value, panelEl.value],
   closeOnEscape: false,
@@ -228,6 +235,14 @@ function onClear(): void {
 
 onMounted(() => {
   mounted.value = true
+  // 受控初始即打开：引擎侧 watch 不覆盖初始值，此处等 Teleport 落地后补一次
+  // 定位与 roving 焦点落位（同 popover/ 的受控初始打开路径）。
+  if (open.value) {
+    void nextTick(() => {
+      updatePosition()
+      focusActiveCell()
+    })
+  }
 })
 
 /** 单格类名：邻接月/今天/选中/禁用/范围起止/之间。 */
@@ -545,7 +560,7 @@ defineExpose<DatePickerExpose>({ focus, blur })
   top: 0;
   left: 0;
   margin-top: var(--ui-space-1);
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   box-sizing: border-box;
   width: calc(var(--ui-space-8) * 4); /* 256px 由 token 推导（先例 Select 弹层高度推导） */
   padding: var(--ui-space-2);

@@ -40,6 +40,11 @@ export interface CascaderProps {
   emptyText?: string
   /** 禁用：触发器原生 disabled（移出 Tab 序）+ 拦截开合/键盘/悬停。 */
   disabled?: boolean
+  /**
+   * v-model:open 受控开合：传入即完全受控（open 跟随外部值，内部交互——点击触发
+   * 器/提交/Esc/外点/blur——只发出 update:open）；未传则非受控内部自管理。
+   */
+  open?: boolean
   /** 多选：叶子节点渲染原生 checkbox，modelValue 为路径数组；勾选后弹层保持打开以便连续勾选。 */
   multiple?: boolean
   /** 次级面板展开触发方式：'click'（默认，点击展开）或 'hover'（悬停展开）。 */
@@ -52,6 +57,8 @@ export interface CascaderProps {
 export interface CascaderEmits {
   /** v-model 更新：单选载荷为选中路径 CascaderPath，多选载荷为勾选路径数组 CascaderPath[]。 */
   'update:modelValue': [value: CascaderPath | CascaderPath[]]
+  /** v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。 */
+  'update:open': [value: boolean]
   /** 选中/勾选提交后触发，载荷与 update:modelValue 一致。 */
   change: [value: CascaderPath | CascaderPath[]]
 }

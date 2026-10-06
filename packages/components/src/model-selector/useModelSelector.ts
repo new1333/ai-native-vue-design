@@ -3,7 +3,10 @@
  *
  * 与 Select 同一套键盘与浮层纪律（WAI-ARIA combobox + listbox 弹出模式，
  * aria-activedescendant 焦点模型），在此按 AI 模型切换的契约收口：
- *   1. 开合状态（open）与高亮下标（activeIndex）；
+ *   1. 开合状态（open）与高亮下标（activeIndex）；开合受控模型收口于 shared
+ *      useControllableOpen（propName 'open'）：传入 open prop 即受控——open 完全
+ *      跟随外部值，内部开合路径只经 onOpenChange 上抛；缺省非受控内部自管理
+ *      （onOpenChange 受控与非受控均上抛，语义同 popover/ 的 v-model:modelValue）；
  *   2. 高亮导航：↓/↑ 逐项移动（跳过 disabled 模型，两端夹住）、Home/End 首尾；
  *   3. 打开落位：已选模型优先，否则首个（ArrowUp 打开时为末个）可选模型；
  *   4. 选中出口：select(index) → onSelect 回调上抛完整模型对象（组件把
@@ -19,8 +22,9 @@
  *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
-import { computed, ref, toValue } from 'vue'
+import { computed, toValue, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useControllableOpen } from '../shared/useControllableOpen'
 import { useListNavigation } from '../shared/useListNavigation'
 import { MODEL_SELECTOR_NAVIGATION_KEYS } from './ModelSelector.constants'
 import type { ModelSelectorModel, ModelSelectorValue } from './ModelSelector.types'
@@ -34,6 +38,14 @@ export interface UseModelSelectorOptions {
   models: MaybeRefOrGetter<ModelSelectorModel[]>
   /** 受控当前值来源（响应式；null = 未选）。 */
   modelValue: MaybeRefOrGetter<ModelSelectorValue | null>
+  /**
+   * 受控 open 来源（响应式）：传入 open prop 的 getter 即参与受控判定——受控探测
+   * 由 shared useControllableOpen 按原始 vnode props 的 open / onUpdate:open 键
+   * 存在性完成（Boolean prop 布尔转型不能凭值判空），受控时 open 完全跟随该值。
+   */
+  open?: MaybeRefOrGetter<boolean | undefined>
+  /** open 变更出口（组件把 update:open 的 emit 挂到这里；受控与非受控均上抛）。 */
+  onOpenChange?: (value: boolean) => void
   /** 禁用总闸（响应式）：一切开合/导航/选中路径据此拦截。 */
   disabled?: MaybeRefOrGetter<boolean>
   /** 加载闸门（响应式）：期间可选集合视为空，select 一律不上抛。 */
@@ -44,8 +56,8 @@ export interface UseModelSelectorOptions {
 
 /** useModelSelector 返回值。 */
 export interface UseModelSelectorReturn {
-  /** 弹层是否打开。 */
-  open: Ref<boolean>
+  /** 弹层是否打开（受控 = 外部 open 来源；非受控 = 内部状态）。 */
+  open: ComputedRef<boolean>
   /** 当前高亮模型下标（-1 = 无高亮；关闭时复位）。 */
   activeIndex: Ref<number>
   /** 受控值命中的模型（null = 未选/未命中）。 */
@@ -76,7 +88,13 @@ function isNavigationKey(key: string): boolean {
 
 /** ModelSelector 开合/高亮/键盘状态机（纯逻辑，无 DOM）。 */
 export function useModelSelector(options: UseModelSelectorOptions): UseModelSelectorReturn {
-  const open = ref(false)
+  /* ── 开合：受控（open / onUpdate:open 键存在）/非受控收口于 shared
+     useControllableOpen；受控只上抛 onOpenChange，非受控上抛 + 内部落位 ── */
+  const { isOpen: open, setOpen } = useControllableOpen({
+    propName: 'open',
+    modelValue: () => toValue(options.open),
+    onUpdate: (value) => options.onOpenChange?.(value),
+  })
 
   const modelList = computed(() => toValue(options.models) ?? [])
   const disabled = computed(() => toValue(options.disabled) === true)
@@ -107,13 +125,13 @@ export function useModelSelector(options: UseModelSelectorOptions): UseModelSele
 
   function openList(edge: ModelSelectorNavigationEdge = 'first'): void {
     if (disabled.value || open.value) return
-    open.value = true
+    setOpen(true)
     setActive(initialActiveIndex(edge))
   }
 
   function closeList(): void {
     if (!open.value) return
-    open.value = false
+    setOpen(false)
     setActive(-1)
   }
 
@@ -161,6 +179,21 @@ export function useModelSelector(options: UseModelSelectorOptions): UseModelSele
         break
     }
   }
+
+  // 开合沿的高亮同步：打开落位（已选优先，否则首个可选）、关闭复位。内部路径
+  // （openList/closeList）自行落位后此处空转；受控下外部直接翻转 open（或初始即开）
+  // 不经过 openList，由此补齐——否则受控打开无初始高亮/关闭后高亮残留。
+  watch(
+    open,
+    (isOpen) => {
+      if (isOpen) {
+        if (activeIndex.value < 0) setActive(initialActiveIndex('first'))
+      } else {
+        setActive(-1)
+      }
+    },
+    { immediate: true },
+  )
 
   return {
     open,

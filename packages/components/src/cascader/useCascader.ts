@@ -2,7 +2,11 @@
  * useCascader —— Cascader 的开合/面板推导/高亮/键盘状态机 composable（headless）。
  *
  * 收口级联选择的全部纯逻辑，不含任何 DOM / 浏览器 API：
- *   1. 开合状态（open）与高亮链（activeIndexes：每一层面板内的高亮下标）；
+ *   1. 开合状态（open）与高亮链（activeIndexes：每一层面板内的高亮下标）；开合
+ *      受控模型收口于 shared useControllableOpen（propName 'open'）：传入 open
+ *      prop 即受控——open 完全跟随外部值，内部开合路径只经 onOpenChange 上抛；
+ *      缺省非受控内部自管理（onOpenChange 受控与非受控均上抛，语义同 popover/）；
+ *      受控外部翻转 open（或初始即开）不经 openList，由开合沿 watch 补齐落位；
  *   2. 面板推导（panels）：根级面板 + 高亮链上每个含 children 节点的子面板
  *      （展开跟随高亮：高亮移动到无子级的节点时深层面板自动收起）；
  *   3. 导航：↓/↑ 当前面板内移动（跳过 disabled，两端夹住）与 Home/End 首尾的
@@ -14,8 +18,9 @@
  *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
-import { computed, ref, toValue } from 'vue'
+import { computed, ref, toValue, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useControllableOpen } from '../shared/useControllableOpen'
 import { useListNavigation } from '../shared/useListNavigation'
 import { CASCADER_NAVIGATION_KEYS } from './Cascader.constants'
 import type { CascaderModelValue, CascaderOption, CascaderPath, CascaderValue } from './Cascader.types'
@@ -39,6 +44,14 @@ export interface UseCascaderOptions {
   options: MaybeRefOrGetter<CascaderOption[]>
   /** 受控当前值来源（响应式；null = 未选）。 */
   modelValue: MaybeRefOrGetter<CascaderModelValue>
+  /**
+   * 受控 open 来源（响应式）：传入 open prop 的 getter 即参与受控判定——受控探测
+   * 由 shared useControllableOpen 按原始 vnode props 的 open / onUpdate:open 键
+   * 存在性完成（Boolean prop 布尔转型不能凭值判空），受控时 open 完全跟随该值。
+   */
+  open?: MaybeRefOrGetter<boolean | undefined>
+  /** open 变更出口（组件把 update:open 的 emit 挂到这里；受控与非受控均上抛）。 */
+  onOpenChange?: (value: boolean) => void
   /** 多选模式（响应式）。 */
   multiple?: MaybeRefOrGetter<boolean>
   /** 选中任意层级（响应式）。 */
@@ -51,8 +64,8 @@ export interface UseCascaderOptions {
 
 /** useCascader 返回值。 */
 export interface UseCascaderReturn {
-  /** 弹层是否打开。 */
-  open: Ref<boolean>
+  /** 弹层是否打开（受控 = 外部 open 来源；非受控 = 内部状态）。 */
+  open: ComputedRef<boolean>
   /** 高亮链：activeIndexes[i] 为第 i 层面板内的高亮下标（关闭时复位为空）。 */
   activeIndexes: Ref<number[]>
   /** 当前应渲染的面板列表：panels[0] 为根级，其后为高亮链上各节点的 children。 */
@@ -102,7 +115,14 @@ export interface UseCascaderReturn {
 
 /** Cascader 开合/面板/高亮/键盘状态机（纯逻辑，无 DOM）。 */
 export function useCascader(setup: UseCascaderOptions): UseCascaderReturn {
-  const open = ref(false)
+  /* ── 开合：受控（open / onUpdate:open 键存在）/非受控收口于 shared
+     useControllableOpen；受控只上抛 onOpenChange，非受控上抛 + 内部落位 ── */
+  const { isOpen: open, setOpen } = useControllableOpen({
+    propName: 'open',
+    modelValue: () => toValue(setup.open),
+    onUpdate: (value) => setup.onOpenChange?.(value),
+  })
+
   const activeIndexes = ref<number[]>([])
 
   const optionList = computed(() => toValue(setup.options) ?? [])
@@ -210,11 +230,11 @@ function setIndex(depth: number, index: number): void {
   applyIndexes([...activeIndexes.value.slice(0, depth), index])
 }
 
-  function openList(): void {
-    if (disabled.value || open.value) return
-    open.value = true
-    // 高亮落位：已选路径链优先（面板直接展示已选链），否则首个可选根项。落位是
-    // 整链语义（引擎 initialActiveIndex 只做单层落位，不适配，见文件头）。
+  /**
+   * 打开落位：已选路径链优先（面板直接展示已选链），否则首个可选根项。落位是
+   * 整链语义（引擎 initialActiveIndex 只做单层落位，不适配，见文件头）。
+   */
+  function locateOnOpen(): void {
     const seed = selectedPaths.value[0]
     const resolved = seed === undefined ? null : resolveIndexes(seed)
     if (resolved !== null && resolved.length > 0) {
@@ -225,9 +245,15 @@ function setIndex(depth: number, index: number): void {
     applyIndexes(enabled.length > 0 ? [enabled[0]] : [])
   }
 
+  function openList(): void {
+    if (disabled.value || open.value) return
+    setOpen(true)
+    locateOnOpen()
+  }
+
   function closeList(): void {
     if (!open.value) return
-    open.value = false
+    setOpen(false)
     applyIndexes([])
   }
 
@@ -391,6 +417,21 @@ function setIndex(depth: number, index: number): void {
   function isActive(depth: number, index: number): boolean {
     return depth === activeIndexes.value.length - 1 && activeIndexes.value[depth] === index
   }
+
+  // 开合沿的高亮链同步：受控外部打开（open false→true，未经 openList）时同样落位
+  // 高亮，保证弹层键盘可用；外部关闭复位高亮链。内部路径（openList/closeList）
+  // 自行落位后此处空转（纯逻辑，SSR 安全）。
+  watch(
+    open,
+    (isOpen) => {
+      if (isOpen) {
+        if (activeIndexes.value.length === 0) locateOnOpen()
+      } else {
+        applyIndexes([])
+      }
+    },
+    { immediate: true },
+  )
 
   return {
     open,

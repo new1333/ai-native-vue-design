@@ -9,6 +9,9 @@
  *   策略）、高亮项滚动入弹层视口（aria-activedescendant 模式焦点不随高亮移动，
  *   浏览器不会自动滚动非焦点元素，须手动 scrollIntoView）、焦点管理、卸载时取消
  *   未决防抖 search。
+ * - 开合受控：v-model:open / :open / @update:open 任一传入即完全受控（open 完全
+ *   跟随外部值，内部交互只 emit update:open）；未传则非受控内部自管理（受控探测
+ *   收口于 shared useControllableOpen，基于原始 vnode props 键存在性）。
  * - 值模型：modelValue 即输入框文本（值+文本合一）；选中建议后文本同步为该建议
  *   label，机器值经 select 事件负载传递。
  * - 焦点模型遵循 WAI-ARIA combobox + listbox popup（aria-activedescendant）：
@@ -18,7 +21,7 @@
  *   onMounted 注册 / onBeforeUnmount 移除由浮层引擎收口。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, onBeforeUnmount, onMounted, ref, useId, useSlots, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useSlots, watch } from 'vue'
 import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   AUTOCOMPLETE_CLEAR_ARIA_LABEL,
@@ -40,6 +43,8 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<AutoCompleteProps>(), {
   modelValue: '',
   options: () => [],
+  // open 不给默认值：受控与否由「是否传入 open / onUpdate:open 键」判定
+  // （收口于 shared useControllableOpen，Boolean prop 布尔转型不能凭值判空）。
   filter: true,
   placeholder: AUTOCOMPLETE_PLACEHOLDER_DEFAULT,
   emptyText: AUTOCOMPLETE_EMPTY_TEXT_DEFAULT,
@@ -70,6 +75,8 @@ const {
 } = useAutoComplete({
   modelValue: () => props.modelValue,
   options: () => props.options,
+  open: () => props.open,
+  onOpenChange: (value) => emit('update:open', value),
   disabled: () => props.disabled,
   filter: () => props.filter,
   debounce: () => props.debounce,
@@ -107,15 +114,18 @@ const mounted = ref(false)
 
 // 弹层定位与点击外部关闭收口于 shared 浮层引擎 useFloatingLayer（dropdown 策略）：
 // 打开后 nextTick 按输入框 rect + window.scrollX/scrollY 换算文档坐标（top/left/
-// minWidth）内联写入——视口坐标 → 文档坐标的换算理由见引擎内注释；打开期间弹层与
-// 文档同滚，不跟随重排。document（capture）点击落在根容器或弹层（insideElements）
-// 之外时 closeList（清空按钮在根容器内，天然放行）；Esc 由自身键盘状态机受理，
-// 引擎侧关闭（closeOnEscape=false）。getBoundingClientRect 仅在 open 变 true 后的
+// minWidth）内联写入——视口坐标 → 文档坐标的换算理由见引擎内注释；弹层与文档同滚，
+// 但输入框位于滚动容器内（非文档滚动）或视口 resize 引起重排时会脱锚——传
+// followViewport 由引擎按 scroll（capture）/ resize 跟随重排（isOpen 守卫，关闭态
+// 零工作）。document（capture）点击落在根容器或弹层（insideElements）之外时
+// closeList（清空按钮在根容器内，天然放行）；Esc 由自身键盘状态机受理，引擎侧
+// 关闭（closeOnEscape=false）。getBoundingClientRect 仅在 open 变 true 后的
 // nextTick（客户端交互路径）触达，SSR 不经过此处。
-const { floatingStyle: popupStyle } = useFloatingLayer({
+const { floatingStyle: popupStyle, updatePosition } = useFloatingLayer({
   isOpen: () => open.value,
   anchor: () => inputEl.value,
   strategy: 'dropdown',
+  followViewport: true,
   closeOnOutsideClick: true,
   insideElements: () => [rootEl.value, listboxEl.value],
   closeOnEscape: false,
@@ -174,6 +184,9 @@ function onClear(): void {
 // 移除；此处的 mounted 只作 Teleport 的客户端渲染门控，卸载清理只剩未决防抖 search。
 onMounted(() => {
   mounted.value = true
+  // 受控初始即打开：引擎侧 watch 不覆盖初始值，等 Teleport 落地后按锚点 rect
+  // 定位（同 popover/ 的受控初始打开路径）。
+  if (open.value) void nextTick().then(updatePosition)
 })
 
 onBeforeUnmount(() => {
@@ -392,7 +405,7 @@ defineExpose<AutoCompleteExpose>({ focus, blur })
   top: 0;
   left: 0;
   margin-top: var(--ui-space-1);
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   box-sizing: border-box;
   max-height: calc(var(--ui-space-8) * 4); /* 长列表滚动（token 推导，先例 Select） */
   overflow-y: auto;

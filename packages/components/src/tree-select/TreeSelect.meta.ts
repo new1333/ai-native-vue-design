@@ -36,6 +36,7 @@ export const meta: ComponentDefinition = {
     props: [
       { name: 'modelValue', type: 'TreeSelectModelValue（单选 TreeSelectNodeValue | null；multiple/checkable 为 TreeSelectNodeValue[]）', default: 'null', description: 'v-model 绑定值；受控，以 === 匹配节点 value。单选清空后为 null，多选/复选清空后为 []。' },
       { name: 'options', type: 'TreeSelectOption[]（{label; value; disabled?; children?}，嵌套）', default: '[]', description: '树形选项全集；value 应在全树内唯一，children 为非空数组即为可展开节点，disabled 节点自身与子树均不可选且键盘导航跳过。' },
+      { name: 'open', type: 'boolean', description: 'v-model:open 受控开合：传入（v-model:open / :open / @update:open 任一）即完全受控——open 跟随外部值，内部交互（点击触发器/激活/Esc/外点/blur）只派发 update:open；未传则非受控内部自管理（非受控同样上抛 update:open 全周期）。' },
       { name: 'multiple', type: 'boolean', default: 'false', description: '多选：点击节点切换选中/取消，弹层保持打开；值为数组，触发器以「、」连接已选 label。' },
       { name: 'checkable', type: 'boolean', default: 'false', description: '级联复选：节点渲染复选框（图形 aria-hidden，状态由 aria-checked 承载），父勾选展开到全部可选后代、父仅在全部可选后代勾选时记为勾选、部分勾选为半选（aria-checked="mixed"）；值为数组（含全选的父节点值，先序排列）。' },
       { name: 'placeholder', type: 'string', default: "'请选择'", description: '占位文本（无已选值时显示在触发器内）；不替代 label。' },
@@ -50,6 +51,7 @@ export const meta: ComponentDefinition = {
     ],
     events: [
       { name: 'update:modelValue', payload: 'TreeSelectModelValue', description: 'v-model 更新：单选为节点 value 或 null（清空）；多选/复选为 value 数组（清空为 []）。' },
+      { name: 'update:open', payload: 'boolean', description: 'v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。' },
       { name: 'change', payload: 'TreeSelectModelValue', description: '选中/勾选变化后触发，与 update:modelValue 同载荷；点击清空按钮只触发 clear 不触发 change。' },
       { name: 'clear', description: '点击清空按钮后触发（值已随 update:modelValue 置 null/[]，随后焦点交还触发器）。' },
     ],
@@ -93,9 +95,9 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；树面板由 mounted 门控（Teleport 仅客户端渲染），SSR 输出只有触发器（含 role/aria-expanded/aria-controls 与 placeholder/已选 label），不出现 role="tree"/treeitem。面板 id 由 useId 生成（SSR/客户端一致）。document 点击外部关闭监听只在 onMounted 注册、onBeforeUnmount 移除；面板定位（getBoundingClientRect）只在打开后的 nextTick 内执行。',
   performance:
-    '常态零监听：仅打开期间存在一个 watch 定位（打开后一次 nextTick 计算 rect）；无定时器、无 ResizeObserver。可见节点由 options × 展开集合派生 computed（未展开子树不渲染）；级联勾选经「输入归一化 → 全勾选输出」两次纯函数 computed 派生。动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长树以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动。',
+    '打开时一次 nextTick 定位（getBoundingClientRect + 内联样式写入）；挂载期间常驻一个 document scroll（capture）与一个 window resize 监听（浮层引擎，回调以 isOpen 守卫短路，关闭态零工作），打开期间视口变化按锚点最新 rect 重排；无定时器、无 ResizeObserver。可见节点由 options × 展开集合派生 computed（未展开子树不渲染）；级联勾选经「输入归一化 → 全勾选输出」两次纯函数 computed 派生。动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长树以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；面板 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-dropdown；高亮节点 --ui-surface-muted、已选/勾选节点 --ui-accent-soft/--ui-accent、禁用节点 --ui-text-3；复选框勾选底 --ui-accent + 图标 --ui-on-accent；层级缩进宽度 = calc(var(--ui-space-3) × 级差)（级差为经节点 aria-level 派生的结构性计数）。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
+    '视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；面板 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-popover（Teleport 到 body 的非模态弹层档，高于 modal）；高亮节点 --ui-surface-muted、已选/勾选节点 --ui-accent-soft/--ui-accent、禁用节点 --ui-text-3；复选框勾选底 --ui-accent + 图标 --ui-on-accent；层级缩进宽度 = calc(var(--ui-space-3) × 级差)（级差为经节点 aria-level 派生的结构性计数）。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
   examples: [
     "<TreeSelect v-model='dept' :options=\"[{ label: '研发部', value: 'rd', children: [{ label: '前端组', value: 'fe' }] }]\" />",
     "<TreeSelect v-model='members' :options='orgTree' multiple placeholder='选择成员（可多选）' />",

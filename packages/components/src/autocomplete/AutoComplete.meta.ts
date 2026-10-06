@@ -36,6 +36,7 @@ export const meta: ComponentDefinition = {
     props: [
       { name: 'modelValue', type: 'string', default: "''", description: 'v-model 绑定值：输入框文本（值+文本合一，受控）。选中建议后为该建议 label；自由输入为输入文本；清空后为空字符串。' },
       { name: 'options', type: 'AutoCompleteOption[]（{label: string; value?: string | number; disabled?: boolean}）', default: '[]', description: '建议全集；value 缺省视为与 label 相同，disabled 项不可被高亮/选中。远程模式下由使用方随 search 结果更新。' },
+      { name: 'open', type: 'boolean', description: 'v-model:open 受控开合：传入（v-model:open / :open / @update:open 任一）即完全受控——open 跟随外部值，内部交互（点击输入框/键入/选中/Esc/blur）只派发 update:open；未传则非受控内部自管理（非受控同样上抛 update:open 全周期）。' },
       { name: 'filter', type: 'boolean | ((option, keyword) => boolean)', default: 'true', description: '过滤策略：true（缺省）=本地包含匹配（label 含关键词，不区分大小写）；false=关闭本地过滤（远程模式，options 即已过滤结果）；函数=自定义本地过滤（入参为归一化建议与关键词原文）。' },
       { name: 'debounce', type: 'number', default: '200', description: 'search 事件防抖毫秒数，合并连续击键只发最后一次；0 表示立即发出。' },
       { name: 'loading', type: 'boolean', default: 'false', description: '加载中：面板空结果时显示加载行（role=status），listbox 置 aria-busy="true"；有建议时仍渲染建议。' },
@@ -52,6 +53,7 @@ export const meta: ComponentDefinition = {
     ],
     events: [
       { name: 'update:modelValue', payload: 'string', description: 'v-model 更新：键入、选中建议（载荷为 option.label）与清空（载荷为 \'\'）时发出。' },
+      { name: 'update:open', payload: 'boolean', description: 'v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。' },
       { name: 'search', payload: 'string', description: '关键词变化（键入/清空路径）经 debounce 防抖后发出，载荷为当前文本原文；远程搜索挂这里。选中建议会取消未决 search。' },
       { name: 'select', payload: 'AutoCompleteSelectedOption', description: '选中建议后触发，载荷为归一化建议；文本已随 update:modelValue 同步为 option.label。' },
       { name: 'clear', description: '点击清空按钮后触发（文本已随 update:modelValue 置 \'\'，随后走空关键词路径：面板打开 + search(\'\')，焦点交还输入框）。' },
@@ -93,9 +95,9 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；弹层由 mounted 门控（Teleport 仅客户端渲染），SSR 输出只有输入框（含 role/aria-expanded/aria-controls/aria-autocomplete 与 value/placeholder）与清空按钮，不出现 listbox/option/空态/加载行。document 点击外部关闭监听只在 onMounted 注册、onBeforeUnmount 移除；防抖定时器只在键入/清空事件路径创建、onBeforeUnmount 取消；弹层定位（getBoundingClientRect）只在打开后的 nextTick 内执行。',
   performance:
-    '常态零监听：仅打开期间存在一个 watch 定位（打开后一次 nextTick 计算 rect）、一个 suggestions 高亮钳制 watch，以及高亮滚动入视口 watch（flush post，仅打开且有高亮时实际触达 DOM）；防抖定时器同一时刻至多一个（连续击键合并），卸载与选中路径即取消。渲染为受控 computed 派生（建议过滤/高亮/清空可见性）；动效只有 border-color/background-color/color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长列表以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动。',
+    '打开时一次 nextTick 定位（getBoundingClientRect + 内联样式写入）；挂载期间常驻一个 document scroll（capture）与一个 window resize 监听（浮层引擎，回调以 isOpen 守卫短路，关闭态零工作），打开期间视口变化按锚点最新 rect 重排；另有 suggestions 高亮钳制 watch 与高亮滚动入视口 watch（flush post，仅打开且有高亮时实际触达 DOM）；防抖定时器同一时刻至多一个（连续击键合并），卸载与选中路径即取消。渲染为受控 computed 派生（建议过滤/高亮/清空可见性）；动效只有 border-color/background-color/color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长列表以 max-height（token 推导）+ overflow-y: auto 兜底，未做虚拟滚动。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：输入框容器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus），prefix/suffix 走 --ui-text-2、图标 16/20/24；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-dropdown；高亮项 --ui-surface-muted、命中项 --ui-accent-soft/--ui-accent、禁用项 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；id / aria-describedby 等原生属性经 attrs 直达原生 input 可做定向关联与覆盖（static 属性 autocomplete="off" 等在 $attrs 之前，可被使用方覆盖）。',
+    '视觉只消费 --ui-* token（paper.css）：输入框容器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus），prefix/suffix 走 --ui-text-2、图标 16/20/24；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-popover（Teleport 到 body 的非模态弹层档，高于 modal）；高亮项 --ui-surface-muted、命中项 --ui-accent-soft/--ui-accent、禁用项 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；id / aria-describedby 等原生属性经 attrs 直达原生 input 可做定向关联与覆盖（static 属性 autocomplete="off" 等在 $attrs 之前，可被使用方覆盖）。',
   examples: [
     "<AutoComplete v-model='city' :options=\"[{ label: '北京', value: 'beijing' }, { label: '南京', value: 'nanjing' }]\" placeholder='输入城市' />",
     "<AutoComplete v-model='user' :options='remoteOptions' :filter='false' :debounce='300' :loading='loading' @search='onSearch' @select='onSelect' clearable />",

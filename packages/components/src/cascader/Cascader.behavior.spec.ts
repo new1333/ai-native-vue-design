@@ -256,6 +256,100 @@ describe('Cascader behavior', () => {
     removeSpy.mockRestore()
   })
 
+  it('受控：Esc 只发 update:open(false)，父未响应前面板保持打开，父置 false 后关闭', async () => {
+    const wrapper = mount(Cascader, { props: { options: TREE, open: true }, attachTo: document.body })
+    await findTrigger(wrapper).trigger('keydown', { key: 'Escape' })
+    expect(wrapper.emitted('update:open')).toEqual([[false]])
+    expect(document.querySelector('.ui-cascader__menu')).not.toBeNull() // 完全受控：父未置 false 不自行关闭
+    await wrapper.setProps({ open: false })
+    await nextTick()
+    expect(document.querySelector('.ui-cascader__menu')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('受控初始 open=true：挂载即打开并按触发器 rect 定位（onMounted 补一次重排）', async () => {
+    document.documentElement.scrollLeft = 0
+    document.documentElement.scrollTop = 0
+    const wrapper = mount(Cascader, { props: { options: TREE, open: true }, attachTo: document.body })
+    vi.spyOn(findTrigger(wrapper).element, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(20, 120, 160, 32),
+    )
+    await nextTick()
+    await nextTick()
+    const style = (document.querySelector('.ui-cascader__menu')?.getAttribute('style') ?? '').replace(
+      /\s+/g,
+      '',
+    )
+    expect(style).toContain('top:152px') // rect.bottom 152 + scrollY 0
+    expect(style).toContain('left:20px')
+    expect(style).toContain('min-width:160px')
+    wrapper.unmount()
+  })
+
+  it('引擎常驻注册 scroll(capture)/resize 跟随（isOpen 守卫）；打开期间滚动按最新触发器 rect 重定位', async () => {
+    document.documentElement.scrollLeft = 0
+    document.documentElement.scrollTop = 0
+    const docAdd = vi.spyOn(document, 'addEventListener')
+    const winAdd = vi.spyOn(window, 'addEventListener')
+    const wrapper = mount(Cascader, { props: { options: TREE }, attachTo: document.body })
+    const trigger = findTrigger(wrapper)
+    const rectSpy = vi.spyOn(trigger.element, 'getBoundingClientRect')
+    rectSpy.mockReturnValue(new DOMRect(20, 120, 160, 32))
+    // 引擎在 onMounted 常驻注册（followViewport）：scroll 以 capture 捕获任意祖先
+    // 滚动容器（文档坐标定位只天然跟随文档滚动），resize 挂 window
+    expect(docAdd).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(winAdd).toHaveBeenCalledWith('resize', expect.any(Function))
+    await trigger.trigger('click')
+    await nextTick()
+    const menuStyle = () =>
+      (document.querySelector('.ui-cascader__menu')?.getAttribute('style') ?? '').replace(/\s+/g, '')
+    expect(menuStyle()).toContain('top:152px')
+    rectSpy.mockReturnValue(new DOMRect(20, 300, 160, 32)) // 滚动容器滚动后触发器视口位置变化
+    document.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(menuStyle()).toContain('top:332px')
+    docAdd.mockRestore()
+    winAdd.mockRestore()
+    rectSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('打开期间 window resize 触发重定位；关闭后 scroll/resize 由 isOpen 守卫短路（不再读取 rect），卸载时解绑', async () => {
+    document.documentElement.scrollLeft = 0
+    document.documentElement.scrollTop = 0
+    const wrapper = mount(Cascader, { props: { options: TREE }, attachTo: document.body })
+    const trigger = findTrigger(wrapper)
+    const rectSpy = vi.spyOn(trigger.element, 'getBoundingClientRect')
+    rectSpy.mockReturnValue(new DOMRect(0, 100, 200, 30))
+    await trigger.trigger('click')
+    await nextTick()
+    rectSpy.mockReturnValue(new DOMRect(40, 100, 200, 30)) // 视口变窄，触发器左移
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    const style = (document.querySelector('.ui-cascader__menu')?.getAttribute('style') ?? '').replace(
+      /\s+/g,
+      '',
+    )
+    expect(style).toContain('left:40px')
+
+    await trigger.trigger('click') // 关闭（引擎监听常驻，回调以 isOpen 守卫短路）
+    expect(document.querySelector('.ui-cascader__menu')).toBeNull()
+    const callsAfterClose = rectSpy.mock.calls.length
+    document.dispatchEvent(new Event('scroll'))
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(rectSpy.mock.calls.length).toBe(callsAfterClose) // 关闭态不再触发定位计算（不读 rect）
+
+    const docRemove = vi.spyOn(document, 'removeEventListener')
+    const winRemove = vi.spyOn(window, 'removeEventListener')
+    wrapper.unmount()
+    expect(docRemove).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(winRemove).toHaveBeenCalledWith('resize', expect.any(Function))
+    rectSpy.mockRestore()
+    docRemove.mockRestore()
+    winRemove.mockRestore()
+  })
+
   it('useCascader 纯状态机：打开落位已选路径链（含中间层级），否则首个可选根项', () => {
     const seeded = useCascader({
       options: TREE,

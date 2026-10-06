@@ -76,6 +76,12 @@ export const meta: ComponentDefinition = {
           '禁用判定：返回 true 的日期不可被选中（与 min/max 取并集），渲染为 aria-disabled="true"，键盘 roving 自动跳过。',
       },
       {
+        name: 'open',
+        type: 'boolean',
+        description:
+          'v-model:open 受控开合：传入（v-model:open / :open / @update:open 任一）即完全受控——open 跟随外部值，内部交互（点击触发器/选中日期/Esc/外点/blur）只派发 update:open；未传则非受控内部自管理（非受控同样上抛 update:open 全周期）。',
+      },
+      {
         name: 'placeholder',
         type: 'string',
         default: "按形态取：'选择日期' / '选择日期时间' / '选择日期范围'",
@@ -124,6 +130,11 @@ export const meta: ComponentDefinition = {
           'v-model 更新：date/datetime 选中时载荷为格式化字符串（datetime 未设置时间时按 00:00 合并）；range 起止点确定后载荷为按升序归位的 [start, end]；清空时为 null。',
       },
       {
+        name: 'update:open',
+        payload: 'boolean',
+        description: 'v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。',
+      },
+      {
         name: 'panelChange',
         payload: 'DatePickerPanelView（{ year: number; month: number }，month 1–12）',
         description: '面板视图年月变化时触发：翻页按钮点击或键盘 PageUp/PageDown。',
@@ -158,7 +169,7 @@ export const meta: ComponentDefinition = {
   },
   states: {
     default:
-      '触发器 surface 底 + line 描边 + ink 文字 + 右端日历图标（text-3）；未选时显示占位文案（text-3）；面板打开后 surface 底 + line 描边 + shadow-pop + z-dropdown，月网格表头 text-3，邻接月日期 text-3。',
+      '触发器 surface 底 + line 描边 + ink 文字 + 右端日历图标（text-3）；未选时显示占位文案（text-3）；面板打开后 surface 底 + line 描边 + shadow-pop + z-popover，月网格表头 text-3，邻接月日期 text-3。',
     hover: '触发器描边加深为 --ui-border-strong；可选日期格底色转 --ui-surface-muted；disabled/loading 不响应 hover。',
     focusVisible:
       '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；触发器与时间输入描边同步转 --ui-input-border-focus（accent）；月网格为 roving tabindex，焦点格即当前格。',
@@ -175,9 +186,9 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API（new Date() 非浏览器 API，初始视图仅取年月）；面板由 mounted 门控（Teleport 仅客户端渲染），SSR 输出只有触发器（含 aria-haspopup/aria-expanded/aria-controls 与占位或已选文案），不出现 dialog/grid/gridcell。document 点击外部关闭监听只在 onMounted 注册、onBeforeUnmount 移除；弹层定位（getBoundingClientRect）与 roving 焦点落位只在打开后的 nextTick 内执行。',
   performance:
-    '常态零监听：仅打开期间存在一个 watch 定位（打开后一次 nextTick 计算 rect）；月网格 42 格由 computed 派生，禁用判定随 min/max/disabledDate 缓存；无定时器、无 ResizeObserver。动效只有 border-color/background-color/color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。不做虚拟滚动（月网格固定 42 格）、不做翻月动画。',
+    '打开时一次 nextTick 定位（getBoundingClientRect + 内联样式写入）；挂载期间常驻一个 document scroll（capture）与一个 window resize 监听（浮层引擎，回调以 isOpen 守卫短路，关闭态零工作、不抢网格焦点），打开期间视口变化按锚点最新 rect 重排；月网格 42 格由 computed 派生，禁用判定随 min/max/disabledDate 缓存；无定时器、无 ResizeObserver。动效只有 border-color/background-color/color 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。不做虚拟滚动（月网格固定 42 格）、不做翻月动画。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：触发器与时间输入复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；面板 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-dropdown，宽度由 --ui-space-8 推导；选中/范围起止 --ui-accent-soft/--ui-accent，之间与悬停 --ui-surface-muted，今天 --ui-accent，禁用与邻接月 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*，数字对齐 --ui-numeric。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
+    '视觉只消费 --ui-* token（paper.css）：触发器与时间输入复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；面板 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-popover（Teleport 到 body 的非模态弹层档，高于 modal），宽度由 --ui-space-8 推导；选中/范围起止 --ui-accent-soft/--ui-accent，之间与悬停 --ui-surface-muted，今天 --ui-accent，禁用与邻接月 --ui-text-3；间距/字号走 --ui-space-*/--ui-text-*，数字对齐 --ui-numeric。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
   examples: [
     "<DatePicker v-model='date' />",
     "<DatePicker v-model='datetime' type='datetime' format='YYYY-MM-DD HH:mm' />",

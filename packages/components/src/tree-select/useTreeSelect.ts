@@ -3,8 +3,12 @@
  * 与树扁平化、级联勾选的纯函数集合。
  *
  * 收口树形下拉的全部纯逻辑，不含任何 DOM / 浏览器 API：
- *   1. 开合状态（open）与高亮下标（activeIndex，指向可见扁平列表）——高亮状态与
- *      ↓/↑/Home/End 的下标数学收口于 shared useListNavigation；
+ *   1. 开合状态（open）与高亮下标（activeIndex，指向可见扁平列表）；开合受控模型
+ *      收口于 shared useControllableOpen（propName 'open'）：传入 open prop 即受控
+ *      ——open 完全跟随外部值，内部开合路径只经 onOpenChange 上抛；缺省非受控内部
+ *      自管理（onOpenChange 受控与非受控均上抛，语义同 popover/）；受控外部翻转
+ *      open（或初始即开）不经 openList，由开合沿 watch 补齐树特有落位前置；高亮
+ *      状态与 ↓/↑/Home/End 的下标数学收口于 shared useListNavigation；
  *   2. 展开集合（expanded）：→ 展开/进子级、← 折叠/回父级（树特有，留在本文件）；
  *   3. 高亮导航：↓/↑ 逐个可见节点移动（跳过 disabled，两端夹住）、Home/End 首尾
  *      （引擎 moveActive/toEdge，enabledIndexes = 可见且非有效禁用节点下标集）；
@@ -21,7 +25,8 @@
  *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
-import { computed, ref, toValue } from 'vue'
+import { computed, ref, toValue, watch } from 'vue'
+import { useControllableOpen } from '../shared/useControllableOpen'
 import { useListNavigation } from '../shared/useListNavigation'
 import { TREE_SELECT_NAVIGATION_KEYS } from './TreeSelect.constants'
 import type {
@@ -171,7 +176,14 @@ export function computeTreeSelectCheckedValues(
  * 选中/勾选语义由组件通过 onActivate 挂载；本 composable 只负责树导航与开合。
  */
 export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn {
-  const open = ref(false)
+  /* ── 开合：受控（open / onUpdate:open 键存在）/非受控收口于 shared
+     useControllableOpen；受控只上抛 onOpenChange，非受控上抛 + 内部落位 ── */
+  const { isOpen: open, setOpen } = useControllableOpen({
+    propName: 'open',
+    modelValue: () => toValue(config.open),
+    onUpdate: (value) => config.onOpenChange?.(value),
+  })
+
   const expanded = ref<ReadonlySet<TreeSelectNodeValue>>(new Set())
 
   const optionTree = computed(() => toValue(config.options) ?? [])
@@ -244,13 +256,13 @@ export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn
   function openList(edge: TreeSelectNavigationEdge = 'first'): void {
     if (disabled.value || open.value) return
     expandAncestorsOfPrimary()
-    open.value = true
+    setOpen(true)
     activeIndex.value = navigation.initialActiveIndex(edge)
   }
 
   function closeList(): void {
     if (!open.value) return
-    open.value = false
+    setOpen(false)
     activeIndex.value = -1
   }
 
@@ -307,6 +319,25 @@ export function useTreeSelect(config: UseTreeSelectOptions): UseTreeSelectReturn
     if (node.expandable && expanded.value.has(node.option.value)) collapse(node.option.value)
     else moveToParent()
   }
+
+  // 开合沿的高亮同步：受控外部打开（open false→true，未经 openList）时同样做树
+  // 特有落位前置（展开已选父链）并落位高亮（'first' 端），保证面板键盘可用；外部
+  // 关闭复位高亮（展开集合持久，不随关闭清空）。内部路径（openList/closeList）
+  // 自行落位后此处空转（纯逻辑，SSR 安全）。
+  watch(
+    open,
+    (isOpen) => {
+      if (isOpen) {
+        if (activeIndex.value < 0) {
+          expandAncestorsOfPrimary()
+          activeIndex.value = navigation.initialActiveIndex('first')
+        }
+      } else {
+        activeIndex.value = -1
+      }
+    },
+    { immediate: true },
+  )
 
   function handleKeydown(event: KeyboardEvent): void {
     if (disabled.value || !isNavigationKey(event.key)) return

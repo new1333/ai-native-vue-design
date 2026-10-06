@@ -137,6 +137,50 @@ describe('ModelSelector api', () => {
     wrapper.unmount()
   })
 
+  it('update:open 受控：初始 open=true 挂载即打开弹层（aria-expanded=true）', async () => {
+    const wrapper = mount(ModelSelector, {
+      props: { models: MODELS, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    const popup = document.querySelector('.ui-model-selector__popup')
+    expect(popup).not.toBeNull()
+    expect(popup?.parentElement).toBe(document.body)
+    expect(wrapper.find('button.ui-model-selector__trigger').attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('update:open 受控：open=false 时点击只派发 update:open(true) 不自行开启；父反射后跟随开合', async () => {
+    const wrapper = mount(ModelSelector, {
+      props: { models: MODELS, open: false },
+      attachTo: document.body,
+    })
+    const trigger = wrapper.find('button.ui-model-selector__trigger')
+    await trigger.trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true]])
+    expect(document.querySelector('.ui-model-selector__popup')).toBeNull() // 完全受控：未反射即不开
+    await wrapper.setProps({ open: true })
+    await nextTick()
+    expect(document.querySelector('.ui-model-selector__popup')).not.toBeNull()
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    await wrapper.setProps({ open: false })
+    await nextTick()
+    expect(document.querySelector('.ui-model-selector__popup')).toBeNull()
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    wrapper.unmount()
+  })
+
+  it('update:open 非受控（未传 open）：点击开合行为不变，且完整周期上抛 [true]/[false]', async () => {
+    const wrapper = mount(ModelSelector, { props: { models: MODELS }, attachTo: document.body })
+    const trigger = wrapper.find('button.ui-model-selector__trigger')
+    await trigger.trigger('click')
+    expect(document.querySelector('.ui-model-selector__popup')).not.toBeNull()
+    await trigger.trigger('click')
+    expect(document.querySelector('.ui-model-selector__popup')).toBeNull()
+    expect(wrapper.emitted('update:open')).toEqual([[true], [false]])
+    wrapper.unmount()
+  })
+
   it('trigger 插槽：替换触发器默认内容，scope 携带 model 与 open', async () => {
     const wrapper = mount(ModelSelector, {
       props: { models: MODELS, modelValue: 'gpt-4o' },

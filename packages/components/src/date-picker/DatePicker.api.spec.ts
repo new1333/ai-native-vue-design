@@ -173,6 +173,45 @@ describe('DatePicker api', () => {
     wrapper.unmount()
   })
 
+  it('受控初始 open=true：挂载即打开（面板渲染 + roving 高亮落位，aria-expanded=true）', async () => {
+    const wrapper = mount(DatePicker, {
+      props: { modelValue: PINNED, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    await nextTick()
+    expect(document.querySelector('.ui-date-picker__panel')).not.toBeNull()
+    expect(findTrigger(wrapper).attributes('aria-expanded')).toBe('true')
+    // 受控外部打开同样落位 roving 高亮（已选日 tabindex=0）并把焦点移入网格
+    const active = document.querySelector('.ui-date-picker__day[tabindex="0"]')
+    expect(active).not.toBeNull()
+    expect(document.activeElement).toBe(active)
+    wrapper.unmount()
+  })
+
+  it('受控 open=false：点击触发器只发 update:open(true)，面板不出现；父置 true 后跟随渲染', async () => {
+    const wrapper = mount(DatePicker, {
+      props: { modelValue: PINNED, open: false },
+      attachTo: document.body,
+    })
+    await findTrigger(wrapper).trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true]])
+    expect(document.querySelector('.ui-date-picker__panel')).toBeNull()
+    await wrapper.setProps({ open: true })
+    await nextTick()
+    expect(document.querySelector('.ui-date-picker__panel')).not.toBeNull()
+    expect(findTrigger(wrapper).attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('非受控（不传 open）：完整开合周期发出 update:open [true] 与 [false]', async () => {
+    const wrapper = mount(DatePicker, { props: { modelValue: PINNED }, attachTo: document.body })
+    await findTrigger(wrapper).trigger('click')
+    await findTrigger(wrapper).trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true], [false]])
+    wrapper.unmount()
+  })
+
   it('trigger 具名插槽：替换默认文案与日历图标，作用域携带 display/open', () => {
     const wrapper = mount(DatePicker, {
       props: { modelValue: PINNED },

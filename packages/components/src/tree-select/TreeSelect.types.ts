@@ -35,6 +35,11 @@ export interface TreeSelectProps {
   modelValue?: TreeSelectModelValue
   /** 树形选项全集（嵌套 children）。 */
   options?: TreeSelectOption[]
+  /**
+   * v-model:open 受控开合：传入即完全受控（open 跟随外部值，内部交互——点击触发
+   * 器/激活/Esc/外点/blur——只发出 update:open）；未传则非受控内部自管理。
+   */
+  open?: boolean
   /** 多选：点击节点切换选中/取消，弹层保持打开；值为数组。 */
   multiple?: boolean
   /** 复选：节点渲染复选框，父子级联（父勾选展开到子树，父全勾选才记为勾选、部分勾选为半选）；值为数组。 */
@@ -53,6 +58,8 @@ export interface TreeSelectProps {
 export interface TreeSelectEmits {
   /** v-model 更新：单选为选项 value 或 null（清空）；多选/复选为 value 数组（清空为 []）。 */
   'update:modelValue': [value: TreeSelectModelValue]
+  /** v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。 */
+  'update:open': [value: boolean]
   /** 选中/勾选变化后触发（与 update:modelValue 同载荷；清空按钮不触发 change，只触发 clear）。 */
   change: [value: TreeSelectModelValue]
   /** 点击清空按钮后触发（值已随 update:modelValue 置 null/[]，随后焦点交还触发器）。 */
@@ -74,6 +81,14 @@ export interface UseTreeSelectOptions {
   /** 禁用总闸（响应式）：一切开合/导航/激活路径据此拦截。 */
   disabled?: MaybeRefOrGetter<boolean>
   /**
+   * 受控 open 来源（响应式）：传入 open prop 的 getter 即参与受控判定——受控探测
+   * 由 shared useControllableOpen 按原始 vnode props 的 open / onUpdate:open 键
+   * 存在性完成（Boolean prop 布尔转型不能凭值判空），受控时 open 完全跟随该值。
+   */
+  open?: MaybeRefOrGetter<boolean | undefined>
+  /** open 变更出口（组件把 update:open 的 emit 挂到这里；受控与非受控均上抛）。 */
+  onOpenChange?: (value: boolean) => void
+  /**
    * 激活后是否保持弹层打开（响应式）：multiple / checkable 为 true，
    * 单选为 false（激活即选中并关闭）。
    */
@@ -86,8 +101,8 @@ export interface UseTreeSelectOptions {
 
 /** useTreeSelect 返回值。 */
 export interface UseTreeSelectReturn {
-  /** 树面板是否打开。 */
-  open: Ref<boolean>
+  /** 树面板是否打开（受控 = 外部 open 来源；非受控 = 内部状态）。 */
+  open: ComputedRef<boolean>
   /** 当前高亮节点在可见扁平列表中的下标（-1 = 无高亮；关闭时复位）。 */
   activeIndex: Ref<number>
   /** 已展开节点值集合（响应式替换式更新）。 */

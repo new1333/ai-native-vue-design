@@ -22,6 +22,11 @@ export interface SelectProps {
   modelValue?: SelectValue | null
   /** 选项全集。 */
   options?: SelectOption[]
+  /**
+   * v-model:open 受控开合：传入即完全受控（open 跟随外部值，内部交互只发出
+   * update:open）；未传则非受控内部自管理。
+   */
+  open?: boolean
   /** 占位文本（无已选值时显示在触发器内；不替代 label）。 */
   placeholder?: string
   /** 空态文案：options 为空数组时弹层内显示。 */
@@ -36,6 +41,8 @@ export interface SelectProps {
 export interface SelectEmits {
   /** v-model 更新：选项选中或清空，载荷为选项 value 或 null。 */
   'update:modelValue': [value: SelectValue | null]
+  /** v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。 */
+  'update:open': [value: boolean]
   /** 点击清空按钮后触发（值已随 update:modelValue 置 null，随后焦点交还触发器）。 */
   clear: []
 }

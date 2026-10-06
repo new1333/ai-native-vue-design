@@ -122,6 +122,42 @@ describe('Cascader api', () => {
     wrapper.unmount()
   })
 
+  it('受控初始 open=true：挂载即打开（弹层渲染 + 高亮落位，aria-expanded=true）', async () => {
+    const wrapper = mount(Cascader, {
+      props: { options: TREE, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    expect(document.querySelector('.ui-cascader__menu')).not.toBeNull()
+    expect(wrapper.find('button.ui-cascader__trigger').attributes('aria-expanded')).toBe('true')
+    // 受控外部打开同样落位高亮（首个可选根项）→ aria-activedescendant 指向根级首项
+    expect(wrapper.find('button.ui-cascader__trigger').attributes('aria-activedescendant')).toContain('option-0-0')
+    wrapper.unmount()
+  })
+
+  it('受控 open=false：点击触发器只发 update:open(true)，弹层不出现；父置 true 后跟随渲染', async () => {
+    const wrapper = mount(Cascader, {
+      props: { options: TREE, open: false },
+      attachTo: document.body,
+    })
+    await wrapper.find('button.ui-cascader__trigger').trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true]])
+    expect(document.querySelector('.ui-cascader__menu')).toBeNull()
+    await wrapper.setProps({ open: true })
+    await nextTick()
+    expect(document.querySelector('.ui-cascader__menu')).not.toBeNull()
+    expect(wrapper.find('button.ui-cascader__trigger').attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('非受控（不传 open）：完整开合周期发出 update:open [true] 与 [false]', async () => {
+    const wrapper = mount(Cascader, { props: { options: TREE }, attachTo: document.body })
+    await wrapper.find('button.ui-cascader__trigger').trigger('click')
+    await wrapper.find('button.ui-cascader__trigger').trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true], [false]])
+    wrapper.unmount()
+  })
+
   it('multiple：仅叶子渲染 checkbox（原生 input），父节点不渲染', async () => {
     const wrapper = mount(Cascader, {
       props: { options: TREE, multiple: true },

@@ -109,6 +109,44 @@ describe('Select api', () => {
     wrapper.unmount()
   })
 
+  it('update:open 受控：初始 open=true 挂载即打开弹层（aria-expanded=true）', async () => {
+    const wrapper = mount(Select, { props: { options: OPTIONS, open: true }, attachTo: document.body })
+    await nextTick()
+    const listbox = document.querySelector('.ui-select__listbox')
+    expect(listbox).not.toBeNull()
+    expect(listbox?.parentElement).toBe(document.body)
+    expect(wrapper.find('button.ui-select__trigger').attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('update:open 受控：open=false 时点击只派发 update:open(true) 不自行开启；父反射后跟随开合', async () => {
+    const wrapper = mount(Select, { props: { options: OPTIONS, open: false }, attachTo: document.body })
+    const trigger = wrapper.find('button.ui-select__trigger')
+    await trigger.trigger('click')
+    expect(wrapper.emitted('update:open')).toEqual([[true]])
+    expect(document.querySelector('.ui-select__listbox')).toBeNull() // 完全受控：未反射即不开
+    await wrapper.setProps({ open: true })
+    await nextTick()
+    expect(document.querySelector('.ui-select__listbox')).not.toBeNull()
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    await wrapper.setProps({ open: false })
+    await nextTick()
+    expect(document.querySelector('.ui-select__listbox')).toBeNull()
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    wrapper.unmount()
+  })
+
+  it('update:open 非受控（未传 open）：点击开合行为不变，且完整周期上抛 [true]/[false]', async () => {
+    const wrapper = mount(Select, { props: { options: OPTIONS }, attachTo: document.body })
+    const trigger = wrapper.find('button.ui-select__trigger')
+    await trigger.trigger('click')
+    expect(document.querySelector('.ui-select__listbox')).not.toBeNull()
+    await trigger.trigger('click')
+    expect(document.querySelector('.ui-select__listbox')).toBeNull()
+    expect(wrapper.emitted('update:open')).toEqual([[true], [false]])
+    wrapper.unmount()
+  })
+
   it('attrs 透传（inheritAttrs:false）：合并到触发器 button，不落根容器', () => {
     const wrapper = mount(Select, {
       attrs: { id: 'status-select', 'aria-describedby': 'status-error' },

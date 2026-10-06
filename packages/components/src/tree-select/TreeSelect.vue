@@ -18,7 +18,7 @@
  *   只在其 onMounted 注册、onBeforeUnmount 移除，组件自身不直接触达浏览器 API。
  * - 一切颜色、字号、间距、圆角、阴影、动效均消费 var(--ui-*) token（paper.css）。
  */
-import { computed, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onMounted, ref, useId } from 'vue'
 import { useFloatingLayer } from '../shared/useFloatingLayer'
 import {
   TREE_SELECT_CLEAR_ARIA_LABEL,
@@ -50,6 +50,8 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<TreeSelectProps>(), {
   modelValue: null,
   options: () => [],
+  // open 不给默认值：受控与否由「是否传入 open / onUpdate:open 键」判定
+  // （收口于 shared useControllableOpen，Boolean prop 布尔转型不能凭值判空）。
   multiple: false,
   checkable: false,
   placeholder: TREE_SELECT_PLACEHOLDER_DEFAULT,
@@ -80,6 +82,8 @@ const { open, activeIndex, expanded, visibleNodes, records, toggleExpand, closeL
   useTreeSelect({
     options: () => props.options,
     disabled: () => props.disabled,
+    open: () => props.open,
+    onOpenChange: (value) => emit('update:open', value),
     stayOpen: () => isMultiple.value,
     primaryValue: () => primaryValue.value,
     onActivate: handleActivate,
@@ -227,12 +231,16 @@ const mounted = ref(false)
 
 // 弹层定位与点击外部关闭收口于 shared 浮层引擎：dropdown 策略（Teleport 到 body
 // 下绝对定位，引擎按触发器 rect + window.scrollX/scrollY 换算文档坐标 top/left +
-// minWidth，打开后在 nextTick 重排）；根容器与树面板都算「内部」，点击其余处关闭。
-// Esc 不走引擎（closeOnEscape: false）——本组件 Esc 在 useTreeSelect 键盘状态机内受理。
-const { floatingStyle: popupStyle } = useFloatingLayer({
+// minWidth，打开后在 nextTick 重排）；弹层与文档同滚，但触发器位于滚动容器内
+// （非文档滚动）或视口 resize 引起重排时会脱锚——传 followViewport 由引擎按
+// scroll（capture）/ resize 跟随重排（isOpen 守卫，关闭态零工作）；根容器与树
+// 面板都算「内部」，点击其余处关闭。Esc 不走引擎（closeOnEscape: false）——本
+// 组件 Esc 在 useTreeSelect 键盘状态机内受理。
+const { floatingStyle: popupStyle, updatePosition } = useFloatingLayer({
   isOpen: () => open.value,
   anchor: () => triggerEl.value,
   strategy: 'dropdown',
+  followViewport: true,
   closeOnOutsideClick: true,
   insideElements: () => [rootEl.value, treeEl.value],
   closeOnEscape: false,
@@ -269,6 +277,9 @@ function onClear(): void {
 
 onMounted(() => {
   mounted.value = true
+  // 受控初始即打开：引擎侧 watch 不覆盖初始值，等 Teleport 落地后按锚点 rect
+  // 定位（同 popover/ 的受控初始打开路径）。
+  if (open.value) void nextTick().then(updatePosition)
 })
 
 function focus(options?: FocusOptions): void {
@@ -573,7 +584,7 @@ defineExpose<TreeSelectExpose>({ focus, blur })
   top: 0;
   left: 0;
   margin-top: var(--ui-space-1);
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   box-sizing: border-box;
   max-height: calc(var(--ui-space-8) * 4); /* 长树滚动（token 推导，随 Select 先例） */
   overflow-y: auto;

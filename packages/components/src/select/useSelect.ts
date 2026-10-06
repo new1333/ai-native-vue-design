@@ -6,6 +6,11 @@
  *   2. 选中出口：select(index) → onSelect 回调（组件把 update:modelValue 挂这里）；
  *   3. 键盘状态机：Enter/Space 打开或选中、Esc 关闭，受理键一律 preventDefault。
  *
+ * 开合受控模型收口于 shared useControllableOpen（propName 'open'，语义同
+ * popover/ 的 v-model:modelValue）：传入 open prop 即受控——open 完全跟随外部值，
+ * 一切内部开合路径只经 onOpenChange 上抛、不自改状态；缺省非受控，内部自管理。
+ * onOpenChange 受控与非受控均上抛（组件挂 update:open 的 emit）。
+ *
  * 高亮导航数学（↓/↑ 逐项移动跳过 disabled、Home/End 首尾、打开落位已选优先）
  * 收口于 shared 列表导航引擎 useListNavigation：本文件只按 Select 语义提供
  * enabledIndexes（disabled 闸门过滤）与 selectedIndex（已选下标，未选 -1），
@@ -13,8 +18,9 @@
  *
  * SSR 安全：不访问任何浏览器 API；KeyboardEvent 仅读取 key 并调用 preventDefault。
  */
-import { computed, ref, toValue } from 'vue'
+import { computed, toValue, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import { useControllableOpen } from '../shared/useControllableOpen'
 import { useListNavigation } from '../shared/useListNavigation'
 import { SELECT_NAVIGATION_KEYS } from './Select.constants'
 import type { SelectOption, SelectValue } from './Select.types'
@@ -28,6 +34,14 @@ export interface UseSelectOptions {
   options: MaybeRefOrGetter<SelectOption[]>
   /** 受控当前值来源（响应式；null = 未选）。 */
   modelValue: MaybeRefOrGetter<SelectValue | null>
+  /**
+   * 受控 open 来源（响应式）：传入 open prop 的 getter 即参与受控判定——受控探测
+   * 由 shared useControllableOpen 按原始 vnode props 的 open / onUpdate:open 键
+   * 存在性完成（Boolean prop 布尔转型不能凭值判空），受控时 open 完全跟随该值。
+   */
+  open?: MaybeRefOrGetter<boolean | undefined>
+  /** open 变更出口（组件把 update:open 的 emit 挂到这里；受控与非受控均上抛）。 */
+  onOpenChange?: (value: boolean) => void
   /** 禁用总闸（响应式）：一切开合/导航/选中路径据此拦截。 */
   disabled?: MaybeRefOrGetter<boolean>
   /** 选中某选项时的唯一出口回调（组件把 update:modelValue 的 emit 挂到这里）。 */
@@ -36,8 +50,8 @@ export interface UseSelectOptions {
 
 /** useSelect 返回值。 */
 export interface UseSelectReturn {
-  /** 弹层是否打开。 */
-  open: Ref<boolean>
+  /** 弹层是否打开（受控 = 外部 open 来源；非受控 = 内部状态）。 */
+  open: ComputedRef<boolean>
   /** 当前高亮选项下标（-1 = 无高亮；关闭时复位）。 */
   activeIndex: Ref<number>
   /** 受控值命中的选项（null = 未选/未命中）。 */
@@ -68,10 +82,16 @@ function isNavigationKey(key: string): boolean {
 
 /** Select 开合/键盘状态机（纯逻辑，无 DOM）。 */
 export function useSelect(options: UseSelectOptions): UseSelectReturn {
-  const open = ref(false)
-
   const optionList = computed(() => toValue(options.options) ?? [])
   const disabled = computed(() => toValue(options.disabled) === true)
+
+  /* ── 开合：受控（open / onUpdate:open 键存在）/非受控收口于 shared
+     useControllableOpen；受控只上抛 onOpenChange，非受控上抛 + 内部落位 ── */
+  const { isOpen: open, setOpen } = useControllableOpen({
+    propName: 'open',
+    modelValue: () => toValue(options.open),
+    onUpdate: (value) => options.onOpenChange?.(value),
+  })
 
   const selectedOption = computed<SelectOption | null>(() => {
     const value = toValue(options.modelValue)
@@ -96,13 +116,13 @@ export function useSelect(options: UseSelectOptions): UseSelectReturn {
 
   function openList(edge: SelectNavigationEdge = 'first'): void {
     if (disabled.value || open.value) return
-    open.value = true
+    setOpen(true)
     setActive(initialActiveIndex(edge))
   }
 
   function closeList(): void {
     if (!open.value) return
-    open.value = false
+    setOpen(false)
     setActive(-1)
   }
 
@@ -148,6 +168,21 @@ export function useSelect(options: UseSelectOptions): UseSelectReturn {
         break
     }
   }
+
+  // 开合沿的高亮同步：打开落位（已选优先，否则首个可选）、关闭复位。内部路径
+  // （openList/closeList）自行落位后此处空转；受控下外部直接翻转 open（或初始即开）
+  // 不经过 openList，由此补齐——否则受控打开无初始高亮/关闭后高亮残留。
+  watch(
+    open,
+    (isOpen) => {
+      if (isOpen) {
+        if (activeIndex.value < 0) setActive(initialActiveIndex('first'))
+      } else {
+        setActive(-1)
+      }
+    },
+    { immediate: true },
+  )
 
   return {
     open,

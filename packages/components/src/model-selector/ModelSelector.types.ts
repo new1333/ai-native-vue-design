@@ -45,6 +45,11 @@ export interface ModelSelectorProps {
   modelValue?: ModelSelectorValue | null
   /** 模型全集；value 需唯一，同时用作 key。 */
   models?: ModelSelectorModel[]
+  /**
+   * v-model:open 受控开合：传入即完全受控（open 跟随外部值，内部交互——点击触发
+   * 器/选中/Esc/外点/blur——只发出 update:open）；未传则非受控内部自管理。
+   */
+  open?: boolean
   /** 占位文本（无已选模型时显示在触发器内；不替代 label）。 */
   placeholder?: string
   /** 空态文案：models 为空数组且非加载中时弹层内显示。 */
@@ -61,6 +66,8 @@ export interface ModelSelectorProps {
 export interface ModelSelectorEmits {
   /** v-model 更新：选中某个模型，载荷为其 value。 */
   'update:modelValue': [value: ModelSelectorValue]
+  /** v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。 */
+  'update:open': [value: boolean]
   /** 选中某个模型后触发（载荷为该模型对象，含 provider/disabled 字段）；disabled/loading 拦截时不触发。 */
   change: [model: ModelSelectorModel]
 }

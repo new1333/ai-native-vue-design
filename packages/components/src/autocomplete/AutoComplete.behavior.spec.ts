@@ -312,6 +312,105 @@ describe('AutoComplete behavior', () => {
     removeSpy.mockRestore()
   })
 
+  it('受控：Esc 只发 update:open(false)，父未响应前面板保持打开，父置 false 后关闭', async () => {
+    const wrapper = mount(AutoComplete, {
+      props: { options: OPTIONS, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    await findInput(wrapper).trigger('keydown', { key: 'Escape' })
+    expect(wrapper.emitted('update:open')).toEqual([[false]])
+    expect(document.querySelector('.ui-autocomplete__listbox')).not.toBeNull() // 完全受控：父未置 false 不自行关闭
+    await wrapper.setProps({ open: false })
+    await nextTick()
+    expect(document.querySelector('.ui-autocomplete__listbox')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('受控初始 open=true：挂载即打开并按输入框 rect 定位（onMounted 补一次重排）', async () => {
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    const wrapper = mount(AutoComplete, {
+      props: { options: OPTIONS, open: true },
+      attachTo: document.body,
+    })
+    vi.spyOn(findInput(wrapper).element, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(10, 200, 180, 36),
+    )
+    await nextTick()
+    await nextTick()
+    const style = (document.querySelector('.ui-autocomplete__listbox')?.getAttribute('style') ?? '').replace(
+      /\s+/g,
+      '',
+    )
+    expect(style).toContain('top:236px') // rect.bottom 236 + scrollY 0
+    expect(style).toContain('left:10px')
+    expect(style).toContain('min-width:180px')
+    wrapper.unmount()
+  })
+
+  it('打开期间滚动/视口变化：scroll（capture）与 resize 按最新输入框 rect 重定位', async () => {
+    // 隔离用例间共享 document 的滚动偏移（window.scrollY/scrollX 读取 documentElement）
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    const docAdd = vi.spyOn(document, 'addEventListener')
+    const winAdd = vi.spyOn(window, 'addEventListener')
+    const wrapper = mount(AutoComplete, { props: { options: OPTIONS }, attachTo: document.body })
+    const input = findInput(wrapper)
+    let rect = new DOMRect(10, 200, 180, 36)
+    vi.spyOn(input.element, 'getBoundingClientRect').mockImplementation(() => rect)
+    // 引擎在 onMounted 常驻注册跟随（isOpen 守卫）：scroll 以 capture 捕获任意祖先
+    // 滚动容器（文档坐标定位只天然跟随文档滚动），resize 挂 window
+    expect(docAdd).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(winAdd).toHaveBeenCalledWith('resize', expect.any(Function))
+    await input.trigger('click')
+    await nextTick()
+    const style = () =>
+      (document.querySelector('.ui-autocomplete__listbox')?.getAttribute('style') ?? '').replace(/\s+/g, '')
+    expect(style()).toContain('top:236px') // rect.bottom 200 + 36（scrollY=0）
+    // 输入框位于滚动容器内/滚动后视口位置变化：面板跟随新 rect 重排（重渲染等 microtask 落地）
+    rect = new DOMRect(10, 90, 180, 36)
+    document.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(style()).toContain('top:126px')
+    expect(style()).toContain('left:10px')
+    // 视口变化（缩放/侧栏折叠）：输入框变宽 → minWidth 跟随
+    rect = new DOMRect(10, 90, 260, 36)
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(style()).toContain('min-width:260px')
+    docAdd.mockRestore()
+    winAdd.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('关闭后 scroll/resize 由引擎 isOpen 守卫短路（不再读取 rect），卸载时一并解绑', async () => {
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    const wrapper = mount(AutoComplete, { props: { options: OPTIONS }, attachTo: document.body })
+    const input = findInput(wrapper)
+    const rectSpy = vi.spyOn(input.element, 'getBoundingClientRect')
+    rectSpy.mockReturnValue(new DOMRect(10, 200, 180, 36))
+    await input.trigger('click')
+    await nextTick()
+    expect(document.querySelector('.ui-autocomplete__listbox')).not.toBeNull()
+    await input.trigger('blur') // 关闭（Tab 路径；引擎监听常驻，回调以 isOpen 守卫短路）
+    expect(document.querySelector('.ui-autocomplete__listbox')).toBeNull()
+    const callsAfterClose = rectSpy.mock.calls.length
+    document.dispatchEvent(new Event('scroll'))
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(rectSpy.mock.calls.length).toBe(callsAfterClose) // 关闭态不再触发定位计算（不读 rect）
+    const docRemove = vi.spyOn(document, 'removeEventListener')
+    const winRemove = vi.spyOn(window, 'removeEventListener')
+    wrapper.unmount()
+    expect(docRemove).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(winRemove).toHaveBeenCalledWith('resize', expect.any(Function))
+    rectSpy.mockRestore()
+    docRemove.mockRestore()
+    winRemove.mockRestore()
+  })
+
   it('useAutoComplete 纯状态机：建议归一化（value 回退）与三种过滤策略', () => {
     const all = [...OPTIONS, { label: '杭州' }]
     const base = { options: () => all, onUpdate: vi.fn(), onSearch: vi.fn(), onSelect: vi.fn() }

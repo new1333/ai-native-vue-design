@@ -37,6 +37,7 @@ export const meta: ComponentDefinition = {
       { name: 'placeholder', type: 'string', default: "'请选择'", description: '占位文本（无已选值时显示在触发器内）；不替代 label。' },
       { name: 'emptyText', type: 'string', default: "'暂无选项'", description: '空态文案：options 为空数组时弹层内显示（可用作加载中兜底）。' },
       { name: 'disabled', type: 'boolean', default: 'false', description: '禁用：触发器原生 disabled（移出 Tab 序）+ 拦截开合/键盘/悬停。' },
+      { name: 'open', type: 'boolean', description: 'v-model:open 受控开合：传入（v-model:open / :open / @update:open 任一）即完全受控——open 跟随外部值，内部交互（点击触发器/提交/Esc/外点/blur）只派发 update:open；未传则非受控内部自管理（非受控同样上抛 update:open 全周期）。' },
       { name: 'multiple', type: 'boolean', default: 'false', description: '多选：叶子节点渲染原生 checkbox（tabindex=-1），modelValue 为路径数组；勾选后弹层保持打开以便连续勾选；父节点仅用于展开，不支持勾选聚合。' },
       { name: 'expandTrigger', type: "'click' | 'hover'", default: "'click'", description: '次级面板展开触发方式：click 点击展开（默认）；hover 悬停父级即展开（键盘与提交路径不受影响）。' },
       { name: 'changeOnSelect', type: 'boolean', default: 'false', description: '选中任意层级：开启后单选模式下父节点点击/Enter 也提交其路径（提交后仍展开下级）；关闭时父节点仅展开，仅叶子提交。' },
@@ -47,6 +48,7 @@ export const meta: ComponentDefinition = {
     ],
     events: [
       { name: 'update:modelValue', payload: 'CascaderPath | CascaderPath[]', description: 'v-model 更新：单选提交一条路径（叶子，或 changeOnSelect 下的父节点），多选提交勾选路径数组（取消勾选时移除）。' },
+      { name: 'update:open', payload: 'boolean', description: 'v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。' },
       { name: 'change', payload: 'CascaderPath | CascaderPath[]', description: '提交选中/勾选后触发，载荷与 update:modelValue 一致。' },
     ],
     exposes: [
@@ -82,9 +84,9 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；弹层由 mounted 门控（Teleport 仅客户端渲染），SSR 输出只有触发器（含 role/aria-expanded 与 placeholder/已选路径文案；初始关闭态不输出 aria-controls，避免悬空 idref），不出现 listbox/option/checkbox。document 点击外部关闭监听只在 onMounted 注册、onBeforeUnmount 移除；弹层定位（getBoundingClientRect）只在打开后的 nextTick 内执行。useId 保证多实例 id 唯一且 SSR/客户端一致。',
   performance:
-    '常态零监听：仅打开期间存在一个 watch 定位（打开后一次 nextTick 计算 rect）；无定时器、无 ResizeObserver。面板/已选路径/触发器文案均为受控 computed 派生（选项树规模线性遍历）；动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长列表面板以 max-height（token 推导）+ overflow-y: auto 兜底，弹层超宽以 max-height/max-width + overflow-x: auto 兜底，未做虚拟滚动。',
+    '打开时一次 nextTick 定位（getBoundingClientRect + 内联样式写入）；挂载期间常驻一个 document scroll（capture）与一个 window resize 监听（浮层引擎，回调以 isOpen 守卫短路，关闭态零工作），打开期间视口变化按锚点最新 rect 重排；无定时器、无 ResizeObserver。面板/已选路径/触发器文案均为受控 computed 派生（选项树规模线性遍历）；动效只有 border-color/background-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。长列表面板以 max-height（token 推导）+ overflow-y: auto 兜底，弹层超宽以 max-height/max-width + overflow-x: auto 兜底，未做虚拟滚动。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-dropdown；面板 min-width/max-height、弹层 max-width 均以 --ui-space-8 推导；高亮项 --ui-surface-muted、已选项 --ui-accent-soft/--ui-accent、禁用项 --ui-text-3、checkbox accent-color 走 --ui-accent；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
+    '视觉只消费 --ui-* token（paper.css）：触发器复用输入框别名（--ui-input-bg / --ui-input-radius / --ui-input-border-focus）；弹层 surface 底 + --ui-border 描边 + --ui-radius-sm + --ui-shadow-pop + --ui-z-popover（Teleport 到 body 的非模态弹层档，高于 modal）；面板 min-width/max-height、弹层 max-width 均以 --ui-space-8 推导；高亮项 --ui-surface-muted、已选项 --ui-accent-soft/--ui-accent、禁用项 --ui-text-3、checkbox accent-color 走 --ui-accent；间距/字号走 --ui-space-*/--ui-text-*。无全局 CSS 引入；attrs/class 透传落在触发器 button 上可做定向覆盖。',
   examples: [
     "<Cascader v-model='region' :options=\"[{ label: '浙江省', value: 'cn-zj', children: [{ label: '杭州市', value: 'cn-zj-hz' }] }]\" />",
     "<Cascader v-model='paths' :options='categoryTree' multiple placeholder='选择类目' />",

@@ -63,6 +63,11 @@ export interface DatePickerProps {
   max?: string
   /** 禁用判定：返回 true 的日期不可被选中（与 min/max 取并集）。 */
   disabledDate?: DatePickerDisabledDate
+  /**
+   * v-model:open 受控开合：传入即完全受控（open 跟随外部值，内部交互——点击触发
+   * 器/选中日期/Esc/外点/blur——只发出 update:open）；未传则非受控内部自管理。
+   */
+  open?: boolean
   /** 占位文本（未选时显示在触发器内；不替代 label）。 */
   placeholder?: string
   /** 禁用：触发器原生 disabled（移出 Tab 序）+ 拦截开合/键盘 + 不渲染清空按钮。 */
@@ -80,6 +85,8 @@ export interface DatePickerEmits {
    * （起止按升序归位），清空时载荷为 null。
    */
   'update:modelValue': [value: DatePickerModelValue]
+  /** v-model:open 更新：受控与非受控均上抛（受控时组件只派发、不自行开合）。 */
+  'update:open': [value: boolean]
   /** 面板视图年月变化（翻页按钮 / PageUp / PageDown），载荷为 { year, month }（month 1–12）。 */
   panelChange: [view: DatePickerPanelView]
   /** 点击清空按钮后触发（值已随 update:modelValue 置 null，随后焦点交还触发器）。 */

@@ -198,6 +198,106 @@ describe('ModelSelector behavior', () => {
     removeSpy.mockRestore()
   })
 
+  it('受控：Esc 只发 update:open(false)，父未响应前弹层保持打开，父置 false 后关闭', async () => {
+    const wrapper = mount(ModelSelector, {
+      props: { models: MODELS, open: true },
+      attachTo: document.body,
+    })
+    await nextTick()
+    await wrapper.find('button.ui-model-selector__trigger').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.emitted('update:open')).toEqual([[false]])
+    expect(document.querySelector('.ui-model-selector__popup')).not.toBeNull() // 完全受控：父未置 false 不自行关闭
+    await wrapper.setProps({ open: false })
+    await nextTick()
+    expect(document.querySelector('.ui-model-selector__popup')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('受控初始 open=true：挂载即打开并按触发器 rect 定位（onMounted 补一次重排）', async () => {
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    const wrapper = mount(ModelSelector, {
+      props: { models: MODELS, open: true },
+      attachTo: document.body,
+    })
+    vi.spyOn(
+      wrapper.find('button.ui-model-selector__trigger').element,
+      'getBoundingClientRect',
+    ).mockReturnValue(new DOMRect(20, 120, 160, 32))
+    await nextTick()
+    await nextTick()
+    const style = (document.querySelector('.ui-model-selector__popup')?.getAttribute('style') ?? '').replace(
+      /\s+/g,
+      '',
+    )
+    expect(style).toContain('top:152px') // rect.bottom 152 + scrollY 0
+    expect(style).toContain('left:20px')
+    expect(style).toContain('min-width:160px')
+    wrapper.unmount()
+  })
+
+  it('打开期间滚动/视口变化：scroll（capture）与 resize 按最新触发器 rect 重定位', async () => {
+    // 隔离用例间共享 document 的滚动偏移（window.scrollY/scrollX 读取 documentElement）
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    const docAdd = vi.spyOn(document, 'addEventListener')
+    const winAdd = vi.spyOn(window, 'addEventListener')
+    const wrapper = mount(ModelSelector, { props: { models: MODELS }, attachTo: document.body })
+    const trigger = wrapper.find('button.ui-model-selector__trigger')
+    let rect = new DOMRect(20, 100, 160, 32)
+    vi.spyOn(trigger.element, 'getBoundingClientRect').mockImplementation(() => rect)
+    // 引擎在 onMounted 常驻注册跟随（isOpen 守卫）：scroll 以 capture 捕获任意祖先
+    // 滚动容器（文档坐标定位只天然跟随文档滚动），resize 挂 window
+    expect(docAdd).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(winAdd).toHaveBeenCalledWith('resize', expect.any(Function))
+    await trigger.trigger('click')
+    await nextTick()
+    const style = () =>
+      (document.querySelector('.ui-model-selector__popup')?.getAttribute('style') ?? '').replace(/\s+/g, '')
+    expect(style()).toContain('top:132px') // rect.bottom 100 + 32（scrollY=0）
+    // 触发器位于滚动容器内/滚动后视口位置变化：面板跟随新 rect 重排（重渲染等 microtask 落地）
+    rect = new DOMRect(20, 40, 160, 32)
+    document.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(style()).toContain('top:72px')
+    expect(style()).toContain('left:20px')
+    // 视口变化（缩放/侧栏折叠）：触发器变宽 → minWidth 跟随
+    rect = new DOMRect(20, 40, 240, 32)
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(style()).toContain('min-width:240px')
+    docAdd.mockRestore()
+    winAdd.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('关闭后 scroll/resize 由引擎 isOpen 守卫短路（不再读取 rect），卸载时一并解绑', async () => {
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    const wrapper = mount(ModelSelector, { props: { models: MODELS }, attachTo: document.body })
+    const trigger = wrapper.find('button.ui-model-selector__trigger')
+    const rectSpy = vi.spyOn(trigger.element, 'getBoundingClientRect')
+    rectSpy.mockReturnValue(new DOMRect(20, 100, 160, 32))
+    await trigger.trigger('click')
+    await nextTick()
+    expect(document.querySelector('.ui-model-selector__popup')).not.toBeNull()
+    await trigger.trigger('click') // 关闭（引擎监听常驻，回调以 isOpen 守卫短路）
+    expect(document.querySelector('.ui-model-selector__popup')).toBeNull()
+    const callsAfterClose = rectSpy.mock.calls.length
+    document.dispatchEvent(new Event('scroll'))
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(rectSpy.mock.calls.length).toBe(callsAfterClose) // 关闭态不再触发定位计算（不读 rect）
+    const docRemove = vi.spyOn(document, 'removeEventListener')
+    const winRemove = vi.spyOn(window, 'removeEventListener')
+    wrapper.unmount()
+    expect(docRemove).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(winRemove).toHaveBeenCalledWith('resize', expect.any(Function))
+    rectSpy.mockRestore()
+    docRemove.mockRestore()
+    winRemove.mockRestore()
+  })
+
   it('useModelSelector 纯状态机：↓/↑ 导航跳过禁用模型并在两端夹住，Home/End 首尾', () => {
     const state = useModelSelector({ models: MODELS, modelValue: () => null })
     state.openList()
