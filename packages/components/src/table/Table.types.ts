@@ -13,6 +13,15 @@ export type TableSortOrder = 'asc' | 'desc' | 'none'
 /** 行键：取 T 的字段名，或给函数按行计算（返回 string | number）。 */
 export type TableRowKey<T> = keyof T | ((row: T, index: number) => string | number)
 
+/** 行键值：selectedRowKeys 的元素类型（跨页保持选中以键为准，不持有行引用）。 */
+export type TableRowKeyValue = string | number
+
+/**
+ * 列排序档位：false/缺省 = 该列不可排序（不渲染排序 UI）；true = 内置比较器
+ * （数字按数值、其余按拼音序）；函数 = 自定义行比较器（返回负/零/正）。
+ */
+export type TableSorter<T> = boolean | ((a: T, b: T) => number)
+
 /** 列定义。key 同时承担取值（row[key]）、单元格/表头插槽命名（cell-<key> / header-<key>）与排序键。 */
 export interface TableColumn<T> {
   /**
@@ -26,8 +35,23 @@ export interface TableColumn<T> {
   width?: string | number
   /** 对齐；'right' 面向数字列，自动应用 tabular-nums。 */
   align?: TableAlign
-  /** 可排序：表头渲染为 button，点击循环 asc → desc → none 并发出 sort 事件。 */
-  sortable?: boolean
+  /**
+   * 可排序：true 表头渲染为排序按钮（循环 asc → desc → none）并用内置比较器本地排序；
+   * 传 `(a, b) => number` 用自定义比较器；false/缺省不可排序、不渲染排序 UI。
+   */
+  sortable?: TableSorter<T>
+}
+
+/** 选择列 checkbox 的按行配置（getCheckboxProps 返回值）。 */
+export interface TableRowCheckboxProps {
+  /** 该行不可勾选：原生 disabled（移出 Tab 序），表头全选跳过该行。 */
+  disabled?: boolean
+}
+
+/** 行选择配置：传入（非 undefined）即启用行选择列（checkbox 列自动作为首列渲染）。 */
+export interface TableRowSelection<T> {
+  /** 按行计算 checkbox 配置（如按业务规则禁用行）；index 为渲染顺序（含排序）。 */
+  getCheckboxProps?: (row: T, index: number) => TableRowCheckboxProps
 }
 
 /** sort 事件载荷。 */
@@ -48,12 +72,23 @@ export interface TableProps<T> {
   rowKey: TableRowKey<T>
   /** 加载中：表头之外渲染骨架行并置 aria-busy="true"。 */
   loading?: boolean
+  /** 行选择配置：传入即启用行选择列（checkbox 自动作为首列；表头为全选，含半选态）。 */
+  rowSelection?: TableRowSelection<T>
+  /** 已选行键集合（受控，v-model:selectedRowKeys）；基于键而非行引用，data 更新/跨页后已选键保持。 */
+  selectedRowKeys?: TableRowKeyValue[]
+  /** 远程排序：true 时点击排序表头只发出 sort 事件（使用方自行排序数据），组件不做本地排序。 */
+  remote?: boolean
 }
 
 /** Table 的 Emits（Vue 3.3+ 元组语法）。 */
 export interface TableEmits {
   /** 排序变化：点击可排序列表头（或键盘 Enter/Space 激活）时发出，载荷 { key, order }。 */
   sort: [payload: TableSortPayload]
+  /**
+   * 行选择变化（v-model:selectedRowKeys）：载荷为勾选后的完整行键数组
+   * （含不在当前 data 内的历史键——跨页保持以键为准；行对象由使用方按键回查）。
+   */
+  'update:selectedRowKeys': [keys: TableRowKeyValue[]]
 }
 
 /** `cell-<key>` 单元格插槽作用域。 */

@@ -5,8 +5,9 @@
  *
  * - windowing：windowing 数学收口在 useVirtualList（headless、SSR 安全）；
  *   已测尺寸（稳定键缓存）优先，未测项按 estimatedItemSize 估算，前缀和定位。
- * - 不劫持原生滚动：滚动条由内容层总尺寸自然产生，组件只监听 scroll（passive）
- *   读取偏移，从不 preventDefault、从不代写 scrollTop/scrollLeft。
+ * - 不劫持用户滚动：滚动条由内容层总尺寸自然产生，组件只监听 scroll（passive）
+ *   读取偏移，从不 preventDefault；用户滚动不被代写 scrollTop/scrollLeft，
+ *   命令式滚动（scrollToOffset / scrollToIndex，经 defineExpose 暴露）按需写入。
  * - 测量：scroll 监听与 ResizeObserver（视口 + 窗口项）一律 onMounted 绑定、
  *   onBeforeUnmount 清理；SSR / 无布局环境按假定视口直出首屏窗口。
  * - 一切颜色、字号、间距均消费 var(--ui-*) token（paper.css）。
@@ -19,7 +20,14 @@ import {
   VIRTUAL_LIST_VIEWPORT_FALLBACK,
 } from './VirtualList.constants'
 import { useVirtualList } from './useVirtualList'
-import type { VirtualListEmits, VirtualListProps, VirtualListSlots, VirtualWindowItem } from './VirtualList.types'
+import type {
+  VirtualListEmits,
+  VirtualListExpose,
+  VirtualListProps,
+  VirtualListScrollAlign,
+  VirtualListSlots,
+  VirtualWindowItem,
+} from './VirtualList.types'
 
 const props = withDefaults(defineProps<VirtualListProps<T>>(), {
   overscan: VIRTUAL_LIST_OVERSCAN_DEFAULT,
@@ -36,7 +44,7 @@ const scrollOffset = ref(0)
 /** 视口主轴尺寸（px）：初始为假定视口（SSR / 无布局环境直出首屏），挂载后实测覆盖。 */
 const viewportSize = ref(VIRTUAL_LIST_VIEWPORT_FALLBACK)
 
-const { measuredSizes, totalSize, range, windowItems } = useVirtualList<T>({
+const { measuredSizes, offsets, totalSize, range, windowItems } = useVirtualList<T>({
   items: () => props.items,
   // 键是函数值：用 computed Ref 传递（composable 以 unref 解析，避免被当作 getter 误调用）。
   getKey: computed(() => props.getKey),
@@ -179,6 +187,40 @@ onMounted(() => {
   emit('visibleRangeChange', { start: range.value.start, end: range.value.end })
   syncItemMeasurement()
 })
+
+// ── 命令式滚动（defineExpose，挂载后经模板 ref 调用；SSR 期 rootRef 为 null 即 no-op）──
+
+/**
+ * 滚动到指定主轴偏移（px）：写入原生滚动位置并回读实际值（浏览器按可滚动范围收敛）
+ * 同步内部偏移——无布局/未派发 scroll 事件的环境窗口也能立即平移；
+ * 此后原生 scroll 事件到来时重读同值，幂等。
+ */
+function scrollToOffset(offsetPx: number): void {
+  const el = rootRef.value
+  if (!el) return
+  const safe = Number.isFinite(offsetPx) ? Math.max(0, offsetPx) : 0
+  if (props.horizontal) el.scrollLeft = safe
+  else el.scrollTop = safe
+  scrollOffset.value = readOffset(el)
+}
+
+/** 滚动到指定下标项：start/center/end 对齐；动态高度用已测前缀和，未测项按估算。 */
+function scrollToIndex(index: number, align: VirtualListScrollAlign = 'start'): void {
+  const count = props.items.length
+  if (count === 0) return
+  const clamped = Math.min(Math.max(Math.trunc(index) || 0, 0), count - 1)
+  const all = offsets.value
+  const start = all[clamped] ?? 0
+  const size = (all[clamped + 1] ?? start) - start
+  const viewport = viewportSize.value
+  let target: number
+  if (align === 'center') target = start - (viewport - size) / 2
+  else if (align === 'end') target = start - viewport + size
+  else target = start
+  scrollToOffset(target)
+}
+
+defineExpose<VirtualListExpose>({ scrollToOffset, scrollToIndex })
 
 onBeforeUnmount(() => {
   rootRef.value?.removeEventListener('scroll', onScroll)

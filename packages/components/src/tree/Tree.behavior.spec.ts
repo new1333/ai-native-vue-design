@@ -148,6 +148,52 @@ describe('Tree behavior', () => {
     expect(itemByText(wrapper, 'README.md').attributes('aria-selected')).toBe('false')
   })
 
+  it('受控勾选：交互只发事件，级联基于受控集合重算；prop 回写/变更后视图跟随', async () => {
+    const wrapper = mount(Tree, { props: { data, checkable: true, checkedKeys: ['button'] } })
+    expect(checkedOf(itemByText(wrapper, 'Button'))).toBe(true)
+    expect(indeterminateOf(itemByText(wrapper, 'src'))).toBe(true)
+
+    // 勾选 src（prop 未回写）：update:checkedKeys 与 check 均给出级联后全量快照。
+    await itemByText(wrapper, 'src').find('input[type="checkbox"]').setValue(true)
+    expect(wrapper.emitted('update:checkedKeys')).toEqual([
+      [['src', 'components', 'button', 'input', 'index']],
+    ])
+    expect(wrapper.emitted('check')?.[0]?.[0]).toEqual(
+      expect.objectContaining({
+        key: 'src',
+        checked: true,
+        checkedKeys: ['src', 'components', 'button', 'input', 'index'],
+      }),
+    )
+
+    // 取消 button（DOM 勾选态与受控集合一致为 true，change 正常派发）：
+    // 级联仍基于受控集合 ['button']（上一拍未回写 prop），而非内部累积 → 结果为空集。
+    await itemByText(wrapper, 'Button').find('input[type="checkbox"]').setValue(false)
+    expect(wrapper.emitted('update:checkedKeys')?.[1]?.[0]).toEqual([])
+
+    // 受控重置：prop 变更即视图跟随（清空回显）。
+    await wrapper.setProps({ checkedKeys: [] })
+    expect(checkedOf(itemByText(wrapper, 'Button'))).toBe(false)
+    expect(indeterminateOf(itemByText(wrapper, 'src'))).toBe(false)
+
+    // prop 再赋值即回显（表单回显路径）。
+    await wrapper.setProps({ checkedKeys: ['button', 'input'] })
+    expect(checkedOf(itemByText(wrapper, 'Button'))).toBe(true)
+    expect(checkedOf(itemByText(wrapper, 'Input'))).toBe(true)
+  })
+
+  it('非受控勾选不回归：defaultCheckedKeys 初始后继续级联，且 update:checkedKeys 照发', async () => {
+    const wrapper = mount(Tree, {
+      props: { data, checkable: true, defaultCheckedKeys: ['button', 'input'] },
+    })
+    await itemByText(wrapper, 'index.ts').find('input[type="checkbox"]').setValue(true)
+    expect(checkedOf(itemByText(wrapper, 'src'))).toBe(true) // 可用子节点全勾 → 祖先全勾
+    expect(indeterminateOf(itemByText(wrapper, 'src'))).toBe(false)
+    expect(wrapper.emitted('update:checkedKeys')?.[0]?.[0]).toEqual([
+      'src', 'components', 'button', 'input', 'index',
+    ])
+  })
+
   // ── 展开折叠 ──────────────────────────────────────────────
   it('非受控展开折叠：点击 toggle 切换子树可见性与 aria-expanded', async () => {
     const wrapper = mount(Tree, { props: { data } })

@@ -12,6 +12,8 @@ import AsyncStates from '@docs-demos/table/AsyncStates.vue'
 import asyncStatesSrc from '@docs-demos/table/AsyncStates.vue?raw'
 import Cells from '@docs-demos/table/Cells.vue'
 import cellsSrc from '@docs-demos/table/Cells.vue?raw'
+import RowSelection from '@docs-demos/table/RowSelection.vue'
+import rowSelectionSrc from '@docs-demos/table/RowSelection.vue?raw'
 </script>
 
 # Table 表格
@@ -33,6 +35,15 @@ import cellsSrc from '@docs-demos/table/Cells.vue?raw'
     :src="sortableSrc"
   >
     <Sortable />
+  </Demo>
+
+  <Demo
+    title="行选择"
+    anchor="row-selection"
+    description="传入 rowSelection 即启用前置选择列：表头全选（含半选态）、行 checkbox、getCheckboxProps 按行禁用；v-model:selectedRowKeys 受控选中键集合，翻页后已选键保持（跨页保持选中，全选会合并历史键）。"
+    :src="rowSelectionSrc"
+  >
+    <RowSelection />
   </Demo>
 
   <Demo

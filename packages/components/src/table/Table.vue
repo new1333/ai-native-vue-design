@@ -1,23 +1,30 @@
 <script setup lang="ts" generic="T">
 /**
  * Table —— 泛型数据表格：语义 table/thead(th scope=col)/tbody、可排序列（点击循环
- * asc → desc → none，表头为原生 button 且 th 带 aria-sort）、loading 骨架行、
- * 空态默认文案与 empty 插槽、`cell-<key>` / `header-<key>` 动态插槽。
- * 排序状态机收口在 useTableSort；一切颜色、字号、间距、圆角、动效
- * 均消费 var(--ui-*) token（paper.css）。
+ * asc → desc → none，表头为原生 button 且 th 带 aria-sort；remote 档只发事件不做本地排序）、
+ * 行选择列（rowSelection 传入即前置复用 Checkbox：受控 selectedRowKeys、表头全选含半选、
+ * 禁用行跳过）、loading 骨架行、空态默认文案与 empty 插槽、`cell-<key>` / `header-<key>` 动态插槽。
+ * 排序状态机收口在 useTableSort、行选择收口在 useTableRowSelection；
+ * 一切颜色、字号、间距、圆角、动效均消费 var(--ui-*) token（paper.css）。
  */
 import { computed } from 'vue'
 import type { CSSProperties } from 'vue'
+import { Checkbox } from '../checkbox'
 import {
   TABLE_ACTIVATION_KEYS,
   TABLE_EMPTY_TEXT_DEFAULT,
+  TABLE_SELECTION_ALL_LABEL,
+  TABLE_SELECTION_ROW_LABEL,
   TABLE_SKELETON_ROWS,
 } from './Table.constants'
 import { useTableSort } from './useTableSort'
+import { useTableRowSelection } from './useTableRowSelection'
 import type { TableColumn, TableEmits, TableExpose, TableProps, TableSlots } from './Table.types'
 
 const props = withDefaults(defineProps<TableProps<T>>(), {
   loading: false,
+  selectedRowKeys: () => [],
+  remote: false,
 })
 const emit = defineEmits<TableEmits>()
 defineSlots<TableSlots<T>>()
@@ -31,19 +38,35 @@ const {
 } = useTableSort<T>({
   columns: () => props.columns,
   data: () => props.data,
+  remote: () => props.remote,
   onSort: (payload) => emit('sort', payload),
+})
+
+/** 行选择：rowSelection 传入即启用（选择列自动前置）。 */
+const hasSelection = computed(() => props.rowSelection !== undefined)
+
+const {
+  keyOf,
+  checkboxPropsOf,
+  isRowSelected,
+  selectableCount,
+  allSelected,
+  someSelected,
+  toggleRow,
+  toggleAll,
+} = useTableRowSelection<T>({
+  rows: () => sortedRows.value,
+  rowKey: () => props.rowKey,
+  selectedRowKeys: () => props.selectedRowKeys,
+  rowSelection: () => props.rowSelection,
+  onUpdate: (keys) => emit('update:selectedRowKeys', keys),
 })
 
 /** 空态：非 loading 且无数据（响应式）。 */
 const isEmpty = computed(() => !props.loading && props.data.length === 0)
 
-/** 行键：函数直接求值；字段值取 string/number，其余回落行下标。 */
-function rowKeyOf(row: T, index: number): string | number {
-  const source = props.rowKey
-  if (typeof source === 'function') return source(row, index)
-  const value = row[source]
-  return typeof value === 'string' || typeof value === 'number' ? value : index
-}
+/** 空态行/骨架行的 colspan：选择列启用时跨全列 + 1。 */
+const emptyColspan = computed(() => props.columns.length + (hasSelection.value ? 1 : 0))
 
 /** 单元格原始取值 row[column.key]（供插槽作用域）。 */
 function cellRawValue(row: T, column: TableColumn<T>): unknown {
@@ -93,6 +116,16 @@ defineExpose<TableExpose>({ clearSort })
     <table class="ui-table__table" :aria-busy="loading ? 'true' : undefined">
       <thead class="ui-table__head">
         <tr class="ui-table__head-row">
+          <!-- 选择列：rowSelection 传入即前置；表头为全选 checkbox（含半选，无可选行时禁用） -->
+          <th v-if="hasSelection" scope="col" class="ui-table__th ui-table__cell--selection">
+            <Checkbox
+              :model-value="allSelected"
+              :indeterminate="someSelected"
+              :disabled="selectableCount === 0"
+              :aria-label="TABLE_SELECTION_ALL_LABEL"
+              @update:model-value="toggleAll"
+            />
+          </th>
           <th
             v-for="column in columns"
             :key="column.key"
@@ -156,18 +189,30 @@ defineExpose<TableExpose>({ clearSort })
             class="ui-table__row ui-table__row--skeleton"
             aria-hidden="true"
           >
+            <td v-if="hasSelection" class="ui-table__td ui-table__cell--selection">
+              <span class="ui-table__skeleton" />
+            </td>
             <td v-for="column in columns" :key="column.key" class="ui-table__td">
               <span class="ui-table__skeleton" />
             </td>
           </tr>
         </template>
         <tr v-else-if="isEmpty" class="ui-table__row ui-table__row--empty">
-          <td class="ui-table__td ui-table__empty" :colspan="columns.length">
+          <td class="ui-table__td ui-table__empty" :colspan="emptyColspan">
             <slot name="empty">{{ TABLE_EMPTY_TEXT_DEFAULT }}</slot>
           </td>
         </tr>
         <template v-else>
-          <tr v-for="(row, index) in sortedRows" :key="rowKeyOf(row, index)" class="ui-table__row">
+          <tr v-for="(row, index) in sortedRows" :key="keyOf(row, index)" class="ui-table__row">
+            <!-- 行 checkbox：原生 checkbox 语义（Tab 进入 / Space 切换），禁用行不可选 -->
+            <td v-if="hasSelection" class="ui-table__td ui-table__cell--selection">
+              <Checkbox
+                :model-value="isRowSelected(keyOf(row, index))"
+                :disabled="checkboxPropsOf(row, index).disabled"
+                :aria-label="TABLE_SELECTION_ROW_LABEL"
+                @update:model-value="(checked) => toggleRow(row, index, checked)"
+              />
+            </td>
             <td
               v-for="column in columns"
               :key="column.key"
@@ -238,6 +283,12 @@ defineExpose<TableExpose>({ clearSort })
 .ui-table__cell--right {
   text-align: right;
   font-variant-numeric: var(--ui-numeric);
+}
+
+/* ── 选择列：checkbox 居中收口（复用 Checkbox 组件视觉，不自绘方块）── */
+.ui-table__cell--selection {
+  width: var(--ui-space-6);
+  text-align: center;
 }
 
 /* ── 行 hover：骨架/空态行不响应 ─────────────────────────── */

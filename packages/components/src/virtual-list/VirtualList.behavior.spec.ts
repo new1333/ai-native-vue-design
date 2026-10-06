@@ -1,4 +1,5 @@
-// behavior spec：滚动窗口平移 / 事件透传 / 不劫持滚动 / 数据响应式 / headless windowing 数学。
+// behavior spec：滚动窗口平移 / 事件透传 / 不劫持滚动 / 命令式滚动 expose / 数据响应式 / headless windowing 数学。
+import { nextTick } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
@@ -6,7 +7,7 @@ import { ref } from 'vue'
 import type { DefineComponent } from 'vue'
 import VirtualList from './VirtualList.vue'
 import { useVirtualList } from './useVirtualList'
-import type { VirtualListProps } from './VirtualList.types'
+import type { VirtualListExpose, VirtualListProps } from './VirtualList.types'
 
 interface Row {
   id: number
@@ -37,6 +38,11 @@ function mountList(props: Partial<VirtualListProps<Row>> = {}): VueWrapper {
 
 function itemTexts(wrapper: VueWrapper): string[] {
   return wrapper.findAll('.ui-virtual-list__item').map((item) => item.text())
+}
+
+/** 泛型组件经 VTU mount 后的暴露方法（显式类型桥接，非 any）。 */
+function exposed(wrapper: VueWrapper): VirtualListExpose {
+  return wrapper.vm as unknown as VirtualListExpose
 }
 
 describe('VirtualList behavior', () => {
@@ -128,6 +134,68 @@ describe('VirtualList behavior', () => {
     expect(itemTexts(wrapper)[0]).toBe(`item-${SCROLLED_START}`)
   })
 
+  // ── 命令式滚动（defineExpose：scrollToOffset / scrollToIndex）─────────────
+  it('scrollToOffset：写入原生 scrollTop 并同步内部偏移驱动窗口平移（不依赖 scroll 事件）', async () => {
+    const wrapper = mountList()
+    exposed(wrapper).scrollToOffset(3200)
+    await nextTick()
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(3200)
+    const ranges = wrapper.emitted('visibleRangeChange')
+    expect(ranges).toHaveLength(2)
+    expect(ranges?.[1]?.[0]).toEqual({ start: SCROLLED_START, end: SCROLLED_END })
+    const texts = itemTexts(wrapper)
+    expect(texts[0]).toBe(`item-${SCROLLED_START}`)
+    expect(texts[texts.length - 1]).toBe(`item-${SCROLLED_END}`)
+
+    // 负值/非有限数收敛为 0。
+    exposed(wrapper).scrollToOffset(-50)
+    await nextTick()
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(0)
+    expect(wrapper.emitted('visibleRangeChange')?.at(-1)?.[0]).toEqual({ start: 0, end: 23 })
+  })
+
+  it('scrollToIndex：默认 start 对齐到项起点（固定高度下确定性断言）', async () => {
+    const wrapper = mountList()
+    exposed(wrapper).scrollToIndex(100)
+    await nextTick()
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(3200) // 100 × 32
+    expect(itemTexts(wrapper)[0]).toBe(`item-${SCROLLED_START}`)
+
+    // 越界收敛到 [0, items.length - 1]。
+    exposed(wrapper).scrollToIndex(-20)
+    await nextTick()
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(0)
+    exposed(wrapper).scrollToIndex(5000)
+    await nextTick()
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(999 * 32) // 31968
+  })
+
+  it('scrollToIndex align：end 收敛到「项底贴视口底」、center 居中（视口按假定 600 推导）', async () => {
+    const wrapper = mountList()
+    exposed(wrapper).scrollToIndex(100, 'end')
+    await nextTick()
+    // 3200 - 600 + 32 = 2632：第 100 项底边对齐视口底边。
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(2632)
+    expect(itemTexts(wrapper)[0]).toBe('item-77')
+    expect(itemTexts(wrapper).at(-1)).toBe('item-105')
+
+    exposed(wrapper).scrollToIndex(100, 'center')
+    await nextTick()
+    // 3200 - (600 - 32) / 2 = 2916：第 100 项与视口中线对齐。
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(2916)
+    expect(itemTexts(wrapper)[0]).toBe('item-86')
+    expect(itemTexts(wrapper).at(-1)).toBe('item-114')
+  })
+
+  it('horizontal：scrollToOffset 写 scrollLeft（主轴跟随 horizontal）', async () => {
+    const wrapper = mountList({ horizontal: true })
+    exposed(wrapper).scrollToOffset(3200)
+    await nextTick()
+    expect((wrapper.element as HTMLElement).scrollLeft).toBe(3200)
+    expect((wrapper.element as HTMLElement).scrollTop).toBe(0)
+    expect(itemTexts(wrapper)[0]).toBe(`item-${SCROLLED_START}`)
+  })
+
   it('headless：useVirtualList 已测尺寸收敛前缀和，滚动驱动混合测量/估算的窗口', () => {
     const scrollOffset = ref(0)
     const viewportSize = ref(60)
@@ -153,6 +221,32 @@ describe('VirtualList behavior', () => {
     expect(state.range.value).toEqual({ start: 1, end: 2 })
     expect(state.windowItems.value.map((entry) => entry.key)).toEqual(['b', 'c'])
     expect(state.windowItems.value[0]).toMatchObject({ start: 100, size: 32 })
+  })
+
+  it('headless：items 变化后清理尺寸缓存中不存在的键（防长会话无界增长）', async () => {
+    const items = ref(['a', 'b', 'c'])
+    const scrollOffset = ref(0)
+    const state = useVirtualList<string>({
+      items,
+      getKey: (item) => item,
+      estimatedItemSize: 32,
+      overscan: 0,
+      scrollOffset,
+      viewportSize: ref(600),
+    })
+    state.measuredSizes.value.set('a', 100)
+    state.measuredSizes.value.set('b', 64)
+    state.measuredSizes.value.set('c', 10)
+    expect(state.totalSize.value).toBe(174)
+
+    items.value = ['b', 'd'] // 'a'/'c' 键随项移除，'b' 保留，'d' 新增
+    await nextTick()
+    expect(state.measuredSizes.value.has('a')).toBe(false)
+    expect(state.measuredSizes.value.has('c')).toBe(false)
+    expect(state.measuredSizes.value.get('b')).toBe(64) // 保留项的测量不丢
+    // 前缀和重算：b=64（实测）+ d=32（估算）。
+    expect(state.offsets.value).toEqual([0, 64, 96])
+    expect(state.totalSize.value).toBe(96)
   })
 
   it('headless：overscan 负值收敛为 0；空数据窗口为 { start: 0, end: -1 }', () => {

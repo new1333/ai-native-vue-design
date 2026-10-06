@@ -43,6 +43,50 @@ describe('Statistic behavior', () => {
     }
   })
 
+  it('countdown 抗后台节流：interval 拍数远少于系统时间前进量时，剩余仍与墙钟一致', async () => {
+    vi.useFakeTimers()
+    try {
+      const wrapper = mount(Statistic, { props: { value: 60, countdown: true } })
+      // 前台正常 2 拍：58s。
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(wrapper.find('.ui-statistic__value').text()).toBe('00:58')
+
+      // 模拟后台节流：系统时间前进 48s，interval 只补跑 1 拍（1/min 级节流）。
+      // 逐拍 -1 的模型会显示 00:57（58-1）；墙钟差值模型收敛到 60-51=9。
+      vi.setSystemTime(Date.now() + 48_000)
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(wrapper.find('.ui-statistic__value').text()).toBe('00:09')
+
+      // 恢复前台节奏后继续与墙钟同步。
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(wrapper.find('.ui-statistic__value').text()).toBe('00:08')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('countdown finish 时机：节流后系统时间越过 deadline，单拍即归零且 finish 恰一次', async () => {
+    vi.useFakeTimers()
+    try {
+      const wrapper = mount(Statistic, { props: { value: 10, countdown: true } })
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(wrapper.find('.ui-statistic__value').text()).toBe('00:09')
+
+      // 系统时间越过 deadline（t0+10s）6s，interval 只跑 1 拍。
+      vi.setSystemTime(Date.now() + 15_000)
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(wrapper.find('.ui-statistic__value').text()).toBe('00:00')
+      expect(wrapper.emitted('finish')).toHaveLength(1)
+
+      // 已停表：继续推进不再发出 finish。
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(wrapper.find('.ui-statistic__value').text()).toBe('00:00')
+      expect(wrapper.emitted('finish')).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('countdown 初始即 0：不起表、不发出 finish', async () => {
     vi.useFakeTimers()
     try {

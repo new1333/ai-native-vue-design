@@ -1,12 +1,15 @@
 /**
  * useTableSort —— Table 的排序状态机 composable（headless）。
  *
- * 收口三类语义：
+ * 收口四类语义：
  *   1. 状态：sortKey / sortOrder，点击可排序列循环 none → asc → desc → none；
  *   2. 派生：sortedRows（data 的浅拷贝排序，不改写传入数组）与 th 的 aria-sort 值；
+ *      列可传自定义行比较器（sortable: (a, b) => number），缺省用内置比较器——
  *      字符串列按 zh-Hans-CN 拼音序比较（Intl.Collator，见 TABLE_SORT_LOCALE），
  *      数字列按数值比较；
- *   3. 失效复位：columns 变化后当前排序键不存在时自动复位为 none。
+ *   3. 远程档：remote=true 时点击排序头只回调 onSort（使用方自行排序数据），
+ *      sortedRows 恒等于 data 浅拷贝（不本地重排）；状态与 aria-sort 照常流转；
+ *   4. 失效复位：columns 变化后当前排序键不存在时自动复位为 none。
  *
  * SSR 安全：不访问任何浏览器 API（Intl 为 ECMA-402 内建）；.click() 只由组件在客户端 keydown 回调中触发。
  */
@@ -27,6 +30,8 @@ export interface UseTableSortOptions<T> {
   columns: MaybeRefOrGetter<TableColumn<T>[]>
   /** 行数据（响应式来源；只读消费，排序作用于副本）。 */
   data: MaybeRefOrGetter<readonly T[]>
+  /** 远程排序（响应式来源）：true 时点击排序头只回调 onSort，不做本地排序。 */
+  remote?: MaybeRefOrGetter<boolean>
   /** 用户排序（点击/键盘激活）回调，用于发出 sort 事件。 */
   onSort?: (payload: TableSortPayload) => void
 }
@@ -40,16 +45,21 @@ export interface UseTableSortReturn<T> {
   sortKey: Ref<string>
   /** 当前排序方向。 */
   sortOrder: Ref<TableSortOrder>
-  /** 渲染行：order 为 none 或排序键失效时等于 data 的浅拷贝。 */
+  /** 渲染行：本地档按当前排序（自定义或内置比较器）排序；remote=true 或未排序时等于 data 的浅拷贝。 */
   sortedRows: ComputedRef<T[]>
   /** 计算某列 th 的 aria-sort；非可排序列返回 undefined（不写属性）。 */
   ariaSortValue: (column: TableColumn<T>) => TableAriaSortValue | undefined
   /** 某列是否处于激活排序（asc/desc），驱动指示图标。 */
   isSortActive: (column: TableColumn<T>) => boolean
-  /** 切换某列排序（非可排序列为 no-op）；走 none → asc → desc → none 循环并回调 onSort。 */
+  /** 切换某列排序（非可排序列为 no-op）；走 none → asc → desc → none 循环并回调 onSort（remote 档亦回调，仅不本地排序）。 */
   toggleSort: (column: TableColumn<T>) => void
   /** 复位排序到 none（不发 sort 事件）。 */
   clearSort: () => void
+}
+
+/** 列是否可排序：sortable 为 true 或自定义比较函数（false/缺省不可排序）。 */
+function isSortableColumn<T>(column: TableColumn<T>): boolean {
+  return typeof column.sortable === 'function' || column.sortable === true
 }
 
 /** 循环的下一档：asc → desc → none → asc。 */
@@ -100,11 +110,11 @@ export function useTableSort<T>(options: UseTableSortOptions<T>): UseTableSortRe
   const sortKey = ref('')
   const sortOrder = ref<TableSortOrder>(TABLE_SORT_NONE)
 
-  // 当前生效的可排序列（键存在且声明 sortable）。
+  // 当前生效的可排序列（键存在且可排序：true 或自定义比较器）。
   const activeColumn = computed<TableColumn<T> | null>(() => {
     if (sortOrder.value === TABLE_SORT_NONE) return null
     const columns = toValue(options.columns)
-    return columns.find((column) => column.key === sortKey.value && column.sortable) ?? null
+    return columns.find((column) => column.key === sortKey.value && isSortableColumn(column)) ?? null
   })
 
   // columns 变化后排序键失效（或列不再 sortable）时复位，避免悬挂的 aria-sort。
@@ -121,14 +131,20 @@ export function useTableSort<T>(options: UseTableSortOptions<T>): UseTableSortRe
     const rows = [...toValue(options.data)]
     const column = activeColumn.value
     if (column === null) return rows
+    // 远程档：排序交给使用方（表头只发 sort 事件），渲染保持 data 原始顺序的浅拷贝。
+    if (toValue(options.remote) === true) return rows
     const direction = sortOrder.value === TABLE_SORT_ASC ? 1 : -1
-    const key = column.key as keyof T
     // Array.prototype.sort 现代引擎稳定；只排浅拷贝，不改写 props.data。
+    if (typeof column.sortable === 'function') {
+      const compare = column.sortable
+      return rows.sort((a, b) => direction * compare(a, b))
+    }
+    const key = column.key as keyof T
     return rows.sort((a, b) => direction * compareValues(a[key], b[key]))
   })
 
   function ariaSortValue(column: TableColumn<T>): TableAriaSortValue | undefined {
-    if (!column.sortable) return undefined
+    if (!isSortableColumn(column)) return undefined
     if (column.key !== sortKey.value) return TABLE_ARIA_SORT.none
     return TABLE_ARIA_SORT[sortOrder.value]
   }
@@ -138,7 +154,7 @@ export function useTableSort<T>(options: UseTableSortOptions<T>): UseTableSortRe
   }
 
   function toggleSort(column: TableColumn<T>): void {
-    if (!column.sortable) return
+    if (!isSortableColumn(column)) return
     if (sortKey.value !== column.key) {
       sortKey.value = column.key
       sortOrder.value = TABLE_SORT_ASC

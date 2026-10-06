@@ -12,7 +12,7 @@ export const meta: ComponentDefinition = {
     package: '@ui/components',
     export: 'VirtualList',
     category: 'data',
-    description: '纸面虚拟滚动列表原语：大列表/长会话只渲染可视窗口项，estimatedItemSize + 稳定键 + 已测尺寸前缀和定位窗口，不劫持原生滚动，SSR 直出首屏窗口；MessageList 等数据密集场景的底座。',
+    description: '纸面虚拟滚动列表原语：大列表/长会话只渲染可视窗口项，estimatedItemSize + 稳定键 + 已测尺寸前缀和定位窗口，不劫持用户滚动，暴露 scrollToOffset/scrollToIndex 命令式滚动，SSR 直出首屏窗口；MessageList 等数据密集场景的底座。',
   },
   intent: {
     what: '以 windowing 方式渲染任意长列表：全量 items 只输出可视窗口（含 overscan）的 DOM 项，滚动偏移驱动窗口平移，已测尺寸按键缓存收敛前缀和。',
@@ -26,7 +26,7 @@ export const meta: ComponentDefinition = {
       '几十行的普通列表直接 v-for 全量渲染即可，windowing 是过度设计',
       '需要行列结构、表头与单元格插槽的数据表格用 Table（万行级等 VirtualTable）',
       '分页浏览（Pagination）比连续滚动更契合的场景',
-      '本组件不提供 loading/禁用/受控滚动等状态：异步数据由数据层处理，列表为空时走 empty 插槽',
+      '本组件不提供 loading/禁用态与受控滚动 prop：异步数据由数据层处理，列表为空时走 empty 插槽；命令式滚动经模板 ref 的 scrollToOffset/scrollToIndex（无受控滚动偏移 prop）',
     ],
     userTask: '用户需要流畅滚动浏览远超视口可承载项数的大列表',
   },
@@ -43,22 +43,26 @@ export const meta: ComponentDefinition = {
       { name: 'empty', description: '空态内容；items 为空时渲染，缺省文案「暂无数据」，可搭配 EmptyState。' },
     ],
     events: [
-      { name: 'scroll', payload: 'Event（原生 scroll 事件）', description: '原生滚动透传：组件不劫持滚动（不 preventDefault、不代写 scrollTop/scrollLeft），仅原样转发以便埋点/联动。' },
+      { name: 'scroll', payload: 'Event（原生 scroll 事件）', description: '原生滚动透传：用户滚动组件不劫持（不 preventDefault、不代写 scrollTop/scrollLeft），仅原样转发以便埋点/联动；命令式 scrollToOffset/scrollToIndex 主动写入后由原生语义派发的 scroll 同样透传。' },
       { name: 'visibleRangeChange', payload: '{ start: number, end: number }', description: '渲染窗口变化：挂载首帧及 start/end 任一变化时发出；下标含 overscan、闭区间，空数据时 end = -1。' },
     ],
-    exposes: [],
+    exposes: [
+      { name: 'scrollToOffset', type: '(offsetPx: number) => void', description: '命令式滚动到指定主轴偏移（px，负值/非有限数收敛为 0）：写入原生滚动位置（浏览器按可滚动范围收敛）并同步内部偏移，窗口随之平移；水平模式写 scrollLeft。' },
+      { name: 'scrollToIndex', type: '(index: number, align?: "start" | "center" | "end") => void', description: '命令式滚动到指定下标项（越界收敛到 [0, items.length-1]，空数据 no-op；align 缺省 "start"）：基于前缀和定位——动态高度用已测尺寸、未测项按 estimatedItemSize 估算，center/end 会扣除视口尺寸换算偏移。' },
+    ],
   },
   constraints: {
     requires: ['消费方为滚动视口给定尺寸（height/width，style 或 class）', '@ui/tokens/paper.css（使用方应用入口一次性引入）'],
     dependsOn: ['@ui/tokens/paper.css'],
   },
   composition: {
-    patterns: ['VirtualList 承载 MessageList 消息流（item 插槽渲染消息气泡）', 'VirtualList + EmptyState 空态兜底', 'visibleRangeChange 驱动预取/埋点 + scroll 透传联动'],
+    patterns: ['VirtualList 承载 MessageList 消息流（item 插槽渲染消息气泡）', 'VirtualList + EmptyState 空态兜底', 'visibleRangeChange 驱动预取/埋点 + scroll 透传联动', '模板 ref 调 scrollToIndex 跳转回某个会话位置/scrollToOffset 恢复滚动进度'],
     related: ['Table', 'EmptyState', 'Skeleton', 'Pagination'],
     preferred: [
       'estimatedItemSize 取真实项的典型尺寸，偏差越小窗口越稳',
       'getKey 用业务唯一 id（不用数组下标），保证 DOM 复用与尺寸缓存正确',
       '项内容自带定高/自适应样式时配合 ResizeObserver 自动收敛，无需手动重测',
+      '命令式跳转用 scrollToIndex（center 对齐阅读位置最自然）；纯进度恢复用 scrollToOffset',
     ],
   },
   states: {
@@ -74,7 +78,7 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API，scroll 监听/ResizeObserver/测量全部在 onMounted 绑定并在 onBeforeUnmount 清理；SSR 按假定视口常量（600px）直出首屏窗口（如 estimatedItemSize=32 时直出前 24 项，含 overscan），item/empty 插槽随 SSR 输出；scrollOffset SSR 期恒为 0。',
   performance:
-    '只渲染可视窗口 + overscan（千项列表常驻 DOM 约为视口可容纳项数），项以 getKey 稳定键复用；窗口区间在偏移前缀和上二分求得（O(log n)），前缀和为 O(n) computed（浅状态、无逐项组件包装）；scroll 监听 passive、ResizeObserver 汇聚为键控尺寸缓存触发一次重算；不劫持原生滚动，无定时器。',
+    '只渲染可视窗口 + overscan（千项列表常驻 DOM 约为视口可容纳项数），项以 getKey 稳定键复用；窗口区间在偏移前缀和上二分求得（O(log n)），前缀和为 O(n) computed（浅状态、无逐项组件包装）；scroll 监听 passive、ResizeObserver 汇聚为键控尺寸缓存触发一次重算，items 变化后过期键自动清理（长会话缓存不无界增长）；不劫持用户滚动，无定时器。',
   styling:
     '视觉只消费 --ui-* token（paper.css）：视口 overflow 原生滚动、空态 --ui-space-6 内边距/--ui-text-sm/--ui-text-3、字体 --ui-font-sans/--ui-text-1；窗口项主轴偏移与内容层总尺寸为数据驱动的内联布局值（同 Table 列宽口径，非视觉常量）；无全局 CSS 引入；焦点环交给全局 :focus-visible。',
   examples: [
@@ -82,24 +86,27 @@ export const meta: ComponentDefinition = {
     "<VirtualList :items=\"rows\" :estimated-item-size=\"32\" :get-key=\"(r) => r.id\">\n  <template #item=\"{ item, index }\">{{ index }}. {{ item.name }}</template>\n  <template #empty>还没有消息</template>\n</VirtualList>",
     "<VirtualList :items=\"chips\" :estimated-item-size=\"96\" horizontal :get-key=\"(c) => c.id\">\n  <template #item=\"{ item }\"><Chip :label=\"item.label\" /></template>\n</VirtualList>",
     "<VirtualList :items=\"items\" :estimated-item-size=\"40\" :get-key=\"(x) => x.id\" @scroll=\"onScroll\" @visible-range-change=\"onRange\" />",
+    "<VirtualList ref=\"listRef\" :items=\"messages\" :estimated-item-size=\"48\" :get-key=\"(m) => m.id\">\n  <template #item=\"{ item }\"><MessageBubble :message=\"item\" /></template>\n</VirtualList>\n<!-- 跳转到第 120 项（居中对齐）： -->\nlistRef.value?.scrollToIndex(120, 'center')",
   ],
   agent: {
     keywords: ['virtual list', '虚拟列表', '虚拟滚动', 'windowing', '长列表', '大列表', '消息流', 'MessageList', 'chat', 'scroll', 'overscan', '横向列表', 'horizontal', '虚拟化'],
     selectionHints: [
       '千行级以上长列表/长会话 → VirtualList；几十行直接 v-for；行列结构 → Table；万行级表格语义 → VirtualTable',
       '必须传 getKey（业务唯一 id）与 estimatedItemSize（典型项尺寸）',
-      '需要感知滚动用 @scroll（原生透传）与 @visible-range-change（渲染窗口）',
+      '需要感知滚动用 @scroll（原生透传）与 @visible-range-change（渲染窗口）；命令式跳转用模板 ref 的 scrollToOffset/scrollToIndex',
     ],
     commonTasks: [
       '聊天记录/消息流窗口化渲染',
       '横向时间线/胶片轨道',
       '空列表兜底 + 窗口变化联动',
+      '跳转到指定项/恢复滚动进度（scrollToIndex / scrollToOffset）',
     ],
     generationNotes: [
       '滚动视口尺寸由使用方给定（height/width），组件不代设尺寸',
       'estimatedItemSize 只是估算：实测尺寸挂载后按键缓存自动收敛，无需手动重测',
       '窗口外项不在 DOM，不要依赖「全部项都在文档里」的选择器',
       'aria-label 建议必传：让滚动视口成为带名的 region 地标',
+      '头部插入数据（prepend）本版不做滚动锚定：内容层增长会把既有视口内容向后推，需要锚定的场景由使用方在数据变更后自行调用 scrollToOffset 补偿',
     ],
   },
 }

@@ -12,7 +12,7 @@
  * SSR 安全：纯计算，不访问任何浏览器 API；scrollOffset / viewportSize /
  * measuredSizes 由组件在 mounted 之后的客户端事件与测量中写入。
  */
-import { computed, ref, toValue, unref } from 'vue'
+import { computed, ref, toValue, unref, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
 import { VIRTUAL_LIST_MIN_ITEM_SIZE } from './VirtualList.constants'
 import type { VirtualListKey, VirtualListRange, VirtualWindowItem } from './VirtualList.types'
@@ -38,7 +38,7 @@ export interface UseVirtualListOptions<T> {
 
 /** useVirtualList 返回值。 */
 export interface UseVirtualListReturn<T> {
-  /** 已测尺寸缓存（稳定键 → 主轴 px；由组件在客户端测量后写入）。 */
+  /** 已测尺寸缓存（稳定键 → 主轴 px；由组件在客户端测量后写入；items 变化后过期键自动清理）。 */
   measuredSizes: Ref<Map<string | number, number>>
   /** 每项主轴起点的前缀和（length = items.length + 1，末位即总尺寸）。 */
   offsets: ComputedRef<number[]>
@@ -93,6 +93,21 @@ function findEndIndex(offsets: readonly number[], count: number, position: numbe
 /** windowing 状态机 composable。 */
 export function useVirtualList<T>(options: UseVirtualListOptions<T>): UseVirtualListReturn<T> {
   const measuredSizes = ref(new Map<string | number, number>())
+
+  // items 变化后清理不存在键：尺寸缓存只增不删会让超长会话（换页/收缩/重建数据）
+  // 的过期键无上界增长；键被复用为新项时测量值仍按既有归属保留。
+  watch(
+    () => toValue(options.items),
+    (items) => {
+      if (measuredSizes.value.size === 0) return
+      const getKey = unref(options.getKey)
+      const live = new Set<string | number>()
+      for (let i = 0; i < items.length; i++) live.add(getKey(items[i] as T, i))
+      for (const key of [...measuredSizes.value.keys()]) {
+        if (!live.has(key)) measuredSizes.value.delete(key)
+      }
+    },
+  )
 
   // 估算尺寸兜底：<= 0 / 非有限数按 1 处理，避免前缀和退化（窗口计算不崩溃）。
   const estimate = computed(() => {

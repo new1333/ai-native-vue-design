@@ -72,6 +72,17 @@ export interface VirtualListSlots<T> {
   empty?: () => VNode[]
 }
 
+/** 滚动对齐方式：目标项与视口的相对位置。 */
+export type VirtualListScrollAlign = 'start' | 'center' | 'end'
+
+/** VirtualList 的 Expose（命令式滚动；基于前缀和定位，已测项用实测尺寸、未测项按估算）。 */
+export interface VirtualListExpose {
+  /** 滚动到指定主轴偏移（px，负值/非有限数收敛为 0）：写入原生滚动位置并同步内部偏移驱动窗口平移。 */
+  scrollToOffset: (offsetPx: number) => void
+  /** 滚动到指定下标项（越界收敛到 [0, items.length-1]，空数据 no-op）；align 缺省 'start'。 */
+  scrollToIndex: (index: number, align?: VirtualListScrollAlign) => void
+}
+
 /** 渲染窗口内的单项描述（useVirtualList 返回值元素，含主轴位置与尺寸）。 */
 export interface VirtualWindowItem<T> {
   /** 项数据。 */

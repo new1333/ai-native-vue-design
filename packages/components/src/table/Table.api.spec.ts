@@ -166,3 +166,107 @@ describe('Table api', () => {
     expect(wrapper.emitted('sort')?.[0]?.[0]).toEqual({ key: 'score', order: 'asc' })
   })
 })
+
+describe('Table api: 行选择', () => {
+  const selColumns: TableColumn<Row>[] = [
+    { key: 'name', label: '名称' },
+    { key: 'score', label: '得分', align: 'right' },
+  ]
+  const selRows: Row[] = [
+    { id: 1, name: '松', score: 90 },
+    { id: 2, name: '竹', score: 70 },
+    { id: 3, name: '梅', score: 80 },
+  ]
+
+  it('rowSelection 缺省：不渲染选择列（th 数 = columns.length），无任何 checkbox', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id' },
+    })
+    expect(wrapper.findAll('th.ui-table__th')).toHaveLength(selColumns.length)
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
+  })
+
+  it('rowSelection 传入：选择列前置为 th（scope=col），每行渲染 checkbox', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+    })
+    const heads = wrapper.findAll('th.ui-table__th')
+    expect(heads).toHaveLength(selColumns.length + 1)
+    expect(heads[0]?.attributes('scope')).toBe('col')
+    expect(heads[0]?.classes()).toContain('ui-table__cell--selection')
+    expect(heads[0]?.find('input[type="checkbox"]').exists()).toBe(true)
+    expect(wrapper.findAll('tbody input[type="checkbox"]')).toHaveLength(selRows.length)
+    // 行 checkbox 位于行首（首列为选择列）
+    const firstRow = wrapper.findAll('tbody tr')[0]
+    expect(firstRow?.findAll('td')[0]?.classes()).toContain('ui-table__cell--selection')
+    expect(firstRow?.findAll('td')[0]?.find('input[type="checkbox"]').exists()).toBe(true)
+  })
+
+  it('selectedRowKeys 受控回显：对应行 checkbox checked', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {}, selectedRowKeys: [2] },
+    })
+    const boxes = wrapper.findAll('tbody input[type="checkbox"]')
+    expect((boxes[0]?.element as HTMLInputElement).checked).toBe(false)
+    expect((boxes[1]?.element as HTMLInputElement).checked).toBe(true)
+    expect((boxes[2]?.element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('update:selectedRowKeys 已声明：行勾选以键数组发出', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+    })
+    await wrapper.findAll('tbody input[type="checkbox"]')[0]?.setValue(true)
+    expect(wrapper.emitted('update:selectedRowKeys')).toHaveLength(1)
+    expect(wrapper.emitted('update:selectedRowKeys')?.[0]?.[0]).toEqual([1])
+  })
+
+  it('空态 + rowSelection：空行 colspan 跨全列 + 选择列', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: [], rowKey: 'id', rowSelection: {} },
+    })
+    expect(wrapper.find('td.ui-table__empty').attributes('colspan')).toBe(String(selColumns.length + 1))
+  })
+
+  it('loading + rowSelection：骨架行同样渲染选择列骨架格', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {}, loading: true },
+    })
+    expect(wrapper.findAll('tbody td.ui-table__td')).toHaveLength(
+      TABLE_SKELETON_ROWS * (selColumns.length + 1),
+    )
+  })
+})
+
+describe('Table api: 排序档位', () => {
+  it('sortable: false 显式声明：该列无排序按钮、无 aria-sort（与缺省一致）', () => {
+    const explicit: TableColumn<Row>[] = [
+      { key: 'name', label: '名称', sortable: false },
+      { key: 'score', label: '得分', align: 'right', sortable: true },
+    ]
+    const wrapper = mount(TableFixture, { props: { columns: explicit, data: rows, rowKey: 'id' } })
+    const heads = wrapper.findAll('th.ui-table__th')
+    expect(heads[0]?.find('button.ui-table__sort').exists()).toBe(false)
+    expect(heads[0]?.attributes('aria-sort')).toBeUndefined()
+    expect(heads[1]?.find('button.ui-table__sort').exists()).toBe(true)
+  })
+
+  it('sortable 传自定义比较函数：表头照常渲染排序按钮与 aria-sort', () => {
+    const custom: TableColumn<Row>[] = [
+      { key: 'name', label: '名称', sortable: (a: Row, b: Row) => a.name.length - b.name.length },
+    ]
+    const wrapper = mount(TableFixture, {
+      props: { columns: custom, data: [rows[0]!, rows[1]!], rowKey: 'id' },
+    })
+    const head = wrapper.findAll('th.ui-table__th')[0]
+    expect(head?.find('button.ui-table__sort').exists()).toBe(true)
+    expect(head?.attributes('aria-sort')).toBe('none')
+  })
+
+  it('remote 缺省为 false：表头排序仍为本地排序（既有契约不变）', async () => {
+    const wrapper = mount(TableFixture, { props: { columns, data: rows, rowKey: 'id' } })
+    await wrapper.find('button.ui-table__sort').trigger('click') // score asc（columns 首个可排序列）
+    const scores = wrapper.findAll('tbody tr').map((tr) => tr.findAll('td')[1]?.text() ?? '')
+    expect(scores).toEqual(['70', '80', '90']) // 本地重排发生（竹 70 / 梅 80 / 松 90）
+  })
+})

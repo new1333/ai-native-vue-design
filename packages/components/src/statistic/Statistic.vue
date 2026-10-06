@@ -3,7 +3,8 @@
  * Statistic —— 数值统计展示：KPI 数值 + 标题 + 趋势 / 倒计时（设计文档 §11.3 KPI）。
  *
  * - 数值走 precision 小数位格式化（非有限数回退 0）；countdown 模式下 value 为
- *   初始剩余秒数，客户端 1s 步进递减（useCountdown），归零停表并发出 finish，
+ *   初始剩余秒数，客户端以墙钟差值递减（useCountdown：interval 被后台节流时
+ *   进度仍与真实时间一致），归零停表并发出 finish，
  *   value 变更即受控重置；展示 <1h 为 mm:ss、≥1h 为 HH:mm:ss，precision 忽略。
  * - 展示语义：countdown 根元素 role="timer"（数值计数器）；trend 渲染带
  *   role="img" 可访问名（上升/下降）的方向箭头（up=success / down=danger），

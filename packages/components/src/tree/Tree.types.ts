@@ -70,7 +70,11 @@ export interface TreeProps {
   modelValue?: TreeValue
   /** 展开键集合（受控）；不传为非受控（初始展开全部父节点）。 */
   expandedKeys?: string[]
-  /** 显示勾选框；勾选为组件内状态（级联父子），经 check 事件同步全量 checkedKeys。 */
+  /** 勾选键集合（受控，v-model:checkedKeys）：传入后勾选交互只发事件（级联快照），内部视图完全跟随 prop；不传为非受控。 */
+  checkedKeys?: string[]
+  /** 非受控初始勾选键（仅初始化消费一次；禁用键忽略，祖先按可用子节点全勾回算）。 */
+  defaultCheckedKeys?: string[]
+  /** 显示勾选框；勾选状态经 checkedKeys 受控或组件内管理（级联父子），经 check 事件同步全量快照。 */
   checkable?: boolean
   /** 多选：modelValue 为 string[]，点击节点切换选中；缺省单选（string，重复点击已选节点不取消）。 */
   multiple?: boolean
@@ -84,6 +88,8 @@ export interface TreeEmits {
   'update:modelValue': [value: TreeValue]
   /** 选中变化：载荷 { key, node, selected }。 */
   select: [payload: TreeSelectPayload]
+  /** 勾选键集合变化（v-model:checkedKeys）：级联计算后的全量键快照（先序）；受控/非受控均发出。 */
+  'update:checkedKeys': [value: string[]]
   /** 勾选变化（级联后）：载荷 { key, node, checked, checkedKeys }。 */
   check: [payload: TreeCheckPayload]
   /** 展开折叠变化：载荷 { key, node, expanded, expandedKeys }。 */

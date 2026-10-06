@@ -80,4 +80,29 @@ describe('Table ssr', () => {
     expect(html).toContain('★pine')
     expect(html).toContain('名称!')
   })
+
+  it('行选择：选择列（表头全选 + 行 checkbox）与禁用态随 SSR 输出（不触达浏览器 API）', async () => {
+    const html = await render(() =>
+      h(TableFixture, {
+        columns,
+        data: rows,
+        rowKey: 'id',
+        rowSelection: { getCheckboxProps: (row: Row) => ({ disabled: row.name === 'bamboo' }) },
+        selectedRowKeys: [1],
+      }),
+    )
+    expect(html).toContain('scope="col"') // 选择列 th 同样带 scope
+    // 表头全选 + 每行各一个 checkbox
+    expect(html.split('type="checkbox"').length - 1).toBe(rows.length + 1)
+    expect(html).toContain('disabled') // 禁用行随 SSR 输出（原生 disabled 属性）
+  })
+
+  it('remote + 可排序列：SSR 无异常，排序按钮与 aria-sort 照常输出', async () => {
+    const html = await render(() =>
+      h(TableFixture, { columns, data: rows, rowKey: 'id', remote: true }),
+    )
+    expect(html).toContain('<button')
+    expect(html).toContain('aria-sort="none"')
+    expect(html).toContain('pine')
+  })
 })

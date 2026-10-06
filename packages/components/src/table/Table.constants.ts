@@ -1,5 +1,5 @@
 /**
- * table/ —— 逻辑常量收口（排序循环、aria 映射、骨架行数；不是视觉值，视觉只走 --ui-* token）。
+ * table/ —— 逻辑常量收口（排序循环、aria 映射、骨架行数、选择列可读名；不是视觉值，视觉只走 --ui-* token）。
  */
 import type { TableAlign, TableSortOrder } from './Table.types'
 
@@ -35,6 +35,12 @@ export const TABLE_SKELETON_ROWS = 3
 
 /** 空态默认文案（empty 插槽缺省值；文案常量非视觉值）。 */
 export const TABLE_EMPTY_TEXT_DEFAULT = '暂无数据'
+
+/** 选择列表头全选 checkbox 的 aria-label（文案常量非视觉值）。 */
+export const TABLE_SELECTION_ALL_LABEL = '全选'
+
+/** 选择列行 checkbox 的 aria-label（行可读名不依赖列文案，保持稳定）。 */
+export const TABLE_SELECTION_ROW_LABEL = '选择此行'
 
 /**
  * 排序按钮的键盘激活键：与 button/ 的 ButtonRoot 同一策略——

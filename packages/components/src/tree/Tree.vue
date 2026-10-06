@@ -21,6 +21,8 @@ import type { TreeEmits, TreeFlatNode, TreeNodeSlotScope, TreeProps, TreeSlots }
 const props = withDefaults(defineProps<TreeProps>(), {
   modelValue: undefined,
   expandedKeys: undefined,
+  checkedKeys: undefined,
+  defaultCheckedKeys: undefined,
   checkable: false,
   multiple: false,
   loading: false,
@@ -45,11 +47,14 @@ const {
 } = useTree({
   data: () => props.data,
   expandedKeys: () => props.expandedKeys,
+  checkedKeys: () => props.checkedKeys,
+  defaultCheckedKeys: () => props.defaultCheckedKeys,
   modelValue: () => props.modelValue,
   multiple: () => props.multiple,
   onSelect: (payload) => emit('select', payload),
   onCheck: (payload) => emit('check', payload),
   onExpand: (payload) => emit('expand', payload),
+  onUpdateCheckedKeys: (value) => emit('update:checkedKeys', value),
   onUpdateModelValue: (value) => emit('update:modelValue', value),
 })
 

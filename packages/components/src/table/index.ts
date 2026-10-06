@@ -3,6 +3,7 @@
 export { default as Table } from './Table.vue'
 
 export * from './useTableSort'
+export * from './useTableRowSelection'
 export * from './Table.types'
 export * from './Table.constants'
 

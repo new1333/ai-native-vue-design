@@ -4,7 +4,8 @@
  * 收口三类语义：
  *   1. 展开/折叠：expandedKeys 受控（传入 prop）或非受控（内部状态，初始展开全部父节点）；
  *   2. 选中：modelValue 受控或非受控；单选重复点击不取消，多选点击切换；
- *   3. 勾选：组件内状态 + 级联（勾/取消父节点传播到全部可用后代，
+ *   3. 勾选：checkedKeys 受控（传入 prop）或非受控（内部状态，可用
+ *      defaultCheckedKeys 初始化）+ 级联（勾/取消父节点传播到全部可用后代，
  *      祖先按“可用子节点是否全勾”回算；禁用节点不入集合、不参与级联）。
  *
  * 渲染模型：visibleNodes 把“展开路径上的节点”扁平化（aria-level/posinset/setsize
@@ -31,6 +32,10 @@ export interface UseTreeOptions {
   data: () => TreeNode[]
   /** 展开键 prop（undefined 表示非受控）。 */
   expandedKeys: () => string[] | undefined
+  /** 勾选键 prop（undefined 表示非受控）。 */
+  checkedKeys: () => string[] | undefined
+  /** 非受控初始勾选键（仅初始化消费一次）。 */
+  defaultCheckedKeys: () => string[] | undefined
   /** 选中值 prop（undefined 表示非受控）。 */
   modelValue: () => TreeValue | undefined
   /** 是否多选。 */
@@ -41,6 +46,8 @@ export interface UseTreeOptions {
   onCheck: (payload: TreeCheckPayload) => void
   /** 展开折叠回调（发出 expand 事件）。 */
   onExpand: (payload: TreeExpandPayload) => void
+  /** 勾选键集合变化回调（发出 update:checkedKeys 事件）。 */
+  onUpdateCheckedKeys: (value: string[]) => void
   /** 选中值变化回调（发出 update:modelValue 事件）。 */
   onUpdateModelValue: (value: TreeValue) => void
 }
@@ -167,9 +174,7 @@ export function useTree(options: UseTreeOptions): UseTreeReturn {
     return new Set(list)
   })
 
-  // ── 勾选（组件内状态；级联语义见文件头注释）─────────────────
-  const checkedSet = ref<Set<string>>(new Set())
-
+  // ── 勾选（受控 checkedKeys / 非受控内部状态；级联语义见文件头注释）──
   /** 子树内所有非禁用节点加入/移出集合（禁用节点阻断其子树的级联）。 */
   const applySubtree = (node: TreeNode, set: Set<string>, add: boolean): void => {
     if (node.disabled) return
@@ -192,6 +197,27 @@ export function useTree(options: UseTreeOptions): UseTreeReturn {
       current = meta.parentKey
     }
   }
+
+  /** 非受控初始勾选键：defaultCheckedKeys 过滤禁用/不存在键后回算祖先（仅初始化一次）。 */
+  const collectInitialCheckedKeys = (): string[] => {
+    const defaults = options.defaultCheckedKeys()
+    if (!defaults || defaults.length === 0) return []
+    const set = new Set<string>()
+    for (const key of defaults) {
+      const meta = nodeMeta.value.get(key)
+      if (meta && !meta.node.disabled) set.add(key)
+    }
+    for (const key of [...set]) recomputeAncestors(set, key)
+    return orderedKeysIn(set)
+  }
+  const innerCheckedKeys = ref<string[]>(collectInitialCheckedKeys())
+
+  const isCheckControlled = computed(() => options.checkedKeys() !== undefined)
+
+  const checkedSet = computed<Set<string>>(() => {
+    const value = options.checkedKeys()
+    return new Set(value !== undefined ? value : innerCheckedKeys.value)
+  })
 
   /** 半选集合：有可用子节点、自身未勾、但后代有勾选。 */
   const indeterminateMap = computed<Map<string, boolean>>(() => {
@@ -332,11 +358,14 @@ export function useTree(options: UseTreeOptions): UseTreeReturn {
 
   function setChecked(node: TreeNode, next: boolean): void {
     if (node.disabled) return
+    // 级联基于当前集合（受控时即 props 快照）重算，得到全量下一个状态。
     const set = new Set(checkedSet.value)
     applySubtree(node, set, next)
     recomputeAncestors(set, node.key)
-    checkedSet.value = set
-    options.onCheck({ key: node.key, node, checked: next, checkedKeys: orderedKeysIn(set) })
+    const nextKeys = orderedKeysIn(set)
+    if (!isCheckControlled.value) innerCheckedKeys.value = nextKeys
+    options.onUpdateCheckedKeys(nextKeys)
+    options.onCheck({ key: node.key, node, checked: next, checkedKeys: nextKeys })
   }
 
   return {

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { DefineComponent } from 'vue'
 import Table from './Table.vue'
-import type { TableColumn, TableExpose, TableProps } from './Table.types'
+import type { TableColumn, TableExpose, TableProps, TableRowSelection } from './Table.types'
 
 interface Row {
   id: number
@@ -125,5 +125,94 @@ describe('Table a11y', () => {
     await wrapper.vm.$nextTick()
     expect(head?.attributes('aria-sort')).toBe('none')
     expect(wrapper.emitted('sort')).toHaveLength(1) // 复位不发 sort
+  })
+})
+
+describe('Table a11y: 行选择', () => {
+  const selColumns: TableColumn<Row>[] = [
+    { key: 'name', label: '名称' },
+    { key: 'score', label: '得分', align: 'right', sortable: true },
+  ]
+  const selRows: Row[] = [
+    { id: 1, name: 'pine', score: 90 },
+    { id: 2, name: 'bamboo', score: 70 },
+    { id: 3, name: 'plum', score: 80 },
+  ]
+  const disableBamboo: TableRowSelection<Row> = {
+    getCheckboxProps: (row) => ({ disabled: row.name === 'bamboo' }),
+  }
+
+  it('选择列 th 带 scope="col"；表头与行 checkbox 均为原生 input（语义原生表达，不书 role/aria-checked）', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+    })
+    const heads = wrapper.findAll('th.ui-table__th')
+    expect(heads[0]?.attributes('scope')).toBe('col')
+    const inputs = wrapper.findAll('input[type="checkbox"]')
+    expect(inputs).toHaveLength(selRows.length + 1) // 表头全选 + 行
+    for (const input of inputs) {
+      expect((input.element as HTMLInputElement).type).toBe('checkbox')
+      expect(input.attributes('role')).toBeUndefined()
+      expect(input.attributes('aria-checked')).toBeUndefined()
+    }
+  })
+
+  it('可读名：表头 checkbox aria-label="全选"，行 checkbox aria-label="选择此行"', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+    })
+    expect(wrapper.find('thead input[type="checkbox"]').attributes('aria-label')).toBe('全选')
+    for (const box of wrapper.findAll('tbody input[type="checkbox"]')) {
+      expect(box.attributes('aria-label')).toBe('选择此行')
+    }
+  })
+
+  it('半选状态经 DOM indeterminate property 暴露给读屏；全选时 checked 且半选清除', async () => {
+    const wrapper = mount(TableFixture, {
+      props: {
+        columns: selColumns,
+        data: selRows,
+        rowKey: 'id',
+        rowSelection: {},
+        selectedRowKeys: [1],
+      },
+      attachTo: document.body,
+    })
+    const headerInput = wrapper.find('thead input[type="checkbox"]').element as HTMLInputElement
+    expect(headerInput.indeterminate).toBe(true)
+    expect(headerInput.checked).toBe(false)
+    await wrapper.setProps({ selectedRowKeys: [1, 2] })
+    expect(headerInput.indeterminate).toBe(true)
+    await wrapper.setProps({ selectedRowKeys: [1, 2, 3] })
+    expect(headerInput.indeterminate).toBe(false)
+    expect(headerInput.checked).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('禁用行 checkbox 原生 disabled（移出 Tab 序），不用 aria-disabled', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: disableBamboo },
+    })
+    const boxes = wrapper.findAll('tbody input[type="checkbox"]')
+    expect(boxes[1]?.attributes('disabled')).toBeDefined()
+    expect(boxes[1]?.attributes('aria-disabled')).toBeUndefined()
+    expect(boxes[0]?.attributes('disabled')).toBeUndefined()
+  })
+
+  it('键盘路径：行 checkbox keydown 不被拦截（Space 原生切换保留），change 发出 update:selectedRowKeys', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+      attachTo: document.body,
+    })
+    const box = wrapper.findAll('tbody input[type="checkbox"]')[0]
+    const control = box?.element as HTMLInputElement
+    control.focus()
+    expect(document.activeElement).toBe(control)
+    const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })
+    control.dispatchEvent(space)
+    expect(space.defaultPrevented).toBe(false) // 原生 Space 切换保留
+    await box?.setValue(true) // 键盘切换最终以 change 事件落地
+    expect(wrapper.emitted('update:selectedRowKeys')?.[0]?.[0]).toEqual([1])
+    wrapper.unmount()
   })
 })

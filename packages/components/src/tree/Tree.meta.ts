@@ -12,7 +12,7 @@ export const meta: ComponentDefinition = {
     package: '@ui/components',
     export: 'Tree',
     category: 'data',
-    description: '纸面树形层级控件：嵌套 data 渲染 role=tree/treeitem 扁平可见模型、展开/折叠（受控 expandedKeys 或非受控）、单/多选（modelValue）、级联勾选（checkable + check 事件）、loading 骨架与空态，键盘 ↑↓←→/Home/End/Enter/Space 全路径。',
+    description: '纸面树形层级控件：嵌套 data 渲染 role=tree/treeitem 扁平可见模型、展开/折叠（受控 expandedKeys 或非受控）、单/多选（modelValue）、级联勾选（checkable，受控 checkedKeys / 非受控 defaultCheckedKeys + check 事件）、loading 骨架与空态，键盘 ↑↓←→/Home/End/Enter/Space 全路径。',
   },
   intent: {
     what: '以嵌套 data 渲染树形层级：节点可展开折叠、单/多选、级联勾选；扁平可见节点模型 + roving tabindex 提供完整键盘路径。',
@@ -26,7 +26,6 @@ export const meta: ComponentDefinition = {
       '万级节点需要虚拟滚动：本组件全量渲染可见节点，请组合 VirtualList（不在本版范围）',
       '子节点懒加载/逐层异步展开不内置：本版需整棵传入 data',
       '拖拽排序、右键菜单、type-ahead 首字母定位不在本版范围',
-      '受控勾选（checkedKeys 双向绑定）不内置：勾选为组件内状态，经 check 事件同步全量快照',
     ],
     userTask: '用户需要浏览层级结构并对节点进行展开、选中或批量勾选',
   },
@@ -35,7 +34,9 @@ export const meta: ComponentDefinition = {
       { name: 'data', type: 'TreeNode[]', required: true, description: '嵌套树数据：{ key, title, children?, disabled?, icon? }；key 须全树唯一字符串。icon 仅经 #node 插槽作用域透出，默认渲染不消费。' },
       { name: 'modelValue', type: 'string | string[]', default: 'undefined', description: '选中值（受控）：单选为 string、multiple 为 string[]；不传为非受控（初始无选中，仍发 update:modelValue）。' },
       { name: 'expandedKeys', type: 'string[]', default: 'undefined', description: '展开键集合（受控）：传入后组件不改内部状态，展开折叠经 expand 事件同步（载荷含 expandedKeys 快照）；不传为非受控且初始展开全部父节点。' },
-      { name: 'checkable', type: 'boolean', default: 'false', description: '显示勾选框：原生 checkbox + 级联（勾/取消传播到全部可用后代，祖先按可用子节点全勾回算，半选用 indeterminate）；勾选为组件内状态。' },
+      { name: 'checkedKeys', type: 'string[]', default: 'undefined', description: '勾选键集合（受控，v-model:checkedKeys）：传入后勾选交互只发 update:checkedKeys / check（载荷含级联计算后的全量快照），内部视图完全跟随 prop（级联基于受控集合重算）；不传为非受控（组件内管理）。' },
+      { name: 'defaultCheckedKeys', type: 'string[]', default: 'undefined', description: '非受控初始勾选键（仅初始化消费一次）：禁用/不存在的键被忽略，祖先按“可用子节点全勾”回算；受控 checkedKeys 优先于它。' },
+      { name: 'checkable', type: 'boolean', default: 'false', description: '显示勾选框：原生 checkbox + 级联（勾/取消传播到全部可用后代，祖先按可用子节点全勾回算，半选用 indeterminate）；勾选状态经 checkedKeys 受控或组件内管理。' },
       { name: 'multiple', type: 'boolean', default: 'false', description: '多选：点击节点切换选中（无需修饰键），modelValue 为 string[]；缺省单选（string，重复点击已选节点不取消）。' },
       { name: 'loading', type: 'boolean', default: 'false', description: '加载中：渲染 3 行骨架行（aria-hidden）并在 tree 上置 aria-busy="true"；骨架期不渲染数据与空态。' },
     ],
@@ -45,6 +46,7 @@ export const meta: ComponentDefinition = {
     ],
     events: [
       { name: 'update:modelValue', payload: 'string | string[]', description: '选中值变化：单选发 string，多选发 string[]；受控/非受控均发出。' },
+      { name: 'update:checkedKeys', payload: 'string[]', description: '勾选键集合变化（v-model:checkedKeys）：级联计算后的全量键快照（按树的先序）；受控/非受控均发出，受控时回写 prop 即驱动视图。' },
       { name: 'select', payload: '{ key, node, selected }', description: '选中变化：点击节点或键盘 Enter/Space 选中时发出，selected 为事件后状态。' },
       { name: 'check', payload: '{ key, node, checked, checkedKeys }', description: '勾选变化：checkbox change 或键盘 Space（checkable）时发出；checkedKeys 为级联后全量快照（先序）。' },
       { name: 'expand', payload: '{ key, node, expanded, expandedKeys }', description: '展开折叠变化：toggle 按钮、点击箭头或键盘 ←/→ 时发出；expandedKeys 为快照（先序）。' },
@@ -55,9 +57,9 @@ export const meta: ComponentDefinition = {
     dependsOn: ['@ui/tokens/paper.css（使用方应用入口一次性引入）'],
   },
   composition: {
-    patterns: ['Tree + #node 插槽自定义图标/徽标', 'Tree checkable 批量授权', 'Tree loading 骨架 + empty 空态', '受控 expandedKeys 实现「全部展开/折叠」工具条'],
+    patterns: ['Tree + #node 插槽自定义图标/徽标', 'Tree checkable 批量授权', 'v-model:checkedKeys 受控勾选（表单回显/权限树重置）', 'Tree loading 骨架 + empty 空态', '受控 expandedKeys 实现「全部展开/折叠」工具条'],
     related: ['EmptyState', 'Skeleton', 'Checkbox', 'Table', 'TreeSelect'],
-    preferred: ['选中值用 v-model:modelValue（单选 string / 多选 :multiple）', '受控展开时在 @expand 里用载荷的 expandedKeys 回写', '节点图标经 #node 插槽自绘（内联 SVG），data.icon 只作标识'],
+    preferred: ['选中值用 v-model:modelValue（单选 string / 多选 :multiple）', '勾选需要回显/受控重置用 v-model:checkedKeys；纯组件内管理可用 default-checked-keys 初始化', '受控展开时在 @expand 里用载荷的 expandedKeys 回写', '节点图标经 #node 插槽自绘（内联 SVG），data.icon 只作标识'],
   },
   states: {
     default: '无外框安静纸面；节点行 text-sm/text-1，展开箭头 text-3，勾选框 accent-color 走 token；层级缩进 (level-1) × --ui-space-4。',
@@ -79,6 +81,7 @@ export const meta: ComponentDefinition = {
     '<Tree :data="nodes" />',
     '<Tree v-model="selected" :data="nodes" multiple />',
     '<Tree :data="nodes" checkable @check="({ checkedKeys }) => onCheck(checkedKeys)" />',
+    '<Tree v-model:checked-keys="checked" :data="nodes" checkable />\n<Tree :data="nodes" checkable :default-checked-keys="[\'read\']" />',
     '<Tree :data="nodes" :expanded-keys="expanded" @expand="({ expandedKeys }) => expanded = expandedKeys" />',
     '<Tree :data="nodes" loading />\n<Tree :data="[]">\n  <template #empty>目录为空</template>\n</Tree>',
     '<Tree :data="nodes">\n  <template #node="{ title, icon, level }">\n    <span class="my-icon">{{ icon }}</span>{{ title }}（L{{ level }}）\n  </template>\n</Tree>',
@@ -87,8 +90,9 @@ export const meta: ComponentDefinition = {
     keywords: ['tree', '树', '树形', '层级', '目录', 'treeitem', '展开', '折叠', 'expand', 'collapse', '选中', '勾选', '级联', 'checkable', 'cascade', 'multiple', 'roving tabindex', 'aria-level', '组织架构'],
     selectionHints: [
       '层级数据浏览/选择 → Tree；无层级的长列表 → List；平铺多值勾选 → Checkbox 组',
-      '需要勾选选值时用 checkable + @check 的 checkedKeys 快照；需要单/多选值时用 v-model（multiple）',
+      '需要勾选选值时用 checkable + v-model:checkedKeys（或 @check 的 checkedKeys 快照）；需要单/多选值时用 v-model（multiple）',
       '受控展开：:expanded-keys + @expand 回写载荷 expandedKeys；不传则默认展开全部父节点',
+      '受控勾选回显：v-model:checked-keys 传叶节点键即可，勾选父节点时交互载荷自动带全量级联快照',
       '自定义节点外观用 #node 插槽（scope 含 title/icon/level/selected 等）',
     ],
     commonTasks: [
@@ -99,7 +103,8 @@ export const meta: ComponentDefinition = {
     ],
     generationNotes: [
       'TreeNode.key 必须全树唯一（字符串），title 为显示文本；disabled 节点不可选/勾但可展开',
-      '展开/选中支持受控（传 expandedKeys/modelValue）与非受控（不传）；勾选恒为组件内状态，经 check 事件同步',
+      '展开/选中/勾选均支持受控（传 expandedKeys/modelValue/checkedKeys）与非受控（不传；勾选可用 defaultCheckedKeys 初始化），同一 expandedKeys/modelValue 的双态模式',
+      '受控勾选时勾选交互只发事件，级联（子树传播 + 祖先回算）基于受控集合重算后随载荷给出全量快照',
       '单选重复点击已选节点不取消；多选点击切换（无需修饰键）',
       'icon 仅经 #node 插槽透出，默认渲染不显示图标；子节点懒加载/虚拟滚动本版不做',
     ],

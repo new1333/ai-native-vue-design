@@ -110,6 +110,32 @@ describe('Tree api', () => {
     expect((src.find('input[type="checkbox"]').element as HTMLInputElement).disabled).toBe(false)
   })
 
+  it('checkedKeys 受控回显：对应节点勾选、半选自受控集合派生', () => {
+    const wrapper = mount(Tree, { props: { data, checkable: true, checkedKeys: ['button'] } })
+    const box = (title: string): HTMLInputElement =>
+      itemByText(wrapper, title).find('input[type="checkbox"]').element as HTMLInputElement
+    expect(box('Button').checked).toBe(true)
+    expect(box('Input').checked).toBe(false)
+    expect(box('components').checked).toBe(false)
+    expect(box('components').indeterminate).toBe(true) // 子节点部分勾选 → 半选
+    expect(box('src').indeterminate).toBe(true)
+    // 受控勾选不影响选中语义
+    expect(itemByText(wrapper, 'Button').attributes('aria-selected')).toBe('false')
+  })
+
+  it('defaultCheckedKeys 非受控初始勾选：祖先按级联回算、禁用键忽略', () => {
+    const wrapper = mount(Tree, {
+      props: { data, checkable: true, defaultCheckedKeys: ['button', 'input', 'readme'] },
+    })
+    const box = (title: string): HTMLInputElement =>
+      itemByText(wrapper, title).find('input[type="checkbox"]').element as HTMLInputElement
+    expect(box('Button').checked).toBe(true)
+    expect(box('Input').checked).toBe(true)
+    expect(box('components').checked).toBe(true) // 可用子节点全勾 → 祖先回算勾上
+    expect(box('src').indeterminate).toBe(true) // index.ts 未勾 → 半选
+    expect(box('README.md').checked).toBe(false) // 禁用键被初始化忽略
+  })
+
   it('aria-selected 常驻（true/false），符合 treeitem 的必需 aria-selected', () => {
     const wrapper = mount(Tree, { props: { data } })
     for (const item of items(wrapper)) {

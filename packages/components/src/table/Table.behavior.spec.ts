@@ -1,10 +1,10 @@
-// behavior spec：排序循环 / 中文拼音排序 / 数据不可变 / 状态切换 / 千行渲染。
+// behavior spec：排序循环 / 中文拼音排序 / 数据不可变 / 状态切换 / 千行渲染 / 行选择 / 远程排序。
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import type { DefineComponent } from 'vue'
 import Table from './Table.vue'
-import type { TableColumn, TableProps } from './Table.types'
+import type { TableColumn, TableProps, TableRowSelection } from './Table.types'
 
 interface Row {
   id: number
@@ -219,5 +219,229 @@ describe('Table behavior', () => {
     expect(wrapper.findAll('tbody .ui-table__row')).toHaveLength(1000)
     expect(scoreTexts(wrapper)[0]).toBe('0')
     expect(scoreTexts(wrapper)[999]).toBe('999')
+  })
+})
+
+/* ── 行选择（rowSelection + v-model:selectedRowKeys）──────────── */
+
+const selColumns: TableColumn<Row>[] = [
+  { key: 'name', label: '名称' },
+  { key: 'score', label: '得分', align: 'right' },
+]
+
+const selRows: Row[] = [
+  { id: 1, name: 'pine', score: 90 },
+  { id: 2, name: 'bamboo', score: 70 },
+  { id: 3, name: 'plum', score: 80 },
+]
+
+/** 禁用 bamboo（id=2）行：getCheckboxProps 按行 disabled 档。 */
+const disableBamboo: TableRowSelection<Row> = {
+  getCheckboxProps: (row) => ({ disabled: row.name === 'bamboo' }),
+}
+
+function headerCheckbox(wrapper: VueWrapper) {
+  return wrapper.find('thead input[type="checkbox"]')
+}
+
+function rowCheckboxes(wrapper: VueWrapper) {
+  return wrapper.findAll('tbody input[type="checkbox"]')
+}
+
+/** 最近一次 update:selectedRowKeys 载荷。 */
+function lastSelection(wrapper: VueWrapper): (string | number)[] {
+  // emitted 的形态为「调用列表 × 参数元组」：每次调用携带一个参数（键数组）。
+  const updates = wrapper.emitted('update:selectedRowKeys') as [(string | number)[]][] | undefined
+  return updates?.at(-1)?.[0] ?? []
+}
+
+/** 模拟 v-model 回流：把最近一次 update 载荷写回 selectedRowKeys（受控回显）。 */
+async function echoSelection(wrapper: VueWrapper): Promise<void> {
+  await wrapper.setProps({ selectedRowKeys: lastSelection(wrapper) })
+}
+
+describe('Table behavior: 行选择', () => {
+  it('行勾选：以完整键数组发出 update:selectedRowKeys；取消则移除该键', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+      attachTo: document.body,
+    })
+    const boxes = rowCheckboxes(wrapper)
+    await boxes[0]!.setValue(true)
+    expect(wrapper.emitted('update:selectedRowKeys')).toEqual([[[1]]])
+    await echoSelection(wrapper) // v-model 回流后继续（受控：每次切换基于当前 props 计算）
+    await boxes[2]!.setValue(true)
+    expect(wrapper.emitted('update:selectedRowKeys')?.[1]?.[0]).toEqual([1, 3])
+    await echoSelection(wrapper)
+    await boxes[0]!.setValue(false)
+    expect(wrapper.emitted('update:selectedRowKeys')?.[2]?.[0]).toEqual([3])
+    wrapper.unmount()
+  })
+
+  it('受控回显：selectedRowKeys 变化驱动 checkbox 状态（组件不持有内部选中态）', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+      attachTo: document.body,
+    })
+    const boxes = rowCheckboxes(wrapper)
+    expect((boxes[0]!.element as HTMLInputElement).checked).toBe(false)
+    await wrapper.setProps({ selectedRowKeys: [2, 3] })
+    expect((boxes[0]!.element as HTMLInputElement).checked).toBe(false)
+    expect((boxes[1]!.element as HTMLInputElement).checked).toBe(true)
+    expect((boxes[2]!.element as HTMLInputElement).checked).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('表头全选：合并全部行键；再次点击取消全选（清空当前行集键）', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {} },
+      attachTo: document.body,
+    })
+    const header = headerCheckbox(wrapper)
+    await header.setValue(true)
+    expect(lastSelection(wrapper)).toEqual([1, 2, 3])
+    await echoSelection(wrapper)
+    expect((header.element as HTMLInputElement).checked).toBe(true)
+    await header.setValue(false)
+    expect(lastSelection(wrapper)).toEqual([])
+    wrapper.unmount()
+  })
+
+  it('半选：部分行选中时表头 checkbox DOM indeterminate=true；全选后 checked 且半选清除', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: {}, selectedRowKeys: [1] },
+      attachTo: document.body,
+    })
+    const headerInput = headerCheckbox(wrapper).element as HTMLInputElement
+    expect(headerInput.checked).toBe(false)
+    expect(headerInput.indeterminate).toBe(true)
+    await wrapper.setProps({ selectedRowKeys: [1, 2, 3] })
+    expect(headerInput.checked).toBe(true)
+    expect(headerInput.indeterminate).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('getCheckboxProps 禁用行：checkbox 原生 disabled；全选跳过禁用行；点击禁用行不发出 update', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: selRows, rowKey: 'id', rowSelection: disableBamboo },
+      attachTo: document.body,
+    })
+    const boxes = rowCheckboxes(wrapper)
+    expect(boxes[1]!.attributes('disabled')).toBeDefined()
+    expect(boxes[0]!.attributes('disabled')).toBeUndefined()
+
+    await headerCheckbox(wrapper).setValue(true)
+    expect(lastSelection(wrapper)).toEqual([1, 3]) // bamboo(id=2) 被全选跳过
+
+    await boxes[1]!.setValue(true) // 原生 disabled 拦截 change 路径
+    expect(wrapper.emitted('update:selectedRowKeys')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('跨页保持：换页不清除历史键；全选合并历史键；取消全选只移除当前行集键；回页受控回显', async () => {
+    const page1 = selRows
+    const page2: Row[] = [
+      { id: 4, name: 'orchid', score: 60 },
+      { id: 5, name: 'iris', score: 50 },
+    ]
+    const wrapper = mount(TableFixture, {
+      props: {
+        columns: selColumns,
+        data: page1,
+        rowKey: 'id',
+        rowSelection: {},
+        selectedRowKeys: [1],
+      },
+      attachTo: document.body,
+    })
+
+    // 换到 page2：无已选键落在当前行集 → 表头不勾选、不半选，行均未勾选
+    await wrapper.setProps({ data: page2 })
+    const headerInput = headerCheckbox(wrapper).element as HTMLInputElement
+    expect(headerInput.checked).toBe(false)
+    expect(headerInput.indeterminate).toBe(false)
+    for (const box of rowCheckboxes(wrapper)) {
+      expect((box.element as HTMLInputElement).checked).toBe(false)
+    }
+
+    // page2 全选：payload = 历史键 [1] + page2 键 [4, 5]（键保持、不持引用）
+    await headerCheckbox(wrapper).setValue(true)
+    expect(lastSelection(wrapper)).toEqual([1, 4, 5])
+
+    // 回到 page1：行 1 仍勾选（受控回显，跨页键未丢失）
+    await wrapper.setProps({ data: page1, selectedRowKeys: [1, 4, 5] })
+    const boxes = rowCheckboxes(wrapper)
+    expect((boxes[0]!.element as HTMLInputElement).checked).toBe(true)
+    expect((boxes[1]!.element as HTMLInputElement).checked).toBe(false)
+
+    // page1 取消全选：仅移除 page1 行集键，page2 键 [4, 5] 保持
+    await headerCheckbox(wrapper).setValue(false)
+    expect(lastSelection(wrapper)).toEqual([4, 5])
+    wrapper.unmount()
+  })
+
+  it('空数据时表头全选 checkbox 禁用（无可选行）', () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns: selColumns, data: [], rowKey: 'id', rowSelection: {} },
+    })
+    expect(headerCheckbox(wrapper).attributes('disabled')).toBeDefined()
+  })
+})
+
+/* ── 远程排序（remote）与排序档位 ──────────────────────────────── */
+
+describe('Table behavior: 远程排序', () => {
+  it('remote=true：点击排序头发出 sort 且 aria-sort 流转，但行序保持 data 原序（不做本地排序）', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns, data: rows, rowKey: 'id', remote: true },
+    })
+    const button = wrapper.find('button.ui-table__sort') // 首个可排序列：name
+    await button.trigger('click') // none → asc
+    expect(wrapper.emitted('sort')?.[0]?.[0]).toEqual({ key: 'name', order: 'asc' })
+    expect(wrapper.findAll('th.ui-table__th')[0]?.attributes('aria-sort')).toBe('ascending')
+    expect(scoreTexts(wrapper)).toEqual(['90', '70', '80']) // 未本地重排：保持 data 原序
+
+    await button.trigger('click') // asc → desc
+    expect(wrapper.emitted('sort')?.[1]?.[0]).toEqual({ key: 'name', order: 'desc' })
+    expect(scoreTexts(wrapper)).toEqual(['90', '70', '80'])
+  })
+
+  it('remote → 本地切换回归：切回 remote=false 后按当前排序状态本地重排', async () => {
+    const wrapper = mount(TableFixture, {
+      props: { columns, data: rows, rowKey: 'id', remote: true },
+    })
+    await wrapper.find('button.ui-table__sort').trigger('click') // name asc（远端档不重排）
+    expect(scoreTexts(wrapper)).toEqual(['90', '70', '80'])
+    await wrapper.setProps({ remote: false })
+    expect(scoreTexts(wrapper)).toEqual(['70', '90', '80']) // name asc：bamboo/pine/plum
+  })
+
+  it('sortable: false 显式声明：该列不渲染排序 UI，点击表头不发出 sort', async () => {
+    const explicit: TableColumn<Row>[] = [
+      { key: 'name', label: '名称', sortable: false },
+      { key: 'score', label: '得分', align: 'right', sortable: true },
+    ]
+    const wrapper = mount(TableFixture, {
+      props: { columns: explicit, data: rows, rowKey: 'id' },
+    })
+    const heads = wrapper.findAll('th.ui-table__th')
+    expect(heads[0]?.find('button.ui-table__sort').exists()).toBe(false)
+    expect(heads[0]?.attributes('aria-sort')).toBeUndefined()
+    await heads[0]?.trigger('click')
+    expect(wrapper.emitted('sort')).toBeUndefined()
+  })
+
+  it('sortable 传自定义比较函数：按该比较器本地排序', async () => {
+    const byScoreDesc: TableColumn<Row>[] = [
+      { key: 'name', label: '名称' },
+      // 比较器内置降序语义：asc 档即得分从高到低
+      { key: 'score', label: '得分', align: 'right', sortable: (a: Row, b: Row) => b.score - a.score },
+    ]
+    const wrapper = mount(TableFixture, {
+      props: { columns: byScoreDesc, data: rows, rowKey: 'id' },
+    })
+    expect(wrapper.find('button.ui-table__sort').exists()).toBe(true)
+    await wrapper.find('button.ui-table__sort').trigger('click') // asc 档
+    expect(scoreTexts(wrapper)).toEqual(['90', '80', '70'])
   })
 })
