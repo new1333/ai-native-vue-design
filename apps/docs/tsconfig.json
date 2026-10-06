@@ -6,7 +6,8 @@
     "paths": {
       "@comp-src/*": ["../../packages/components/src/*"],
       "@docs-demos/*": ["./src/demos/*"],
-      "@docs-blocks/*": ["./src/blocks/*"]
+      "@docs-blocks/*": ["./src/blocks/*"],
+      "@ui/components": ["../../packages/components/src/index.ts"]
     }
   },
   "include": [

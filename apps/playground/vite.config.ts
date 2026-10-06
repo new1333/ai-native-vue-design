@@ -1,8 +1,18 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      // 内部消费走源码：@ui/components 已是 dist 发布形态（exports 指 dist），
+      // dev/build 在此指回 src，保证不预构建 dist 也能开发与构建。
+      '@ui/components': fileURLToPath(
+        new URL('../../packages/components/src/index.ts', import.meta.url),
+      ),
+    },
+  },
   server: {
     // Windows 上 5076–5275 被 Hyper-V/WinNAT 动态保留，默认端口 5173 绑定时报
     // EACCES（且自动递增的 5174–5275 同样在保留区间内），故固定用区间外的端口。

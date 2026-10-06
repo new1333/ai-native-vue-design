@@ -39,6 +39,11 @@ export default defineConfigWithTheme<SiteThemeConfig>({
         '@docs-blocks': fileURLToPath(new URL('../src/blocks', import.meta.url)),
         // 组件包源码：源码查看（?raw）与类型引用
         '@comp-src': fileURLToPath(new URL('../../../packages/components/src', import.meta.url)),
+        // @ui/components 已是 dist 发布形态（exports 指 dist）：dev/build 指回 src 源码，
+        // 保证不预构建 dist 也能开发与构建（与 apps/playground 同策略）。
+        '@ui/components': fileURLToPath(
+          new URL('../../../packages/components/src/index.ts', import.meta.url),
+        ),
       },
     },
   },

@@ -13,3 +13,4 @@ coverage/
 *.tsbuildinfo
 pnpm-debug.log*
 .DS_Store
+.tmp-consumer/

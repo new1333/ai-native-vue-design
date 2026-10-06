@@ -1,6 +1,6 @@
 {
   "name": "@ui/tokens",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "纸面 Paper 设计 token 与视觉 Profile（--ui-* CSS 变量；使用方一次性引入 paper.css）",
@@ -15,6 +15,26 @@
       "default": "./src/index.ts"
     },
     "./paper.css": "./src/paper.css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/new1333/ai-native-vue-design.git",
+    "directory": "packages/tokens"
+  },
+  "bugs": {
+    "url": "https://github.com/new1333/ai-native-vue-design/issues"
+  },
+  "homepage": "https://new1333.github.io/ai-native-vue-design/",
+  "keywords": [
+    "design-tokens",
+    "css-variables",
+    "design-system",
+    "vue",
+    "ai-native",
+    "paper"
+  ],
+  "engines": {
+    "node": ">=20.19"
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit",
