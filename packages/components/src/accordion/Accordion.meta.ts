@@ -33,7 +33,8 @@ export const meta: ComponentDefinition = {
   api: {
     props: [
       { name: 'items', type: 'AccordionItem[]', required: true, description: '条目数据源；每项 { key, title, content?, disabled? }，key 需在 items 内唯一。' },
-      { name: 'modelValue', type: 'AccordionItemKey | AccordionItemKey[] | null', description: '当前展开值：单开为 key | null，多开为 keys 数组（按 items 顺序规范化）。提供时为受控模式（只 emit 不自行改状态）；缺省为非受控（内部持有，初始全部收起）。不属于 items 的 key 不参与渲染，切换时被规范化移除。' },
+      { name: 'modelValue', type: 'AccordionItemKey | AccordionItemKey[] | null', description: '当前展开值：单开为 key | null，多开为 keys 数组（按 items 顺序规范化）。提供时为受控模式（只 emit 不自行改状态），缺省为非受控（内部持有，初始值取 defaultValue，缺省全部收起）。不属于 items 的 key 不参与渲染，切换时被规范化移除。' },
+      { name: 'defaultValue', type: 'AccordionItemKey | AccordionItemKey[] | null', description: '非受控初始展开值（仅初始化时读取一次）：单开为 key，多开为 keys 数组；受控模式（提供 modelValue）下不生效。' },
       { name: 'multiple', type: 'boolean', default: 'false', description: '多开模式：允许多个面板同时展开，展开值为 keys 数组；默认单开（展开新条目时收起其余，允许全部收起）。' },
     ],
     slots: [
@@ -81,6 +82,7 @@ export const meta: ComponentDefinition = {
   examples: [
     "<Accordion :items=\"[\n  { key: 'basic', title: '基础用法', content: '……' },\n  { key: 'adv', title: '进阶用法', content: '……' },\n]\"></Accordion>",
     "<Accordion v-model=\"openKeys\" multiple :items=\"items\"></Accordion>",
+    "<Accordion :default-value=\"'faq-shipping'\" :items=\"faqItems\"></Accordion> // 非受控默认展开",
     "<Accordion :items=\"items\">\n  <template #title=\"{ item, expanded }\">{{ expanded ? '▾' : '▸' }} {{ item.title }}</template>\n  <template #default=\"{ item }\"><Detail :data=\"byKey[item.key]\"></Detail></template>\n</Accordion>",
     "<Accordion :items=\"items.filter(i => !i.locked)\"></Accordion> // 禁用项：{ key, title, disabled: true }",
   ],
@@ -96,6 +98,7 @@ export const meta: ComponentDefinition = {
     generationNotes: [
       'items 必填且 key 需唯一；key 同时是 aria 关联 id 的一部分，建议用语义化短横线字符串',
       '受控时 v-model 绑定：单开绑 key|null，多开绑 keys 数组；只绑定不监听 update:modelValue 会导致界面不动',
+      '非受控仅需要初始展开时用 defaultValue（单开为 key，多开为 keys 数组）；同时提供 modelValue 时以受控值为准、defaultValue 不生效',
       '多开展开值按 items 顺序规范化；modelValue 中不属于 items 的 key 不参与渲染，切换时被移除',
       '禁用条目用 item.disabled，不要在插槽里自行拦截点击',
       '面板内容由 #default 作用域插槽定制（可放任意组件），缺省用 item.content 纯文本',

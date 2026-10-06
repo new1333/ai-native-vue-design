@@ -77,6 +77,27 @@ describe('Accordion behavior', () => {
     expect(expandedTitles(wrapper)).toEqual(['条款 B'])
   })
 
+  it('非受控 defaultValue：初始即展开默认项，交互继续可用（收起 → null、切换互斥）', async () => {
+    const wrapper = mountAccordion({ items: ITEMS, defaultValue: 'b' })
+    expect(expandedTitles(wrapper)).toEqual(['条款 B'])
+
+    await triggerAt(wrapper, 1).trigger('click')
+    expect(expandedTitles(wrapper)).toEqual([])
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([null])
+
+    await triggerAt(wrapper, 2).trigger('click')
+    expect(expandedTitles(wrapper)).toEqual(['条款 C'])
+    expect(wrapper.emitted('update:modelValue')?.[1]).toEqual(['c'])
+  })
+
+  it('受控模式 defaultValue 不生效：初始与后续均只随 modelValue', async () => {
+    const wrapper = mountAccordion({ items: ITEMS, modelValue: 'a', defaultValue: 'c' })
+    expect(expandedTitles(wrapper)).toEqual(['条款 A'])
+
+    await wrapper.setProps({ modelValue: 'c' })
+    expect(expandedTitles(wrapper)).toEqual(['条款 C'])
+  })
+
   it('禁用条目：点击不产生状态变化与事件', async () => {
     const wrapper = mountAccordion({
       items: [ITEMS[0], { ...ITEMS[1], disabled: true }, ITEMS[2]],

@@ -73,6 +73,24 @@ describe('Rating a11y', () => {
     wrapper.unmount()
   })
 
+  it('键盘清除路径：clearable 时聚焦档位按 Delete/Backspace 清空为未评分（preventDefault）', () => {
+    const wrapper = mount(Rating, {
+      props: { count: 3, modelValue: 2, clearable: true },
+      attachTo: document.body,
+    })
+    const control = wrapper.findAll('[role="radio"]')[1]?.element as HTMLButtonElement
+    control.focus()
+    expect(document.activeElement).toBe(control)
+
+    for (const key of ['Delete', 'Backspace']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      control.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(true) // Backspace 不得触发浏览器后退
+    }
+    expect(wrapper.emitted('update:modelValue')).toEqual([[undefined], [undefined]])
+    wrapper.unmount()
+  })
+
   it('半星键盘路径：allowHalf 时方向键以 0.5 粒度步进', async () => {
     const wrapper = mount(Rating, {
       props: { count: 2, allowHalf: true, modelValue: 0.5 },

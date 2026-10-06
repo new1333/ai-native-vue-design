@@ -158,6 +158,47 @@ describe('InputNumber behavior', () => {
     expect(wrapper.events('step')).toBeUndefined()
   })
 
+  it('边界禁用：值抵达 min 时减少按钮 disabled、抵达 max 时增加按钮 disabled（空值不受影响）', () => {
+    const atMin = mountHost({ modelValue: 0, min: 0, max: 10 })
+    expect(atMin.find('button.ui-input-number__decrease').attributes('disabled')).toBeDefined()
+    expect(atMin.find('button.ui-input-number__increase').attributes('disabled')).toBeUndefined()
+
+    const atMax = mountHost({ modelValue: 10, min: 0, max: 10 })
+    expect(atMax.find('button.ui-input-number__increase').attributes('disabled')).toBeDefined()
+    expect(atMax.find('button.ui-input-number__decrease').attributes('disabled')).toBeUndefined()
+
+    // 空值 + 有边界：不因边界禁用（空值步进仍是确定性入口：有 min 从 min 起步）
+    const empty = mountHost({ min: 0, max: 10 })
+    expect(empty.find('button.ui-input-number__decrease').attributes('disabled')).toBeUndefined()
+    expect(empty.find('button.ui-input-number__increase').attributes('disabled')).toBeUndefined()
+  })
+
+  it('边界禁用随值响应式：步进抵达边界后对应按钮转为 disabled、对侧恢复可用', async () => {
+    const wrapper = mountHost({ modelValue: 9, min: 0, max: 10 })
+    const increase = () => wrapper.find('button.ui-input-number__increase')
+    const decrease = () => wrapper.find('button.ui-input-number__decrease')
+    expect(increase().attributes('disabled')).toBeUndefined()
+    await increase().trigger('click') // 9 → 10
+    expect(wrapper.getValue()).toBe(10)
+    await nextTick()
+    expect(increase().attributes('disabled')).toBeDefined()
+    expect(decrease().attributes('disabled')).toBeUndefined()
+  })
+
+  it('边界上键盘路径仍钳制：↑/↓ 无变化不发事件（不因按钮禁用改变键盘行为）', async () => {
+    const atMax = mountHost({ modelValue: 10, min: 0, max: 10 })
+    await atMax.find('input').trigger('keydown', { key: 'ArrowUp' })
+    expect(atMax.getValue()).toBe(10)
+    expect(atMax.events('update:modelValue')).toBeUndefined()
+    expect(atMax.events('step')).toBeUndefined()
+
+    const atMin = mountHost({ modelValue: 0, min: 0, max: 10 })
+    await atMin.find('input').trigger('keydown', { key: 'ArrowDown' })
+    expect(atMin.getValue()).toBe(0)
+    expect(atMin.events('update:modelValue')).toBeUndefined()
+    expect(atMin.events('step')).toBeUndefined()
+  })
+
   it('编辑草稿未提交时步进：以草稿为基准并收敛草稿', async () => {
     const wrapper = mountHost({ modelValue: 1 })
     const control = wrapper.find('input')

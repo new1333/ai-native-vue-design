@@ -63,6 +63,37 @@ describe('Accordion api', () => {
     expect(wrapper.findAll('.ui-accordion__item--open')).toHaveLength(2)
   })
 
+  it('非受控默认展开：defaultValue="b" 初始即展开（aria-expanded / hidden / --open 同步）', () => {
+    const wrapper = mount(Accordion, { props: { items: ITEMS, defaultValue: 'b' } })
+    const triggers = wrapper.findAll('.ui-accordion__trigger')
+    expect(triggers.map((trigger) => trigger.attributes('aria-expanded'))).toEqual([
+      'false',
+      'true',
+      'false',
+    ])
+    expect(wrapper.findAll('.ui-accordion__panel')[1]?.attributes('hidden')).toBeUndefined()
+    expect(wrapper.findAll('.ui-accordion__item--open')).toHaveLength(1)
+  })
+
+  it('非受控多开默认展开：multiple + defaultValue 为 keys 数组，多面板初始展开', () => {
+    const wrapper = mount(Accordion, {
+      props: { items: ITEMS, multiple: true, defaultValue: ['a', 'c'] },
+    })
+    expect(
+      wrapper.findAll('.ui-accordion__trigger').map((trigger) => trigger.attributes('aria-expanded')),
+    ).toEqual(['true', 'false', 'true'])
+    expect(wrapper.findAll('.ui-accordion__item--open')).toHaveLength(2)
+  })
+
+  it('受控模式下 defaultValue 不生效：展开状态以 modelValue 为准', () => {
+    const wrapper = mount(Accordion, {
+      props: { items: ITEMS, modelValue: 'a', defaultValue: 'c' },
+    })
+    expect(
+      wrapper.findAll('.ui-accordion__trigger').map((trigger) => trigger.attributes('aria-expanded')),
+    ).toEqual(['true', 'false', 'false'])
+  })
+
   it('emits 已声明：点击头部发出 update:modelValue 与 change', async () => {
     const wrapper = mount(Accordion, { props: { items: ITEMS } })
     await wrapper.findAll('.ui-accordion__trigger')[0]?.trigger('click')

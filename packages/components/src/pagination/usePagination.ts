@@ -6,11 +6,12 @@
  *      从 total / pageSize / siblingCount / page 推导总页数与渲染项序列
  *      （≤ 全显阈值全部展开；否则 首页 + 滑动窗口 + 尾页，被折叠的连续页码以省略号占位）；
  *   2. usePagination：把响应式 props 变成 pageCount / safePage / items / 边界态，
- *      并提供目标页网关 resolveTarget（越界收敛、当前页去重）。
+ *      提供目标页网关 resolveTarget（越界收敛、当前页去重），并在传入 page 越界时
+ *      经 onPageClamp 回调收敛值一次（组件以 update:page 回发父层，同值不重发）。
  *
  * 不访问任何浏览器 API；可在 SSR 与单元测试中独立调用纯函数。
  */
-import { computed, toValue } from 'vue'
+import { computed, toValue, watch } from 'vue'
 import type { ComputedRef, MaybeRefOrGetter } from 'vue'
 import {
   PAGINATION_PAGE_DEFAULT,
@@ -93,6 +94,16 @@ export function resolvePaginationItems(options: ResolvePaginationItemsOptions): 
 /** usePagination 选项（接受 props 对象的 getter / ref / 普通值）。 */
 export type UsePaginationOptions = MaybeRefOrGetter<PaginationProps>
 
+/** usePagination 的回调选项（组件以 emit 接入，保持 composable headless）。 */
+export interface UsePaginationCallbacks {
+  /**
+   * 受控 page 越界回发：传入 page 超出 [1, pageCount] 时以收敛后的页回调一次，
+   * 让父组件同步收敛值（避免「UI 已收敛、父层仍持越界值」的卡死假象）。
+   * 同一收敛值不重复回调；父组件回写收敛值（回到界内）后记忆复位，不构成回发死循环。
+   */
+  onPageClamp?: (page: number) => void
+}
+
 /** usePagination 返回值。 */
 export interface UsePaginationReturn {
   /** 总页数（≥1）。 */
@@ -113,7 +124,10 @@ export interface UsePaginationReturn {
 }
 
 /** Pagination 窗口计算 composable。 */
-export function usePagination(source: UsePaginationOptions): UsePaginationReturn {
+export function usePagination(
+  source: UsePaginationOptions,
+  callbacks: UsePaginationCallbacks = {},
+): UsePaginationReturn {
   const pageCount = computed(() => {
     const props = toValue(source)
     return resolvePageCount(
@@ -121,10 +135,8 @@ export function usePagination(source: UsePaginationOptions): UsePaginationReturn
       props.pageSize ?? PAGINATION_PAGE_SIZE_DEFAULT,
     )
   })
-  const safePage = computed(() => {
-    const props = toValue(source)
-    return clampPage(props.page ?? PAGINATION_PAGE_DEFAULT, pageCount.value)
-  })
+  const rawPage = computed(() => toValue(source).page ?? PAGINATION_PAGE_DEFAULT)
+  const safePage = computed(() => clampPage(rawPage.value, pageCount.value))
   const items = computed(() => {
     const props = toValue(source)
     return resolvePaginationItems({
@@ -141,6 +153,23 @@ export function usePagination(source: UsePaginationOptions): UsePaginationReturn
     const bounded = clampPage(target, pageCount.value)
     return bounded === safePage.value ? null : bounded
   }
+
+  // 受控 page 越界回发：传入 page 超出 [1, pageCount] 时以收敛值回调一次
+  // （同值不重发）；父组件回写后回到界内即复位记忆，不会反复回发。
+  let lastReportedClamp: number | null = null
+  watch(
+    () => [rawPage.value, pageCount.value] as const,
+    () => {
+      if (rawPage.value === safePage.value) {
+        lastReportedClamp = null
+        return
+      }
+      if (lastReportedClamp === safePage.value) return
+      lastReportedClamp = safePage.value
+      callbacks.onPageClamp?.(safePage.value)
+    },
+    { immediate: true },
+  )
 
   return { pageCount, safePage, items, canPrev, canNext, resolveTarget }
 }

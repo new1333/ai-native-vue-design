@@ -6,7 +6,8 @@
  * - attrs 透传：inheritAttrs:false，$attrs 全量合并到原生 input（id / name /
  *   autocomplete / aria-describedby 等由此直达输入框，供 FormField 接入）。
  * - status="error" 推导 aria-invalid="true"，容器描边转 danger。
- * - 清空按钮为原生 button（type=button、aria-label="清空"），点击后焦点交还输入框。
+ * - 清空按钮为原生 button（type=button、aria-label="清空"），mousedown preventDefault
+ *   保住输入框焦点（按住不丢焦点，同 AutoComplete 先例），点击后焦点交还输入框。
  * - 一切颜色、字号、间距、圆角、动效均消费 var(--ui-*) token（paper.css）。
  */
 import { computed, ref, useSlots } from 'vue'
@@ -94,6 +95,7 @@ defineExpose<InputExpose>({ focus, blur })
       type="button"
       class="ui-input__clear"
       :aria-label="INPUT_CLEAR_ARIA_LABEL"
+      @mousedown.prevent
       @click="onClear"
     >
       <svg

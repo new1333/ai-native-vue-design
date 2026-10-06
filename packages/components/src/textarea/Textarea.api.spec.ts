@@ -74,6 +74,24 @@ describe('Textarea api', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['hello'])
   })
 
+  it('clearable：默认不渲染清空按钮；有值时渲染（aria-label="清空"），空值时不渲染', () => {
+    expect(mount(Textarea, { props: { modelValue: 'abc' } }).find('button.ui-textarea__clear').exists()).toBe(false)
+    const withValue = mount(Textarea, { props: { clearable: true, modelValue: 'abc' } })
+    const clear = withValue.find('button.ui-textarea__clear')
+    expect(clear.exists()).toBe(true)
+    expect(clear.attributes('aria-label')).toBe('清空')
+    expect(clear.attributes('type')).toBe('button')
+    const empty = mount(Textarea, { props: { clearable: true } })
+    expect(empty.find('button.ui-textarea__clear').exists()).toBe(false)
+  })
+
+  it('clearable + disabled / readonly：即使有值也不渲染清空按钮', () => {
+    const disabled = mount(Textarea, { props: { clearable: true, modelValue: 'abc', disabled: true } })
+    expect(disabled.find('button.ui-textarea__clear').exists()).toBe(false)
+    const readonly = mount(Textarea, { props: { clearable: true, modelValue: 'abc', readonly: true } })
+    expect(readonly.find('button.ui-textarea__clear').exists()).toBe(false)
+  })
+
   it('attrs 透传（inheritAttrs:false）：合并到原生 textarea，不落根容器', () => {
     const wrapper = mount(Textarea, {
       attrs: { id: 'desc-area', name: 'desc', 'aria-describedby': 'desc-error' },

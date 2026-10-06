@@ -8,7 +8,8 @@
  *   ↑/↓ 逐 step、PageUp/PageDown 跨 step×10、Home/End 跳 min/max、Enter 提交草稿。
  * - attrs 透传：inheritAttrs:false，$attrs 全量合并到原生 input（id / aria-label /
  *   aria-describedby 等由此直达输入框，供 FormField 接入）。
- * - 增减按钮为原生 button（type=button、aria-label），点击步进；禁用态原生 disabled。
+ * - 增减按钮为原生 button（type=button、aria-label），点击步进；组件禁用或值抵达
+ *   对应边界（value<=min 减 / value>=max 加）时原生 disabled（键盘路径钳制不变）。
  * - 一切颜色、字号、间距、圆角、动效均消费 var(--ui-*) token（paper.css）。
  */
 import { computed, ref, useSlots } from 'vue'
@@ -79,6 +80,18 @@ const ariaValueMax = computed(() => (props.max !== undefined ? String(props.max)
 const ariaValueNow = computed(() => (value.value !== null ? String(value.value) : undefined))
 const ariaValueText = computed(() => (value.value !== null ? formatted.value : undefined))
 
+/** 边界禁用：生效值抵达下/上界时对应步进按钮禁用（已无步进空间）；空值不参与（空值步进是确定性入口，见 useInputNumber）。 */
+const decreaseDisabled = computed(
+  () =>
+    props.disabled ||
+    (value.value !== null && props.min !== undefined && value.value <= props.min),
+)
+const increaseDisabled = computed(
+  () =>
+    props.disabled ||
+    (value.value !== null && props.max !== undefined && value.value >= props.max),
+)
+
 const inputEl = ref<HTMLInputElement | null>(null)
 
 function focus(options?: FocusOptions): void {
@@ -119,7 +132,7 @@ defineExpose<InputNumberExpose>({ focus, blur })
         type="button"
         class="ui-input-number__decrease"
         :aria-label="INPUT_NUMBER_DECREASE_ARIA_LABEL"
-        :disabled="disabled"
+        :disabled="decreaseDisabled"
         @click="stepBy('down')"
       >
         <svg
@@ -140,7 +153,7 @@ defineExpose<InputNumberExpose>({ focus, blur })
         type="button"
         class="ui-input-number__increase"
         :aria-label="INPUT_NUMBER_INCREASE_ARIA_LABEL"
-        :disabled="disabled"
+        :disabled="increaseDisabled"
         @click="stepBy('up')"
       >
         <svg

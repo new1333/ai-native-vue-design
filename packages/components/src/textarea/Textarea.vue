@@ -1,15 +1,19 @@
 <script setup lang="ts">
 /**
- * Textarea —— 多行文本输入组件：容器（原生 textarea / 字数统计）+ Paper 视觉（token-only）。
+ * Textarea —— 多行文本输入组件：容器（原生 textarea / 清空按钮 / 字数统计）+ Paper 视觉（token-only）。
  *
  * - attrs 透传：inheritAttrs:false，$attrs 全量合并到原生 textarea
  *   （id / name / aria-describedby 等由此直达控件，供 FormField 接入，同 Input 先例）。
  * - status="error" 推导 aria-invalid="true"，容器描边转 danger。
  * - showCount 在容器右下角以弱文字显示字数：配 maxlength 为 x/y，否则为 x。
+ * - 清空按钮为原生 button（type=button、aria-label="清空"，同 Input 先例）：
+ *   有值且非 disabled/readonly 时渲染；mousedown preventDefault 保住输入区焦点，
+ *   点击清值（update:modelValue("") + clear）并把焦点交还 textarea。
  * - 一切颜色、字号、间距、圆角、动效均消费 var(--ui-*) token（paper.css）。
  */
 import { computed, ref } from 'vue'
 import {
+  TEXTAREA_CLEAR_ARIA_LABEL,
   TEXTAREA_RESIZE_DEFAULT,
   TEXTAREA_ROWS_DEFAULT,
   TEXTAREA_STATUS_DEFAULT,
@@ -28,6 +32,7 @@ const props = withDefaults(defineProps<TextareaProps>(), {
   maxlength: undefined,
   showCount: false,
   status: TEXTAREA_STATUS_DEFAULT,
+  clearable: false,
 })
 const emit = defineEmits<TextareaEmits>()
 defineSlots<TextareaSlots>()
@@ -48,10 +53,23 @@ const countText = computed(() => {
   return props.maxlength === undefined ? `${current}` : `${current}/${props.maxlength}`
 })
 
+/** 清空按钮渲染条件：可清空 + 有值 + 非禁用/只读（同 Input 的 canClear）。 */
+const canClear = computed(
+  () => props.clearable && props.modelValue !== '' && !props.disabled && !props.readonly,
+)
+
 const textareaEl = ref<HTMLTextAreaElement | null>(null)
 
 function onInput(event: Event): void {
   emit('update:modelValue', (event.target as HTMLTextAreaElement).value)
+}
+
+function onClear(): void {
+  if (!canClear.value) return
+  emit('update:modelValue', '')
+  emit('clear')
+  // 清空后把焦点交还输入区，键盘用户可继续输入（客户端事件回调内的 DOM API）。
+  textareaEl.value?.focus()
 }
 
 function focus(options?: FocusOptions): void {
@@ -80,7 +98,31 @@ defineExpose<TextareaExpose>({ focus, blur })
       v-bind="$attrs"
       @input="onInput"
     />
-    <span v-if="showCount" class="ui-textarea__count">{{ countText }}</span>
+    <div v-if="canClear || showCount" class="ui-textarea__meta">
+      <button
+        v-if="canClear"
+        type="button"
+        class="ui-textarea__clear"
+        :aria-label="TEXTAREA_CLEAR_ARIA_LABEL"
+        @mousedown.prevent
+        @click="onClear"
+      >
+        <svg
+          class="ui-textarea__clear-icon"
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+        </svg>
+      </button>
+      <span v-if="showCount" class="ui-textarea__count">{{ countText }}</span>
+    </div>
   </div>
 </template>
 
@@ -155,6 +197,33 @@ defineExpose<TextareaExpose>({ focus, blur })
 .ui-textarea--disabled .ui-textarea__control {
   color: var(--ui-text-3);
   cursor: not-allowed;
+}
+
+/* ── 底部元信息行：清空按钮 + 字数统计右下角排布（任一存在才渲染） ── */
+.ui-textarea__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ui-space-2);
+}
+
+/* ── 清空按钮：原生 button，无填充无描边（结构性重置），色相走 token（同 Input 先例） ── */
+.ui-textarea__clear {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: none; /* 结构性重置：非视觉取值 */
+  background: transparent; /* 结构性无填充：非色相取值 */
+  color: var(--ui-text-3);
+  cursor: pointer;
+  padding: var(--ui-space-1);
+  border-radius: var(--ui-radius-xs);
+  transition: color var(--ui-motion-fast) var(--ui-ease-out);
+}
+
+.ui-textarea__clear:hover {
+  color: var(--ui-text-1);
 }
 
 /* ── 字数统计：右下角弱文字（text-3 + xs + tabular-nums，宽度跳动小） ── */

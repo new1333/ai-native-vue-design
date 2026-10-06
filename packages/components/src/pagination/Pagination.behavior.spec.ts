@@ -163,4 +163,43 @@ describe('Pagination behavior - 边界交互', () => {
     expect(navButtons(wrapper)[1]?.attributes('disabled')).toBeDefined()
     expect(navButtons(wrapper)[0]?.attributes('disabled')).toBeUndefined()
   })
+
+  it('越界受控页码回发：page=100 共 5 页 → 挂载即发出一次 update:page=5；同值重渲染不重发', async () => {
+    const wrapper = mount(Pagination, { props: { total: 50, page: 100 } })
+    expect(wrapper.emitted('update:page')).toEqual([[5]])
+    // 同值再渲染（父层未回写）：不重复回发
+    await wrapper.setProps({ page: 100 })
+    expect(wrapper.emitted('update:page')).toHaveLength(1)
+    await wrapper.setProps({ siblingCount: 2 })
+    expect(wrapper.emitted('update:page')).toHaveLength(1)
+    // 父层回写收敛值后（回到界内）：仍不重发
+    await wrapper.setProps({ page: 5 })
+    expect(wrapper.emitted('update:page')).toHaveLength(1)
+  })
+
+  it('越界回发防死循环：v-model:page 父状态 page=100 → 挂载即收敛为 5 且只回发一次', async () => {
+    const page = ref(100)
+    const emits: number[] = []
+    const Host = defineComponent({
+      setup: () => () =>
+        h(Pagination, {
+          total: 50,
+          page: page.value,
+          'onUpdate:page': (value: number) => {
+            emits.push(value)
+            page.value = value
+          },
+        }),
+    })
+    const wrapper = mount(Host)
+    expect(page.value).toBe(5)
+    expect(emits).toEqual([5])
+    await nextTick()
+    expect(currentPageLabel(wrapper)).toBe('5')
+    // 收敛后受控回路恢复正常：上一页可用并可继续翻页（收敛页=末页，下一页 disabled 属预期）
+    expect(navButtons(wrapper)[1]?.attributes('disabled')).toBeDefined()
+    expect(navButtons(wrapper)[0]?.attributes('disabled')).toBeUndefined()
+    await navButtons(wrapper)[0]?.trigger('click')
+    expect(emits).toEqual([5, 4])
+  })
 })

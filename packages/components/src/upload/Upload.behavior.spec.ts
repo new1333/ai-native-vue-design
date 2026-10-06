@@ -211,6 +211,38 @@ describe('Upload behavior', () => {
     expect(wrapper.classes()).not.toContain('ui-upload--dragover')
   })
 
+  it('拖放区扩展到整个根容器：dragover/dragleave 在容器（非仅按钮）驱动高亮，drop 在列表区同样入列', async () => {
+    const wrapper = mountUpload({ drag: true, modelValue: [presetFile('已传.txt')] })
+    // 落点为根容器本身（非触发器按钮）：高亮反馈一致
+    await wrapper.find('.ui-upload').trigger('dragover')
+    expect(wrapper.classes()).toContain('ui-upload--dragover')
+    await wrapper.find('.ui-upload').trigger('dragleave')
+    expect(wrapper.classes()).not.toContain('ui-upload--dragover')
+
+    // 落点为列表区（按钮之外的触发区）：drop 走同一文件流与校验路径
+    await wrapper.find('.ui-upload').trigger('dragover')
+    await wrapper.find('ul.ui-upload__list').trigger('drop', { dataTransfer: { files: [txtFile('新拖入.txt')] } })
+    await syncModel(wrapper)
+    expect(wrapper.emitted('change')).toHaveLength(1)
+    const payload = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as UploadFile[]
+    expect(payload.map((f) => f.name)).toEqual(['已传.txt', '新拖入.txt'])
+    expect(wrapper.classes()).not.toContain('ui-upload--dragover')
+  })
+
+  it('非 drag 模式与 disabled：容器 dragover 不高亮、容器 drop 不入列', async () => {
+    const plain = mountUpload()
+    await plain.find('.ui-upload').trigger('dragover')
+    expect(plain.classes()).not.toContain('ui-upload--dragover')
+    await plain.find('.ui-upload').trigger('drop', { dataTransfer: { files: [txtFile()] } })
+    expect(plain.emitted('update:modelValue')).toBeUndefined()
+
+    const disabled = mountUpload({ drag: true, disabled: true })
+    await disabled.find('.ui-upload').trigger('dragover')
+    expect(disabled.classes()).not.toContain('ui-upload--dragover')
+    await disabled.find('.ui-upload').trigger('drop', { dataTransfer: { files: [txtFile()] } })
+    expect(disabled.emitted('update:modelValue')).toBeUndefined()
+  })
+
   it('disabled：点击不唤起文件选择、拖拽与移除全部拦截', async () => {
     const wrapper = mountUpload({
       disabled: true,

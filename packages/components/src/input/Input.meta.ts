@@ -77,7 +77,7 @@ export const meta: ComponentDefinition = {
     error: 'danger 描边（hover/focus 均保持 danger 优先于 accent），原生 input 置 aria-invalid="true"。',
   },
   accessibility:
-    '原生 <input>（隐式 role=textbox），Tab 自然进入、直接键入；不书写 role/tabindex，不设置 aria-label（label 由 label[for] 或 FormField 提供，placeholder 不承担 label 职责）。status="error" 推导 aria-invalid="true"；aria-describedby 等原生属性经 attrs 直达 input 供 FormField 接入。清空按钮为原生 <button type="button">（Enter/Space 平台原生激活），aria-label="清空"，图标 svg aria-hidden="true"；点击清空后焦点交还输入框。disabled 用原生 disabled 而非 aria-disabled。',
+    '原生 <input>（隐式 role=textbox），Tab 自然进入、直接键入；不书写 role/tabindex，不设置 aria-label（label 由 label[for] 或 FormField 提供，placeholder 不承担 label 职责）。status="error" 推导 aria-invalid="true"；aria-describedby 等原生属性经 attrs 直达 input 供 FormField 接入。清空按钮为原生 <button type="button">（Enter/Space 平台原生激活），aria-label="清空"，图标 svg aria-hidden="true"；mousedown preventDefault 保住输入框焦点（按住不丢焦点），点击清空后焦点交还输入框。disabled 用原生 disabled 而非 aria-disabled。',
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；focus()/blur() 仅出现在客户端事件回调与暴露方法内。placeholder / maxlength / disabled / readonly / type / aria-invalid / 清空按钮 / attrs（id 等）均随 SSR 输出且落位原生 input。',
   performance:

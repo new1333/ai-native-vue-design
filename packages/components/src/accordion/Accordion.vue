@@ -2,6 +2,7 @@
 /**
  * Accordion —— 折叠面板/手风琴：items 驱动的分段展开收起容器。
  * 单开（默认，展开值 key|null）/多开（multiple，展开值 keys 数组）；
+ * 非受控可用 defaultValue 指定初始展开（形态随 multiple；受控模式不生效）；
  * 头部为原生 button（aria-expanded + aria-controls + roving tabindex），
  * 面板 role="region" + aria-labelledby，键盘路径遵循 WAI-ARIA Accordion 模式。
  * 一切颜色、字号、间距、圆角、动效均消费 var(--ui-*) token（paper.css）。
@@ -33,6 +34,7 @@ const { isOpen, toggleAt, onTriggerKeydown, onTriggerFocus, tabStopIndex, setTri
     items: () => props.items,
     multiple: () => props.multiple,
     modelValue: () => props.modelValue,
+    defaultValue: () => props.defaultValue,
     emit,
   })
 </script>

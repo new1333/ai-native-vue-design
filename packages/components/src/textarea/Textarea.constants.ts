@@ -18,3 +18,6 @@ export const TEXTAREA_RESIZE_DEFAULT = 'vertical' as const
 
 /** 默认可见行数（原生 rows）。 */
 export const TEXTAREA_ROWS_DEFAULT = 3
+
+/** 清空按钮的可读名称：仅图标、无文本，必须有 aria-label（同 Input 先例）。 */
+export const TEXTAREA_CLEAR_ARIA_LABEL = '清空'

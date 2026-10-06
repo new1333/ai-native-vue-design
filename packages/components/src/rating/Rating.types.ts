@@ -20,7 +20,7 @@ export interface RatingProps {
   allowHalf?: boolean
   /** 只读：仅展示评分，禁一切交互（指针/键盘/悬停），aria-readonly="true" 且档位移出 Tab 序。 */
   readonly?: boolean
-  /** 可清除：再次点击当前评分档位时清除为 undefined。 */
+  /** 可清除：再次点击当前评分档位、或档位聚焦后按 Delete/Backspace 清除为 undefined（生效值归 0 = 全空星）。 */
   clearable?: boolean
 }
 

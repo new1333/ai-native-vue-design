@@ -11,6 +11,31 @@ describe('Progress a11y', () => {
     expect(wrapper.attributes('aria-valuemax')).toBe('100')
   })
 
+  it('可访问名：attrs 的 aria-label 落到 role=progressbar 元素，值语义完整', () => {
+    const wrapper = mount(Progress, {
+      props: { value: 42 },
+      attrs: { 'aria-label': '上传进度' },
+    })
+    expect(wrapper.attributes('role')).toBe('progressbar')
+    expect(wrapper.attributes('aria-label')).toBe('上传进度')
+    expect(wrapper.attributes('aria-valuenow')).toBe('42')
+    expect(wrapper.attributes('aria-valuemin')).toBe('0')
+    expect(wrapper.attributes('aria-valuemax')).toBe('100')
+  })
+
+  it('可访问名：aria-labelledby 透传落 progressbar 元素（indeterminate 同样可命名）', () => {
+    const wrapper = mount(Progress, {
+      props: { indeterminate: true },
+      attrs: { 'aria-labelledby': 'task-title' },
+    })
+    expect(wrapper.attributes('role')).toBe('progressbar')
+    expect(wrapper.attributes('aria-labelledby')).toBe('task-title')
+    // indeterminate 省略 aria-valuenow，但 min/max 命名语义仍在
+    expect(wrapper.attributes('aria-valuenow')).toBeUndefined()
+    expect(wrapper.attributes('aria-valuemin')).toBe('0')
+    expect(wrapper.attributes('aria-valuemax')).toBe('100')
+  })
+
   it('确定态：aria-valuenow 等于钳制后的 value（含小数与越界）', () => {
     expect(mount(Progress, { props: { value: 66.5 } }).attributes('aria-valuenow')).toBe('66.5')
     expect(mount(Progress, { props: { value: 999 } }).attributes('aria-valuenow')).toBe('100')

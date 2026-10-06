@@ -32,14 +32,14 @@ export const meta: ComponentDefinition = {
   },
   api: {
     props: [
-      { name: 'page', type: 'number', default: '1', description: '当前页（1 起始，v-model:page）；超出 [1, pageCount] 时展示层收敛（clamp）后渲染，组件自身不持有页状态。' },
+      { name: 'page', type: 'number', default: '1', description: '当前页（1 起始，v-model:page）；超出 [1, pageCount] 时展示层收敛（clamp）后渲染，并回发一次收敛后的 update:page（同值不重发）。组件自身不持有页状态。' },
       { name: 'total', type: 'number', default: '0', description: '数据总条数；与 pageSize 共同推导总页数（负值按 0 处理）。' },
       { name: 'pageSize', type: 'number', default: '10', description: '每页条数；≤0 按 1 处理避免除零。' },
       { name: 'siblingCount', type: 'number', default: '1', description: '当前页两侧保留的页码数；总页数 ≤ siblingCount*2+5（默认 7）时全量展开，否则首尾+窗口+省略号。' },
     ],
     slots: [],
     events: [
-      { name: 'update:page', payload: 'number', description: 'v-model:page 更新：点击页码/上一页/下一页后发出，载荷为目标页码（已收敛进 [1, pageCount]；与当前页相同不发出）。' },
+      { name: 'update:page', payload: 'number', description: 'v-model:page 更新：点击页码/上一页/下一页后发出，载荷为目标页码（已收敛进 [1, pageCount]；与当前页相同不发出）；传入 page 越界（如 total 变小）时也发出一次收敛后的页码（同值不重发），父层状态自动归位。' },
     ],
     exposes: [],
   },
@@ -84,7 +84,7 @@ export const meta: ComponentDefinition = {
     generationNotes: [
       'v-model:page 为受控用法；组件不持有内部页状态，点击只发 update:page',
       '总页数 ≤ siblingCount*2+5（默认 7）全显，省略号是非聚焦的 aria-hidden 占位',
-      'page 越界（如 total 变小）展示层自动 clamp，但需使用方自行把 page 修正回范围内',
+      'page 越界（如 total 变小）展示层自动 clamp 并回发一次收敛后的 update:page（同值不重发），父层无需自行修正也能归位',
       '点击当前页不产生 update:page；上一页/下一页在首/尾页为原生 disabled',
     ],
   },

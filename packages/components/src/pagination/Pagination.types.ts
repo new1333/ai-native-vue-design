@@ -20,7 +20,7 @@ export type PaginationItem = PaginationPageItem | PaginationEllipsisItem
 
 /** Pagination 的 Props。 */
 export interface PaginationProps {
-  /** 当前页（1 起始，v-model:page）；超出 [1, pageCount] 时展示层收敛（clamp）后渲染。 */
+  /** 当前页（1 起始，v-model:page）；超出 [1, pageCount] 时展示层收敛（clamp）后渲染，并回发一次收敛后的 update:page（同值不重发）。 */
   page?: number
   /** 数据总条数；与 pageSize 共同推导总页数。 */
   total?: number
@@ -32,7 +32,7 @@ export interface PaginationProps {
 
 /** Pagination 的 Emits（Vue 3.3+ 元组语法：事件名 → 载荷元组）。 */
 export interface PaginationEmits {
-  /** v-model:page 更新：点击页码 / 上一页 / 下一页后发出的目标页码（已收敛进 [1, pageCount]）。 */
+  /** v-model:page 更新：点击页码 / 上一页 / 下一页后发出目标页码（已收敛进 [1, pageCount]）；传入 page 越界时也发出一次收敛后的页码（同值不重发）。 */
   'update:page': [page: number]
 }
 

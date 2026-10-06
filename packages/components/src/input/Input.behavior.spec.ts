@@ -80,6 +80,40 @@ describe('Input behavior', () => {
     wrapper.unmount()
   })
 
+  it('按住清空按钮不丢焦点：mousedown preventDefault，点击后焦点仍在输入框且清空正常', async () => {
+    const value = ref('有内容')
+    let clearCount = 0
+    const Host = defineComponent({
+      setup: () => () =>
+        h(Input, {
+          modelValue: value.value,
+          clearable: true,
+          'onUpdate:modelValue': (v: string) => {
+            value.value = v
+          },
+          onClear: () => {
+            clearCount += 1
+          },
+        }),
+    })
+    const wrapper = mount(Host, { attachTo: document.body })
+    const control = wrapper.find('input')
+    const button = wrapper.find('button.ui-input__clear')
+    control.element.focus()
+    expect(document.activeElement).toBe(control.element)
+    // 真实浏览器焦点转移发生在 mousedown 默认行为：以可取消的真实事件派发并断言被阻止
+    const mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    button.element.dispatchEvent(mousedown)
+    expect(mousedown.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(control.element)
+    await button.trigger('click')
+    expect(document.activeElement).toBe(control.element)
+    expect(value.value).toBe('')
+    expect((control.element as HTMLInputElement).value).toBe('')
+    expect(clearCount).toBe(1)
+    wrapper.unmount()
+  })
+
   it('status 响应式切换：default → error 时 aria-invalid 与修饰类同步', async () => {
     const wrapper = mount(Input)
     expect(wrapper.find('input').attributes('aria-invalid')).toBeUndefined()

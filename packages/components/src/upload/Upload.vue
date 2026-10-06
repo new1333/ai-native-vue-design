@@ -7,6 +7,9 @@
  * - beforeUpload 三态（见 Upload.types.ts）：false 不入列；true/void 直接成功；
  *   Promise 即上传任务（uploading 入列 → resolve 成功 / reject 失败可重试）。
  * - 触发器为原生 button（Enter/Space 平台原生激活），隐藏 file input 由其点击唤起；
+ *   drag 模式下 dragover/dragleave/drop 绑定在根容器（整个触发区可放置，事件自
+ *   子元素冒泡归一处理，按钮上不再重复绑定避免双触发），高亮反馈仍由根级
+ *   ui-upload--dragover 修饰类驱动（落点样式只走既有 token）；
  *   上传中态渲染 token 化进度条（复用 progress 视觉配方），失败项可重试。
  * - 浏览器 API 只出现在事件回调（input.click()、FileList/DataTransfer 解包）；
  *   setup 顶层不访问任何浏览器 API，node 环境 renderToString 无异常。
@@ -132,7 +135,7 @@ function progressLabel(file: UploadFile): string {
 </script>
 
 <template>
-  <div :class="classes">
+  <div :class="classes" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
     <!-- 隐藏 file input：仅承担原生文件选择对话框；键盘/读屏交互表面是下方触发器 button -->
     <input
       ref="inputEl"
@@ -149,9 +152,6 @@ function progressLabel(file: UploadFile): string {
       class="ui-upload__trigger"
       :disabled="disabled"
       @click="onTriggerClick"
-      @dragover="onDragOver"
-      @dragleave="onDragLeave"
-      @drop="onDrop"
     >
       <slot name="trigger">
         <svg

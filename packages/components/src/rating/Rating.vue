@@ -6,7 +6,9 @@
  *   原生 button 承载 role="radio" 与 aria-checked（true/false 常驻）。
  *   allowHalf 时每颗星拆为左右两个半档 radio（半档 = 0.5）。
  * - 键盘：←→↑↓ 步进到相邻档并选中（preventDefault，焦点随动，roving tabindex）；
- *   Enter/Space 走原生 button 激活路径（click），组件不拦截。
+ *   Enter/Space 走原生 button 激活路径（click），组件不拦截；
+ *   clearable 时 Delete/Backspace 清空当前评分为未评分态（preventDefault，
+ *   阻断 Backspace 的浏览器后退；载荷与指针清除路径一致为 undefined）。
  * - 悬停：进入档位做填充预览并发出 hoverChange(档位值)；离开根容器复位为
  *   hoverChange(undefined)；只读态不响应悬停。
  * - readonly：aria-readonly="true" + 全部交互路径守卫 + 全档 tabindex=-1（移出 Tab 序）。
@@ -18,6 +20,7 @@
 import { computed, ref } from 'vue'
 import {
   RATING_ARIA_UNIT,
+  RATING_CLEAR_KEYS,
   RATING_DECREASE_KEYS,
   RATING_FULL_STEP,
   RATING_HALF_STEP,
@@ -146,6 +149,13 @@ function onRootLeave(): void {
 
 function onRadioKeydown(event: KeyboardEvent, current: number): void {
   if (props.readonly) return
+  // 键盘清除路径：clearable 时 Delete/Backspace 清空为未评分态（生效值归 0 = 全空星）。
+  if (props.clearable && RATING_CLEAR_KEYS.includes(event.key)) {
+    if (props.modelValue === undefined) return // 已是未评分：空操作（同值不重发），不劫持按键
+    event.preventDefault() // Backspace：阻断浏览器后退等默认行为
+    emit('update:modelValue', undefined)
+    return
+  }
   const delta = RATING_INCREASE_KEYS.includes(event.key)
     ? stepUnit.value
     : RATING_DECREASE_KEYS.includes(event.key)

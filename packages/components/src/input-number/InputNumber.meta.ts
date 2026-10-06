@@ -35,8 +35,8 @@ export const meta: ComponentDefinition = {
   api: {
     props: [
       { name: 'modelValue', type: 'number | null', default: 'null', description: 'v-model 绑定值；受控，null 表示空（清空输入框提交 null）。受控值超出 [min,max] 时展示与 aria 按钳制值呈现，下一次提交/步进时才回写钳制值。' },
-      { name: 'min', type: 'number', description: '允许的最小值；undefined = 无下界（不渲染 aria-valuemin）。空值起步步进时若有 min 则从 min 起步。' },
-      { name: 'max', type: 'number', description: '允许的最大值；undefined = 无上界（不渲染 aria-valuemax）。' },
+      { name: 'min', type: 'number', description: '允许的最小值；undefined = 无下界（不渲染 aria-valuemin）。空值起步步进时若有 min 则从 min 起步。值抵达 min 时减少按钮原生 disabled（键盘路径钳制不变）。' },
+      { name: 'max', type: 'number', description: '允许的最大值；undefined = 无上界（不渲染 aria-valuemax）。值抵达 max 时增加按钮原生 disabled（键盘路径钳制不变）。' },
       { name: 'step', type: 'number', default: '1', description: '步长；非法（非有限正数）回退 1。PageUp/PageDown 一次跨 step × 10。' },
       { name: 'precision', type: 'number', default: 'undefined', description: '小数位数（>= 0）：提交/步进后按此取整并格式化展示（如 precision=2 时 3 显示为 "3.00"）；undefined = 不干预小数位。' },
       { name: 'controls', type: 'boolean', default: 'true', description: '是否渲染「减少/增加」步进按钮（aria-label="减少"/"增加"）。' },
@@ -78,10 +78,10 @@ export const meta: ComponentDefinition = {
     hover: '描边加深为 --ui-border-strong；步进按钮图标 text-3 → text-1；disabled 不响应 hover。',
     focusVisible: '焦点指示由容器描边统一承担：描边转 --ui-input-border-focus（accent）；内层原生 input 关闭全局 :focus-visible 焦点环，避免双重边框。步进按钮自身聚焦时保留全局焦点环。',
     active: '输入控件无按压反馈；步进按钮为原生 button，无按压位移。',
-    disabled: 'sand 底 + line 描边 + text-3 文字 + not-allowed 光标；原生 disabled 使 input 与按钮移出 Tab 序，步进与提交路径全部拦截。',
+    disabled: 'sand 底 + line 描边 + text-3 文字 + not-allowed 光标；原生 disabled 使 input 与按钮移出 Tab 序，步进与提交路径全部拦截。值抵达 min/max 时对应减少/增加按钮同样原生 disabled（not-allowed 光标、hover 不响应），键盘路径钳制行为不变。',
   },
   accessibility:
-    '原生 <input type="text" inputmode="decimal"> + role="spinbutton"（WAI-ARIA Spinbutton 模式）：aria-valuemin/aria-valuemax 仅在 min/max 有定义时渲染，aria-valuenow/aria-valuetext 在有值时渲染（空值省略，值经 [min,max] 钳制）。键盘：↑/↓ 逐 step、PageUp/PageDown 跨 step×10、Home/End 跳 min/max（有界时）、Enter 提交草稿，受理键一律 preventDefault。可访问名称由使用方经 attrs 提供（aria-label/aria-labelledby，或 FormField 的 label[for]）。增减按钮为原生 <button type="button">（Enter/Space 平台原生激活），aria-label="减少"/"增加"，图标 svg aria-hidden="true"。disabled 用原生 disabled 而非 aria-disabled。',
+    '原生 <input type="text" inputmode="decimal"> + role="spinbutton"（WAI-ARIA Spinbutton 模式）：aria-valuemin/aria-valuemax 仅在 min/max 有定义时渲染，aria-valuenow/aria-valuetext 在有值时渲染（空值省略，值经 [min,max] 钳制）。键盘：↑/↓ 逐 step、PageUp/PageDown 跨 step×10、Home/End 跳 min/max（有界时）、Enter 提交草稿，受理键一律 preventDefault。可访问名称由使用方经 attrs 提供（aria-label/aria-labelledby，或 FormField 的 label[for]）。增减按钮为原生 <button type="button">（Enter/Space 平台原生激活），aria-label="减少"/"增加"，图标 svg aria-hidden="true"；值抵达 min/max 时对应按钮原生 disabled（移出 Tab 序，空值不受影响）。disabled 用原生 disabled 而非 aria-disabled。',
   ssr:
     'renderToString 无异常：状态机 useInputNumber 为纯逻辑（无任何浏览器 API），setup 与模块顶层不访问 window/document；focus()/blur() 仅出现在客户端事件回调与暴露方法内。受控值 / 钳制值 / role="spinbutton" / aria-valuemin/max/now / 步进按钮与 aria-label / prefix/suffix / attrs（id 等）均随 SSR 输出。',
   performance:

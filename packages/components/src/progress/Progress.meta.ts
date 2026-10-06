@@ -63,7 +63,7 @@ export const meta: ComponentDefinition = {
     loading: 'indeterminate 态即加载语义：50% 半填充 transform 扫描（≈2s 循环，加载态豁免）；prefers-reduced-motion 降级为静态半填充。',
   },
   accessibility:
-    '根元素 role="progressbar"：aria-valuemin="0"/aria-valuemax="100" 恒在，确定态 aria-valuenow=钳制后的 value；indeterminate 按 WAI-ARIA 省略 aria-valuenow（进度未知）。showLabel 以 "42%" 文本提供视觉双通道。组件非交互、无 tabindex；任务名称（aria-label/aria-labelledby）由使用方提供。',
+    '根元素 role="progressbar"：aria-valuemin="0"/aria-valuemax="100" 恒在，确定态 aria-valuenow=钳制后的 value；indeterminate 按 WAI-ARIA 省略 aria-valuenow（进度未知）。showLabel 以 "42%" 文本提供视觉双通道。组件非交互、无 tabindex；可访问名由使用方经 attrs 提供（aria-label / aria-labelledby），经默认透传落到 role=progressbar 的根元素上（组件无 label 类 prop，showLabel 仅控制数值标签）。',
   ssr:
     'renderToString 无异常：组件不访问任何浏览器 API（无 effect/监听/测量），role/aria 值、修饰类、内联填充宽度与标签文本均在服务端输出；indeterminate 态 SSR 即省略 aria-valuenow。',
   performance:

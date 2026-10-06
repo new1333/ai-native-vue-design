@@ -21,6 +21,8 @@ export interface UseAccordionOptions {
   multiple: () => boolean
   /** modelValue getter；undefined 表示非受控（组件内部持有状态）。 */
   modelValue: () => AccordionModelValue | undefined
+  /** 非受控初始展开值 getter（仅初始化时读取一次；受控模式下忽略）。 */
+  defaultValue: () => AccordionModelValue | undefined
   /** 组件 emit（update:modelValue / change）。 */
   emit: {
     (event: 'update:modelValue', value: AccordionModelValue): void
@@ -44,14 +46,14 @@ function normalizeToKeys(
 /**
  * Accordion 状态机。
  * - 受控：modelValue 提供 → 展开状态完全由 prop 派生，切换只 emit；
- * - 非受控：内部持有上次提交值（初始全部收起），切换时更新内部值并 emit。
+ * - 非受控：内部持有上次提交值（初始值取 defaultValue，缺省全部收起），切换时更新内部值并 emit。
  * 多开模式的展开值按 items 顺序规范化输出（modelValue 中不属于 items 的 key 不参与渲染，切换时被规范化移除）。
  */
 export function useAccordion(options: UseAccordionOptions) {
   const { emit } = options
 
-  /** 非受控模式的内部展开值（形态随 multiple：单开 key|null，多开 keys 数组；初始全部收起）。 */
-  const internalValue = ref<AccordionModelValue | null>(null)
+  /** 非受控模式的内部展开值（形态随 multiple：单开 key|null，多开 keys 数组；初始取 defaultValue，缺省全部收起）。 */
+  const internalValue = ref<AccordionModelValue | null>(options.defaultValue() ?? null)
 
   /** 受控判定：modelValue prop 是否被提供。 */
   const isControlled = computed(() => options.modelValue() !== undefined)

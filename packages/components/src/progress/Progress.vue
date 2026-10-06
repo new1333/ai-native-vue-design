@@ -4,6 +4,9 @@
  *
  * - ARIA：根元素 role="progressbar"，aria-valuemin/max 恒为 0/100；
  *   确定态 aria-valuenow = 钳制后的 value；indeterminate 按 ARIA 省略 aria-valuenow。
+ * - 可访问名：组件无 label 类 prop（showLabel 仅控制数值标签）；attrs 透传的
+ *   aria-label / aria-labelledby 经默认继承落到根元素（即 role=progressbar 元素），
+ *   任务名称由使用方提供。
  * - 视觉：填充 --ui-accent、轨道 --ui-surface-muted；条高 sm/md 两档；
  *   端头 2px 用 --ui-radius-xs（该 token 唯一合法用途：进度条端头形状细节）。
  * - indeterminate 扫描为 transform 白名单动效（加载态无限循环豁免）；

@@ -29,12 +29,16 @@ export interface TextareaProps {
   showCount?: boolean
   /** 校验状态，默认 'default'；'error' 时容器转 danger 描边并推导 aria-invalid="true"。 */
   status?: TextareaStatus
+  /** 可清空：有值且非禁用/只读时渲染清空按钮（同 Input 的 clearable 先例）。 */
+  clearable?: boolean
 }
 
 /** Textarea 的 Emits（Vue 3.3+ 元组语法：事件名 → 载荷元组）。 */
 export interface TextareaEmits {
   /** v-model 更新（原生 input 事件路径，载荷为输入区最新值）。 */
   'update:modelValue': [value: string]
+  /** 点击清空按钮后触发（值已随 update:modelValue 置空，焦点交还输入区）。 */
+  clear: []
 }
 
 /** Textarea 的 Slots（当前无插槽；显式导出以稳定公共契约）。 */

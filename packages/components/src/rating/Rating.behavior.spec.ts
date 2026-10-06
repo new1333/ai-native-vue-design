@@ -75,6 +75,46 @@ describe('Rating behavior', () => {
     expect(wrapper.emitted('update:modelValue')).toEqual([[2], [undefined]])
   })
 
+  it('clearable 键盘清除：聚焦后 Backspace 清空为未评分，再按不重发', async () => {
+    const wrapper = mount(Rating, {
+      props: { count: 5, modelValue: 3, clearable: true },
+      attachTo: document.body,
+    })
+    const radios = wrapper.findAll('[role="radio"]')
+    ;(radios[2]?.element as HTMLButtonElement).focus()
+    await radios[2]?.trigger('keydown', { key: 'Backspace' })
+    expect(wrapper.emitted('update:modelValue')).toEqual([[undefined]])
+
+    // 已是未评分态（父层回写后）：Delete 空操作，不重复派发
+    await wrapper.setProps({ modelValue: undefined })
+    await radios[2]?.trigger('keydown', { key: 'Delete' })
+    expect(wrapper.emitted('update:modelValue')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('未开 clearable：Delete/Backspace 不清空也不拦截（defaultPrevented=false）', () => {
+    const wrapper = mount(Rating, { props: { count: 3, modelValue: 2 }, attachTo: document.body })
+    const control = wrapper.findAll('[role="radio"]')[1]?.element as HTMLButtonElement
+    control.focus()
+    for (const key of ['Delete', 'Backspace']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      control.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(false)
+    }
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('readonly + clearable：键盘清除路径同样被只读守卫拦截', async () => {
+    const wrapper = mount(Rating, {
+      props: { count: 3, modelValue: 2, readonly: true, clearable: true },
+      attachTo: document.body,
+    })
+    await wrapper.findAll('[role="radio"]')[1]?.trigger('keydown', { key: 'Delete' })
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it('键盘 ←→ 步进：以焦点档为基准移动并选中，焦点随动', async () => {
     const { wrapper, value } = createHost({ modelValue: 2 })
     const radios = wrapper.findAll('[role="radio"]')

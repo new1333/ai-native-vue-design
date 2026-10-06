@@ -37,7 +37,7 @@ export const meta: ComponentDefinition = {
       { name: 'modelValue', type: 'UploadFile[]', default: '[]', description: 'v-model 绑定的受控文件列表；任何变化（新增/状态落定/移除）都全量发出并需使用方回写（v-model 即可）。' },
       { name: 'accept', type: 'string', description: '原生 accept 透传（点击选择）；拖拽路径用同一规则过滤：`.ext` 后缀 / `type/*` 通配 / `type/subtype` 精确 / 裸类型名，大小写不敏感。' },
       { name: 'multiple', type: 'boolean', default: 'false', description: '多选：点击选择允许多文件、拖拽多文件全部入列；false 时只取第一个。' },
-      { name: 'drag', type: 'boolean', default: 'false', description: '拖拽模式：触发器变为虚线拖放区并接管 dragover/dragleave/drop；悬停时拖放区转 accent 高亮。' },
+      { name: 'drag', type: 'boolean', default: 'false', description: '拖拽模式：触发器变为虚线拖放区；dragover/dragleave/drop 绑定在组件根容器（触发器、列表等整个触发区均可放置，事件自子元素冒泡归一处理），悬停时拖放区转 accent 高亮（落点样式只走既有 token）。' },
       { name: 'maxCount', type: 'number', description: '数量上限：一次选择的文件会使列表超出上限时整批拒绝并发出 exceed（不部分接收）。' },
       { name: 'disabled', type: 'boolean', default: 'false', description: '禁用：触发器与列表内按钮原生 disabled（移出 Tab 序），选择/拖拽/移除/重试全部拦截。' },
       { name: 'beforeUpload', type: '(file: File, files: File[]) => boolean | void | Promise<boolean | void>', description: '上传闸门/上传任务：false 不入列；true/void 直接成功；Promise 即上传任务（先以 uploading/0 入列，resolve 非 false 落定成功，reject 落定失败并发出 error）；同步抛出按失败入列。' },
@@ -90,7 +90,7 @@ export const meta: ComponentDefinition = {
   ssr:
     'renderToString 无异常：setup 与模块顶层不访问任何浏览器 API；input.click()、FileList/DataTransfer 解包、beforeUpload 调用只发生在客户端事件回调。受控列表（名称/尺寸/状态文本/进度条 valuenow/原因文案/操作按钮 aria-label）与触发器、accept/multiple/disabled 属性均随 SSR 输出。',
   performance:
-    '无监听器挂载（拖拽事件绑定在触发器上，随组件卸载自动清理）、无测量、无定时器（上传任务计时器归使用方）；逻辑集中在 useUpload 纯函数；动效只有 border-color/background-color/color/width 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。',
+    '无监听器挂载（拖拽事件绑定在组件根容器上，随组件卸载自动清理）、无测量、无定时器（上传任务计时器归使用方）；逻辑集中在 useUpload 纯函数；动效只有 border-color/background-color/color/width 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。',
   styling:
     '视觉只消费 --ui-* token（paper.css）：触发器底 --ui-input-bg / 圆角 --ui-input-radius / focus 语义同 Input；拖放区虚线 + accent 高亮；条目 surface 底 + line 描边，error 转 --ui-danger；进度条复用 progress 配方（--ui-surface-muted 轨道 + --ui-accent 填充 + --ui-radius-xs 端头）；间距 --ui-space-*、字号 --ui-text-xs/sm/md、数字 --ui-numeric、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入。',
   examples: [

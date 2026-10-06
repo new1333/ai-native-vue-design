@@ -37,7 +37,7 @@ export const meta: ComponentDefinition = {
       { name: 'count', type: 'number', default: '5', description: '星星总数（正整数）；非正数不渲染任何星。' },
       { name: 'allowHalf', type: 'boolean', default: 'false', description: '支持半星：点击与 ←→ 步进以 0.5 为粒度，每颗星拆为左右两个半档 radio。' },
       { name: 'readonly', type: 'boolean', default: 'false', description: '只读：仅展示评分，禁一切交互（指针/键盘/悬停），aria-readonly="true" 且档位移出 Tab 序。' },
-      { name: 'clearable', type: 'boolean', default: 'false', description: '可清除：再次点击当前评分档位时清除为 undefined。' },
+      { name: 'clearable', type: 'boolean', default: 'false', description: '可清除：再次点击当前评分档位、或档位聚焦后按 Delete/Backspace 清除为 undefined（生效值归 0 = 全空星；Backspace 已 preventDefault，不触发浏览器后退）。' },
     ],
     slots: [
       {
@@ -82,7 +82,7 @@ export const meta: ComponentDefinition = {
     error: '无内建 error 态：校验反馈由外层 FormField 承担。',
   },
   accessibility:
-    '根 role="radiogroup"（attrs 的 aria-label 等落根容器）；每档一枚原生 <button type="button"> 承载 role="radio"、aria-checked（true/false 常驻）与 aria-label（档位值 + 星）。Roving tabindex：已选档（未选或越界时首档）tabindex=0、其余 -1。←→↑↓ 步进到相邻档并选中（焦点随动、preventDefault，边界为空操作）；Enter/Space 走原生 button 激活路径，组件不拦截。readonly：aria-readonly="true" + 全档 tabindex=-1 + 交互守卫。图标层 aria-hidden，评分值由 radio 语义承载。',
+    '根 role="radiogroup"（attrs 的 aria-label 等落根容器）；每档一枚原生 <button type="button"> 承载 role="radio"、aria-checked（true/false 常驻）与 aria-label（档位值 + 星）。Roving tabindex：已选档（未选或越界时首档）tabindex=0、其余 -1。←→↑↓ 步进到相邻档并选中（焦点随动、preventDefault，边界为空操作）；Enter/Space 走原生 button 激活路径，组件不拦截；clearable 时 Delete/Backspace 清空为未评分态（preventDefault 阻断浏览器后退，已未评分则空操作）。readonly：aria-readonly="true" + 全档 tabindex=-1 + 交互守卫。图标层 aria-hidden，评分值由 radio 语义承载。',
   ssr:
     'renderToString 无异常：不访问任何浏览器 API（档位元素登记 Map 仅在客户端 ref 回调填充）；radiogroup/radio/aria-checked/aria-label/tabindex/aria-readonly 与星形 SVG 随受控值完整输出；悬停预览不参与 SSR。focus()/blur() 仅客户端暴露方法。',
   performance:

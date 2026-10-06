@@ -77,4 +77,66 @@ describe('Textarea behavior', () => {
     await wrapper.setProps({ resize: 'none' })
     expect(wrapper.classes()).toContain('ui-textarea--resize-none')
   })
+
+  it('清空按钮：点击发出 update:modelValue("") 与 clear，v-model 下 DOM 值清空、按钮消失', async () => {
+    const value = ref('多行内容')
+    const Host = defineComponent({
+      setup: () => () =>
+        h(Textarea, {
+          modelValue: value.value,
+          clearable: true,
+          'onUpdate:modelValue': (v: string) => {
+            value.value = v
+          },
+        }),
+    })
+    const wrapper = mount(Host)
+    await wrapper.find('button.ui-textarea__clear').trigger('click')
+    expect(value.value).toBe('')
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('')
+    expect(wrapper.find('button.ui-textarea__clear').exists()).toBe(false)
+  })
+
+  it('值响应式出现：modelValue 注入后清空按钮出现，清空后随空值消失', async () => {
+    const wrapper = mount(Textarea, { props: { clearable: true } })
+    expect(wrapper.find('button.ui-textarea__clear').exists()).toBe(false)
+    await wrapper.setProps({ modelValue: 'abc' })
+    expect(wrapper.find('button.ui-textarea__clear').exists()).toBe(true)
+    await wrapper.setProps({ modelValue: '' })
+    expect(wrapper.find('button.ui-textarea__clear').exists()).toBe(false)
+  })
+
+  it('按住清空按钮不丢焦点：mousedown preventDefault，点击清空后焦点仍在输入区且事件齐全', async () => {
+    const value = ref('有内容')
+    let clearCount = 0
+    const Host = defineComponent({
+      setup: () => () =>
+        h(Textarea, {
+          modelValue: value.value,
+          clearable: true,
+          'onUpdate:modelValue': (v: string) => {
+            value.value = v
+          },
+          onClear: () => {
+            clearCount += 1
+          },
+        }),
+    })
+    const wrapper = mount(Host, { attachTo: document.body })
+    const control = wrapper.find('textarea')
+    const button = wrapper.find('button.ui-textarea__clear')
+    control.element.focus()
+    expect(document.activeElement).toBe(control.element)
+    // 真实浏览器焦点转移发生在 mousedown 默认行为：以可取消的真实事件派发并断言被阻止
+    const mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    button.element.dispatchEvent(mousedown)
+    expect(mousedown.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(control.element)
+    await button.trigger('click')
+    expect(document.activeElement).toBe(control.element)
+    expect(value.value).toBe('')
+    expect((control.element as HTMLTextAreaElement).value).toBe('')
+    expect(clearCount).toBe(1)
+    wrapper.unmount()
+  })
 })

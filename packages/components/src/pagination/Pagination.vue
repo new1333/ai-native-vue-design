@@ -4,6 +4,7 @@
  * + 上一页/下一页图标按钮。
  *
  * - v-model:page 受控：点击只发出 update:page，组件自身不持有页状态；
+ *   传入 page 越界时回发一次收敛后的 update:page（同值不重发），父层状态自动归位；
  * - 总页数 ≤ siblingCount*2+5（默认 7）全量展开；否则首尾 + 滑动窗口 + 省略号
  *   （省略号为 aria-hidden 的非聚焦占位元素）；
  * - 上一页/下一页为原生 button + aria-label，首/尾边界原生 disabled；
@@ -32,7 +33,10 @@ const props = withDefaults(defineProps<PaginationProps>(), {
 const emit = defineEmits<PaginationEmits>()
 defineSlots<PaginationSlots>()
 
-const { safePage, items, canPrev, canNext, resolveTarget } = usePagination(() => props)
+const { safePage, items, canPrev, canNext, resolveTarget } = usePagination(() => props, {
+  // 越界受控页码回发：父层持有越界 page 时回发一次收敛值，消除「UI 收敛、next 失效」的卡死假象。
+  onPageClamp: (page) => emit('update:page', page),
+})
 
 /** 页码点击：目标页经网关收敛/去重后发出 update:page（受控，组件不改自身状态）。 */
 function goToPage(target: number): void {

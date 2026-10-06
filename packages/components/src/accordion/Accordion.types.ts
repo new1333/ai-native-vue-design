@@ -54,6 +54,8 @@ export interface AccordionProps {
   items: AccordionItem[]
   /** 当前展开值；提供时为受控模式（只 emit 不自行改状态），缺省为非受控。 */
   modelValue?: AccordionModelValue
+  /** 非受控初始展开值（仅初始化读取一次；形态随 multiple：单开为 key，多开为 keys 数组）；受控模式（提供 modelValue）下不生效。 */
+  defaultValue?: AccordionModelValue
   /** 多开模式：允许多个面板同时展开，展开值为 keys 数组；默认单开。 */
   multiple?: boolean
 }
