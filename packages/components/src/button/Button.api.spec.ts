@@ -1,9 +1,8 @@
-// api spec：props 默认值 / emits 声明 / slots 渲染。
+// api spec：props 默认值 / emits 声明 / slots 渲染（ButtonGroup 的用例见 ButtonGroup.*.spec.ts）。
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h } from 'vue'
 import Button from './Button.vue'
-import ButtonGroup from './ButtonGroup.vue'
 import ButtonRoot from './ButtonRoot.vue'
 
 describe('Button api', () => {
@@ -84,31 +83,5 @@ describe('Button api', () => {
     expect(wrapper.attributes('id')).toBe('root-btn')
     expect(wrapper.attributes('aria-label')).toBe('根按钮')
     expect(wrapper.classes()).toEqual([])
-  })
-
-  it('ButtonGroup：渲染组根类，组内 Button 未声明 size 时共享组 size', () => {
-    const wrapper = mount(ButtonGroup, {
-      props: { size: 'sm' },
-      slots: { default: () => [h(Button, { key: 'a' }), h(Button, { key: 'b' })] },
-    })
-    expect(wrapper.classes()).toContain('ui-button-group')
-    const buttons = wrapper.findAll('button.ui-button')
-    expect(buttons).toHaveLength(2)
-    for (const button of buttons) {
-      expect(button.classes()).toContain('ui-button--sm')
-    }
-  })
-
-  it('ButtonGroup：组内 Button 显式 size 覆盖组 size；未声明 size 的回落 md', () => {
-    const grouped = mount(ButtonGroup, {
-      props: { size: 'sm' },
-      slots: { default: () => [h(Button, { key: 'a', size: 'lg' })] },
-    })
-    expect(grouped.find('button.ui-button').classes()).toContain('ui-button--lg')
-
-    const ungrouped = mount(ButtonGroup, {
-      slots: { default: () => [h(Button, { key: 'a' })] },
-    })
-    expect(ungrouped.find('button.ui-button').classes()).toContain('ui-button--md')
   })
 })

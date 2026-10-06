@@ -1,9 +1,7 @@
-// a11y spec：原生语义 / aria 属性 / 键盘 Enter·Space / 焦点路径。
+// a11y spec：原生语义 / aria 属性 / 键盘 Enter·Space / 焦点路径（ButtonGroup 的用例见 ButtonGroup.*.spec.ts）。
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { h } from 'vue'
 import Button from './Button.vue'
-import ButtonGroup from './ButtonGroup.vue'
 import type { ButtonExpose } from './Button.types'
 
 describe('Button a11y', () => {
@@ -94,15 +92,5 @@ describe('Button a11y', () => {
     exposed.blur()
     expect(document.activeElement).not.toBe(wrapper.element)
     wrapper.unmount()
-  })
-
-  it('ButtonGroup：role="group" 提供分组语义', () => {
-    const wrapper = mount(ButtonGroup, {
-      attrs: { 'aria-label': '行操作' },
-      slots: { default: () => [h(Button, { key: 'a' }), h(Button, { key: 'b' })] },
-    })
-    expect(wrapper.attributes('role')).toBe('group')
-    expect(wrapper.attributes('aria-label')).toBe('行操作')
-    expect(wrapper.findAll('button')).toHaveLength(2)
   })
 })

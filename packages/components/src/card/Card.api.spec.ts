@@ -1,4 +1,4 @@
-// api spec：props 默认值 / slots 渲染（Card 与 CardHeader/CardBody/CardFooter 组合）。
+// api spec：props 默认值 / slots 渲染（Card 主体契约；区块组件的专属断言见 CardHeader/CardBody/CardFooter.*.spec.ts）。
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h } from 'vue'
@@ -29,27 +29,6 @@ describe('Card api', () => {
   it('默认插槽渲染到 Card 根内', () => {
     const wrapper = mount(Card, { slots: { default: () => '正文内容' } })
     expect(wrapper.find('.ui-card').text()).toContain('正文内容')
-  })
-
-  it('CardHeader / CardBody / CardFooter：专属区块类与插槽内容渲染', () => {
-    const wrapper = mount(Card, {
-      slots: {
-        default: () => [
-          h(CardHeader, { key: 'h' }, { default: () => '部署概览' }),
-          h(CardBody, { key: 'b' }, { default: () => '最近一次部署于 2 小时前完成。' }),
-          h(CardFooter, { key: 'f' }, { default: () => '更新于 2 小时前' }),
-        ],
-      },
-    })
-    const header = wrapper.find('.ui-card__header')
-    const body = wrapper.find('.ui-card__body')
-    const footer = wrapper.find('.ui-card__footer')
-    expect(header.exists()).toBe(true)
-    expect(body.exists()).toBe(true)
-    expect(footer.exists()).toBe(true)
-    expect(header.text()).toBe('部署概览')
-    expect(body.text()).toBe('最近一次部署于 2 小时前完成。')
-    expect(footer.text()).toBe('更新于 2 小时前')
   })
 
   it('三个区块组件为 Card 根的直接子元素（区块间距依赖的 DOM 关系）', () => {

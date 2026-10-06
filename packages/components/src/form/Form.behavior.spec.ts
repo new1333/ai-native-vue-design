@@ -1,8 +1,7 @@
-// behavior spec：提交校验网关 / Enter 隐式提交路径 / 异步规则 / pending 拦截 / 错误分发与清除（Form + FormField）。
+// behavior spec：提交校验网关 / Enter 隐式提交路径 / 异步规则 / pending 拦截 / 错误分发与清除（FormField 专属用例见 FormField.*.spec.ts）。
 import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
-import type { VueWrapper } from '@vue/test-utils'
 import Form from './Form.vue'
 import FormField from './FormField.vue'
 import { Input } from '../input'
@@ -14,7 +13,6 @@ function mountForm(options: {
   model: Record<string, unknown>
   rules?: FormRules
   pending?: boolean
-  fieldError?: string
 }) {
   const name = 'title'
   const model = ref<Record<string, unknown>>({ ...options.model })
@@ -34,7 +32,7 @@ function mountForm(options: {
             default: (scope: FormSlotScope) => [
               h(
                 FormField,
-                { name, error: options.fieldError },
+                { name },
                 {
                   default: (fieldScope: FormFieldSlotScope) =>
                     h(Input, {
@@ -318,42 +316,5 @@ describe('Form behavior', () => {
     await flushPromises()
     expect(wrapper.find('.form-scope').text()).toBe('true|false|0')
     expect(wrapper.find('.ui-form-field__error').exists()).toBe(false)
-  })
-
-  it('FormField error prop 优先于 Form 注入的校验错误', async () => {
-    const rules: FormRules = { title: [() => '注入的错误'] }
-    const { wrapper } = mountForm({ model: { title: 'x' }, rules, fieldError: '自定义错误' })
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(wrapper.find('.ui-form-field__error').text()).toBe('自定义错误')
-  })
-
-  it('出现错误时 help 让位：帮助文案消失、错误文案出现', async () => {
-    const rules: FormRules = { title: [() => '不能为空'] }
-    const host = defineComponent({
-      setup: () => () =>
-        h(
-          Form,
-          { model: { title: '' }, rules },
-          {
-            default: () => [
-              h(
-                FormField,
-                { name: 'title', help: '填写文档标题' },
-                {
-                  default: (s: FormFieldSlotScope) =>
-                    h(Input, { ...s.controlAttrs, modelValue: '' }),
-                },
-              ),
-            ],
-          },
-        ),
-    })
-    const wrapper: VueWrapper = mount(host)
-    expect(wrapper.find('.ui-form-field__help').text()).toBe('填写文档标题')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(wrapper.find('.ui-form-field__help').exists()).toBe(false)
-    expect(wrapper.find('.ui-form-field__error').text()).toBe('不能为空')
   })
 })
