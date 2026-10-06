@@ -5,13 +5,13 @@
  *   1. anchored 策略（tooltip / popover / hover-card / popconfirm 家族）：
  *      满屏 fixed 层内按锚点 rect 的视口坐标四向定位（top / bottom / left /
  *      right），间距在 calc 内引用 gap token，居中/贴边用结构性 translate
- *      百分比，无需测量浮层自身尺寸；可选滚动（capture）/ resize 跟随重排
- *      （popover 家族跟随，tooltip 不跟随）；
+ *      百分比，无需测量浮层自身尺寸；滚动（capture）/ resize 跟随重排
+ *      （本族组件均启用）；
  *   2. dropdown 策略（select / autocomplete / cascader / tree-select /
  *      date-picker / model-selector 家族）：弹层 Teleport 到 body 下绝对定位，
  *      包含块是初始包含块（文档原点），须按 window.scrollX/scrollY 把锚点
- *      rect 视口坐标换算为文档坐标；打开期间弹层与文档同滚，无需滚动监听跟随；
- *      minWidth 对齐锚点宽度；
+ *      rect 视口坐标换算为文档坐标；文档滚动天然跟随，滚动容器内脱锚与
+ *      resize 重排由 followViewport 兜底；minWidth 对齐锚点宽度；
  *   3. 关闭信号：closeOnOutsideClick 时在 document（capture）监听点击，目标
  *      落在 insideElements 任一元素内则放行，否则 onRequestClose('outside')；
  *      onKeydown 在打开状态收到 Esc 时 preventDefault 并
@@ -60,7 +60,7 @@ export interface UseFloatingLayerOptions {
   placement?: () => FloatingPlacement
   /** anchored 策略与锚点的间距（token 字符串，calc 内引用；默认 --ui-space-2）。 */
   gap?: string
-  /** 滚动（capture）/ resize 跟随重排（popover 家族 true；tooltip 与 dropdown 家族不跟随）。 */
+  /** 滚动（capture）/ resize 跟随重排（anchored 家族恒启用；dropdown 家族用于滚动容器脱锚与 resize 兜底）。 */
   followViewport?: boolean
   /** 点击外部关闭：document（capture）监听点击。 */
   closeOnOutsideClick?: boolean

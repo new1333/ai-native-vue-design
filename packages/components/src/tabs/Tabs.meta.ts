@@ -64,7 +64,7 @@ export const meta: ComponentDefinition = {
     default: 'line 档：trigger 透明底 text-2 文字 regular 字重，列表底部 1px 基线（--ui-border）。',
     hover: '非 disabled trigger 文字转 text-1（150ms token 动效）；下划线指示不变。',
     focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline。',
-    active: '激活 trigger：text-1 文字 + medium 字重提升 + 2px accent 下划线指示（inset 阴影实现，无布局位移），面板切换 180ms 内完成。',
+    active: '激活 trigger：text-1 文字 + medium 字重提升 + accent 下划线指示（厚度 --ui-indicator-thickness，inset 阴影实现，无布局位移），面板切换 180ms 内完成。',
     disabled: 'text-3 文字 + not-allowed 光标 + 原生 disabled（移出 Tab 序）；键盘导航跳过。',
   },
   accessibility:
@@ -74,7 +74,7 @@ export const meta: ComponentDefinition = {
   performance:
     '仅激活面板渲染（v-if，天然懒加载/卸载）；无监听器、无测量、无定时器；状态为 computed 派生，trigger 注册表为数组快照更新。下划线指示用 inset box-shadow，无布局位移。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：颜色走 semantic 层（--ui-text-*/--ui-border/--ui-accent）、间距 --ui-space-*、字号 --ui-text-md、字重 --ui-font-weight-*、动效 --ui-motion-*/--ui-ease-out。无全局 CSS 引入。基线 1px 与指示条 2px 为结构性细线（无 --ui-border-width token，需求已提出）。',
+    '视觉只消费 --ui-* token（paper.css）：颜色走 semantic 层（--ui-text-*/--ui-border/--ui-accent）、间距 --ui-space-*、字号 --ui-text-md、字重 --ui-font-weight-*、动效 --ui-motion-*/--ui-ease-out、下划线指示条厚度 --ui-indicator-thickness。无全局 CSS 引入。列表底部基线 1px 为结构性细线（无 --ui-border-width token，需求已提出）。',
   examples: [
     "<Tabs v-model:value=\"active\">\n  <TabsList>\n    <TabsTrigger value=\"draft\">草稿</TabsTrigger>\n    <TabsTrigger value=\"published\">已发布</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"draft\">草稿列表…</TabsContent>\n  <TabsContent value=\"published\">已发布列表…</TabsContent>\n</Tabs>",
     "<Tabs :default-value=\"'all'\">\n  <TabsList aria-label=\"收件箱筛选\">\n    <TabsTrigger value=\"all\">全部</TabsTrigger>\n    <TabsTrigger value=\"unread\" :disabled=\"unread === 0\">未读</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"all\">…</TabsContent>\n  <TabsContent value=\"unread\">…</TabsContent>\n</Tabs>",

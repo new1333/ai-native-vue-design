@@ -21,6 +21,12 @@ export interface PopconfirmProps {
   danger?: boolean
   /** 气泡方向，默认 'top'；打开期间切换会按新方向重排（不做视口碰撞翻转）。 */
   placement?: PopconfirmPlacement
+  /**
+   * 确认进行中：确认按钮渲染旋转指示（currentColor）并挂 aria-busy="true"，取消按钮
+   * 挂 aria-disabled="true"，确认/取消点击被拦截（不发 confirm/cancel、不关闭气泡）；
+   * 由使用方在异步完成后置回 false 或关闭气泡。
+   */
+  loading?: boolean
 }
 
 /** Popconfirm 的 Emits（Vue 3.3+ 元组语法：事件名 → 载荷元组）。 */

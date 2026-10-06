@@ -169,6 +169,21 @@ describe('Popconfirm api', () => {
     expect(wrapper.emitted('cancel')?.[0]).toEqual([])
   })
 
+  it('loading 默认 false：确认按钮无旋转指示', async () => {
+    const wrapper = mountPopconfirm({ props: { title: '确认删除？' } })
+    await open(wrapper)
+    expect(card()?.querySelector('.ui-popconfirm__btn-spinner')).toBeNull()
+  })
+
+  it('loading=true：确认按钮渲染旋转指示（内联 svg）且不影响文案', async () => {
+    const wrapper = mountPopconfirm({ props: { title: '确认删除？', loading: true } })
+    await open(wrapper)
+    expect(card()?.querySelector('.ui-popconfirm__btn-spinner svg')).not.toBeNull()
+    expect(card()?.querySelector('.ui-popconfirm__btn--confirm')?.textContent?.trim()).toBe(
+      POPCONFIRM_CONFIRM_TEXT_DEFAULT,
+    )
+  })
+
   it('title 与 description 都未提供：点击不弹层', async () => {
     const wrapper = mountPopconfirm()
     await wrapper.find('button.custom-trigger').trigger('click')

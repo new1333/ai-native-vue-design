@@ -152,6 +152,44 @@ describe('Popconfirm a11y', () => {
     expect(card()?.querySelector('.ui-popconfirm__icon svg')?.getAttribute('aria-hidden')).toBe('true')
   })
 
+  it('loading=true：确认按钮挂 aria-busy="true"（Button 家族 loading 语义）、取消按钮挂 aria-disabled', async () => {
+    const wrapper = mountPopconfirm({ title: '确认删除？', loading: true })
+    await open(wrapper)
+    const confirm = card()?.querySelector<HTMLElement>(
+      '.ui-popconfirm__btn--confirm, .ui-popconfirm__btn--danger',
+    )
+    expect(confirm?.getAttribute('aria-busy')).toBe('true')
+    expect(cancelBtn()?.getAttribute('aria-disabled')).toBe('true')
+    // 旋转指示对读屏隐藏（装饰化）
+    expect(card()?.querySelector('.ui-popconfirm__btn-spinner svg')?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('loading=false：确认按钮不挂 aria-busy、取消按钮不挂 aria-disabled（用原生可用语义）', async () => {
+    const wrapper = mountPopconfirm({ title: '确认删除？' })
+    await open(wrapper)
+    const confirm = card()?.querySelector<HTMLElement>(
+      '.ui-popconfirm__btn--confirm, .ui-popconfirm__btn--danger',
+    )
+    expect(confirm?.hasAttribute('aria-busy')).toBe(false)
+    expect(cancelBtn()?.hasAttribute('aria-disabled')).toBe(false)
+  })
+
+  it('键盘路径：loading 期间聚焦确认按钮按 Enter——不发出 confirm、气泡不关闭，且焦点保持在确认按钮（拦截不夺焦点）', async () => {
+    const wrapper = mountPopconfirm({ title: '确认删除？', loading: true })
+    await open(wrapper)
+    // Tab 序：初始焦点（取消）→ Tab 即达确认；此处直接聚焦等价模拟
+    const confirm = card()?.querySelector<HTMLElement>(
+      '.ui-popconfirm__btn--confirm, .ui-popconfirm__btn--danger',
+    )
+    confirm?.focus()
+    expect(document.activeElement).toBe(confirm)
+    await new DOMWrapper(confirm as HTMLElement).trigger('keydown', { key: 'Enter' })
+    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(card()).not.toBeNull()
+    // 拦截用 aria 而非原生 disabled：焦点不被告知丢失，等待结束可继续操作
+    expect(document.activeElement).toBe(confirm)
+  })
+
   it('监听器链式合并：触发元素已有的 keydown 处理器与组件的 Esc 关闭共存', async () => {
     const seen: string[] = []
     const Host = defineComponent({

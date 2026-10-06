@@ -1,6 +1,7 @@
-// behavior spec：select 上抛 / disabled / loading / items 响应式 / 多 chip 独立。
+// behavior spec：select 上抛 / disabled / loading / items 响应式 / 多 chip 独立 / 空态。
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { h } from 'vue'
 import Suggestion from './Suggestion.vue'
 import type { SuggestionItem } from './Suggestion.types'
 
@@ -92,5 +93,38 @@ describe('Suggestion behavior', () => {
     await wrapper.setProps({ items: next })
     await wrapper.findAll('button.ui-suggestion__item')[0].trigger('click')
     expect(wrapper.emitted('select')?.[0]?.[0]).toEqual(next[0])
+  })
+
+  it('空态（默认文案）：items 为空时渲染「暂无建议」弱提示，无 chips、无空列表占位', () => {
+    const wrapper = mount(Suggestion, { props: { items: [] } })
+    const empty = wrapper.find('.ui-suggestion__empty')
+    expect(empty.exists()).toBe(true)
+    expect(empty.text()).toBe('暂无建议')
+    expect(wrapper.findAll('button.ui-suggestion__item')).toHaveLength(0)
+    expect(wrapper.find('.ui-suggestion__list').exists()).toBe(false)
+    expect(wrapper.attributes('role')).toBe('group')
+  })
+
+  it('空态（#empty 插槽优先）：提供插槽时渲染插槽内容，默认文案不再出现', () => {
+    const wrapper = mount(Suggestion, {
+      props: { items: [] },
+      slots: { empty: () => h('span', '正在生成建议…') },
+    })
+    const empty = wrapper.find('.ui-suggestion__empty')
+    expect(empty.exists()).toBe(true)
+    expect(empty.text()).toBe('正在生成建议…')
+    expect(empty.text()).not.toContain('暂无建议')
+  })
+
+  it('空态响应式：items 由空到有再到空，空态与 chips 列表随数据切换', async () => {
+    const wrapper = mount(Suggestion, { props: { items: [] } })
+    expect(wrapper.find('.ui-suggestion__empty').exists()).toBe(true)
+    await wrapper.setProps({ items: ITEMS })
+    expect(wrapper.find('.ui-suggestion__empty').exists()).toBe(false)
+    const chips = wrapper.findAll('button.ui-suggestion__item')
+    expect(chips).toHaveLength(ITEMS.length)
+    await wrapper.setProps({ items: [] })
+    expect(wrapper.find('.ui-suggestion__empty').exists()).toBe(true)
+    expect(wrapper.findAll('button.ui-suggestion__item')).toHaveLength(0)
   })
 })

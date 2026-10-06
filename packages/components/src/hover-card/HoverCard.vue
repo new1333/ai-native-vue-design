@@ -280,9 +280,9 @@ function renderTrigger(): VNode | null {
   font-size: var(--ui-text-md);
   line-height: var(--ui-leading-body);
   color: var(--ui-text-1);
-  /* 层级与 popover/dropdown-menu 同层（锚定卡片）；低于 tooltip（500），
-     使卡片内元素挂载的 tooltip 仍可覆盖卡片 */
-  z-index: var(--ui-z-dropdown);
+  /* 层级走 body 级非模态弹层档 --ui-z-popover（高于 drawer/modal、低于 toast），
+     且低于 tooltip（500），使卡片内元素挂载的 tooltip 仍可覆盖卡片 */
+  z-index: var(--ui-z-popover);
   animation: ui-hover-card-in var(--ui-motion-fast) var(--ui-ease-out);
 }
 

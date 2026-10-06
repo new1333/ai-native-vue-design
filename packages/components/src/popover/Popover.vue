@@ -291,10 +291,11 @@ function renderTrigger(): VNode | null {
 }
 
 /* ── 浮层层根：满屏 fixed（卡片在其内以视口坐标绝对定位），自身不拦截指针 ── */
+/* 层级走 body 级非模态弹层档 --ui-z-popover（高于 drawer/modal，低于 toast） */
 .ui-popover__layer {
   position: fixed;
   inset: 0;
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   pointer-events: none;
 }
 

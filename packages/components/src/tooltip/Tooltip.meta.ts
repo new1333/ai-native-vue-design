@@ -6,14 +6,14 @@ import type { ComponentDefinition } from '../shared/meta'
 
 export const meta: ComponentDefinition = {
   id: 'ui-tooltip',
-  version: '0.1.0',
+  version: '0.2.0',
   identity: {
     name: 'Tooltip',
     package: '@ui/components',
     export: 'Tooltip',
     category: 'overlay',
     description:
-      '纸面纯提示浮层：包裹单个触发元素（默认插槽、无包装 DOM），hover/focus 进入 150ms 后显示、离开/失焦/Esc 立即隐藏；浮层 Teleport 至 body，role="tooltip" 经 aria-describedby 与触发元素关联，挂载后按触发元素 rect 定位（top/bottom/left/right）。',
+      '纸面纯提示浮层：包裹单个触发元素（默认插槽、无包装 DOM），hover/focus 进入 150ms 后显示、离开/失焦/Esc 立即隐藏；浮层 Teleport 至 body，role="tooltip" 经 aria-describedby 与触发元素关联，挂载后按触发元素 rect 定位（top/bottom/left/right），打开期间滚动/resize 跟随重排（不滞留原视口位置）。',
   },
   intent: {
     what: '在触发元素附近悬浮显示一段简短的纯文字补充说明（术语解释、快捷键、截断文本的完整内容），不承载任何交互。',
@@ -68,9 +68,9 @@ export const meta: ComponentDefinition = {
   accessibility:
     '浮层 role="tooltip" 且 id 由 useId 生成；打开时触发元素挂 aria-describedby 指向浮层 id（关闭时移除，读屏以 describedby 关系朗读提示）。键盘可达：Tab 聚焦触发元素（focusin）即显示、失焦（focusout）即隐藏、Esc 立即关闭；触发元素不添加 tabindex、不自造交互语义。浮层自身不可聚焦（无 tabindex）、pointer-events:none，不进入 Tab 序也不抢夺焦点——这是与 DropdownMenu（菜单项可漫游、焦点停留）的本质边界。',
   ssr:
-    'SSR-safe：setup 与模块顶层不访问浏览器 API；renderToString 输出触发元素 + hidden 的 ui-tooltip 占位（输出稳定、含根类），不渲染浮层与提示内容、不输出 aria-describedby；Teleport、rect 测量与延迟计时全部推迟到客户端 onMounted 之后；卸载时清理待显示计时器。',
+    'SSR-safe：setup 与模块顶层不访问任何浏览器 API；renderToString 输出触发元素 + hidden 的 ui-tooltip 占位（输出稳定、含根类），不渲染浮层与提示内容、不输出 aria-describedby；Teleport、rect 测量、延迟计时与 document/window 监听全部推迟到客户端 onMounted 之后；卸载时移除监听并清理待显示计时器。',
   performance:
-    '无持续监听：不监听 resize/scroll（打开期间视口变化不自动重排，重新触发即重算）；仅在显示路径创建一个 150ms 计时器，隐藏/卸载立即清理；定位为单段测量（rect + 结构性 translate 居中），无需测量浮层自身尺寸。入场动效为 token 时长的 opacity 动画，prefers-reduced-motion 下随 --ui-motion-fast 归零。',
+    '打开期间常驻 document scroll（capture，捕获任意祖先滚动容器）与 window resize 两个监听（isOpen 守卫短路，onMounted 注册、onBeforeUnmount 移除）以跟随重排；关闭态监听仍在但回调短路。仅在显示路径创建一个 150ms 计时器，隐藏/卸载立即清理；定位为单段测量（rect + 结构性 translate 居中），无需测量浮层自身尺寸。入场动效为 token 时长的 opacity 动画，prefers-reduced-motion 下随 --ui-motion-fast 归零。',
   styling:
     '视觉只消费 --ui-* token（paper.css）：z-index 走 --ui-z-tooltip、背景 --ui-tooltip、文字 --ui-color-white、字号 --ui-text-xs（最小档）、圆角 --ui-radius-sm、阴影 --ui-shadow-pop、间距/最大宽度（间距标尺推导）/动效全 token 化；浮层定位的视口坐标来自触发元素 rect 测量数据，与触发元素的间距在 calc 内引用 --ui-space-2。组件包不引入全局 CSS。',
   examples: [
@@ -90,7 +90,7 @@ export const meta: ComponentDefinition = {
       '默认插槽必须是恰一个触发元素；组件通过 cloneVNode 向其合并事件与 aria-describedby，不产生包装 DOM',
       '写在 <Tooltip> 上的 attrs（class/data-*）会透传到触发元素；触发元素已有的事件监听器与组件内部监听器链式共存',
       '显示延迟 150ms、隐藏立即（含 Esc）；无 content 插槽时不弹层',
-      'placement 只做四方向定位，不做视口碰撞翻转；需要翻转/跟随滚动请在上层方案解决',
+      'placement 只做四方向定位，不做视口碰撞翻转；滚动/resize 已内置跟随重排（打开期间保持锚定触发元素），需要翻转请在上层方案解决',
       '无自定义事件与 expose：显隐是内部状态，交互契约走 aria-describedby 与 DOM',
     ],
   },

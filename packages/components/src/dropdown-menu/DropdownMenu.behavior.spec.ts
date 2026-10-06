@@ -1,4 +1,4 @@
-// behavior spec：开合（点击触发元素）、选中、外点关闭（document click capture）、定位写入等交互行为。
+// behavior spec：开合（点击触发元素）、选中、外点关闭（document click capture）、定位写入、空态等交互行为。
 import { afterEach, describe, expect, it } from 'vitest'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
@@ -152,6 +152,47 @@ describe('DropdownMenu behavior', () => {
     expect(items).toHaveLength(1)
     expect(items[0].tabIndex).toBe(-1)
     expect(items[0].getAttribute('aria-disabled')).toBeNull() // 使用原生 disabled，不叠加 aria-disabled
+  })
+
+  it('空态（默认文案）：items 为空打开后渲染「暂无选项」，无 menuitem、不抢焦点', async () => {
+    const wrapper = mountMenu({ items: [] })
+    triggerEl(wrapper).element.focus()
+    await openMenu(wrapper)
+    const panel = panelEl()
+    expect(panel).not.toBeNull()
+    const empty = panel?.querySelector<HTMLElement>('.ui-dropdown-menu__empty')
+    expect(empty?.textContent).toBe('暂无选项')
+    expect(panel?.querySelectorAll('.ui-dropdown-menu__item')).toHaveLength(0)
+    // 无可聚焦项：打开后焦点仍留在触发器（不因空面板而移焦/丢焦）
+    expect(document.activeElement).toBe(triggerEl(wrapper).element)
+  })
+
+  it('空态（#empty 插槽优先）：提供插槽时渲染插槽内容，默认文案不再出现', async () => {
+    const wrapper = mount(DropdownMenu, {
+      props: { items: [] },
+      slots: {
+        default: () => h('button', { type: 'button', class: 'custom-trigger' }, '操作'),
+        empty: () => h('span', '该对象暂无可用操作'),
+      },
+      attachTo: document.body,
+    })
+    wrappers.push(wrapper)
+    await triggerEl(wrapper).trigger('click')
+    await nextTick()
+    await nextTick()
+    const empty = panelEl()?.querySelector<HTMLElement>('.ui-dropdown-menu__empty')
+    expect(empty?.textContent).toBe('该对象暂无可用操作')
+    expect(empty?.textContent).not.toContain('暂无选项')
+  })
+
+  it('空态不破坏开合路径：Esc 关闭空面板并还原焦点到触发器', async () => {
+    const wrapper = mountMenu({ items: [] })
+    await openMenu(wrapper)
+    expect(panelEl()).not.toBeNull()
+    await triggerEl(wrapper).trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(panelEl()).toBeNull()
+    expect(document.activeElement).toBe(triggerEl(wrapper).element)
   })
 
   it('打开状态下卸载：全局监听被移除（后续外点不再引用已卸载实例，不抛错）', async () => {

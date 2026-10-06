@@ -101,16 +101,22 @@ const motion = {
   easeOut: token('--ui-ease-out', 'cubic-bezier(0.16, 1, 0.3, 1)'),
 }
 
-/** 层级阶梯：sticky 10 / dropdown 100 / drawer 200 / modal 300 / toast 400 / tooltip 500。 */
+/** 层级阶梯：sticky 10 / dropdown 100 / drawer 200 / modal 300 / popover 350 / toast 400 / tooltip 500。 */
 const zIndex = {
   sticky: token('--ui-z-sticky', '10'),
   dropdown: token('--ui-z-dropdown', '100'),
   drawer: token('--ui-z-drawer', '200'),
   modal: token('--ui-z-modal', '300'),
+  popover: token('--ui-z-popover', '350'),
   toast: token('--ui-z-toast', '400'),
   tooltip: token('--ui-z-tooltip', '500'),
 }
 
-export const primitive = { color, space, radius, font, shadow, motion, zIndex } as const
+/** 指示条厚度（tabs 下划线指示条等线性指示元素）：2px。 */
+const indicator = {
+  thickness: token('--ui-indicator-thickness', '2px'),
+}
+
+export const primitive = { color, space, radius, font, shadow, motion, zIndex, indicator } as const
 
 export type Primitive = typeof primitive

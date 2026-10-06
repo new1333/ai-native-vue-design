@@ -44,4 +44,6 @@ export interface SuggestionSlots {
   default?: () => VNode[]
   /** 单个 chip 内容：按条目作用域定制；缺省渲染 item.label。 */
   item?: (scope: SuggestionItemScope) => VNode[]
+  /** items 为空时的空态内容；缺省渲染默认空态文案（暂无建议）。 */
+  empty?: () => VNode[]
 }

@@ -1,7 +1,7 @@
 // a11y spec：role / aria-describedby 关联 / 键盘序列（focus 显示、失焦与 Esc 关闭）。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import Tooltip from './Tooltip.vue'
 import { TOOLTIP_SHOW_DELAY_MS } from './Tooltip.constants'
 
@@ -99,6 +99,16 @@ describe('Tooltip a11y', () => {
     await vi.advanceTimersByTimeAsync(TOOLTIP_SHOW_DELAY_MS)
     await triggerEl(wrapper).trigger('keydown', { key: 'Escape' })
     expect(floating()).toBeNull()
+  })
+
+  it('打开期间滚动：浮层保持显示且 aria-describedby 关联保持（跟随重排而非隐藏，提示不中断）', async () => {
+    const wrapper = mountTooltip()
+    await triggerEl(wrapper).trigger('focusin')
+    await vi.advanceTimersByTimeAsync(TOOLTIP_SHOW_DELAY_MS)
+    document.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    expect(floating()).not.toBeNull()
+    expect(triggerEl(wrapper).attributes('aria-describedby')).toBe(floating()?.id)
   })
 
   it('监听器链式合并：触发元素已有的 keydown 处理器与组件的 Esc 关闭共存', async () => {

@@ -111,15 +111,15 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 /* ── line 档：下划线指示 accent、选中字重提升 ─────────────── */
-/* 指示条厚度 2px 为结构性细线（无 --ui-border-width token，需求已在结果中提出） */
+/* 指示条厚度走 --ui-indicator-thickness token（paper.css）；负号在 calc 内取反 */
 .ui-tabs-trigger--line {
-  box-shadow: inset 0 -2px 0 0 transparent;
+  box-shadow: inset 0 calc(var(--ui-indicator-thickness) * -1) 0 0 transparent;
 }
 
 .ui-tabs-trigger--line.ui-tabs-trigger--active {
   color: var(--ui-text-1);
   font-weight: var(--ui-font-weight-medium);
-  box-shadow: inset 0 -2px 0 0 var(--ui-accent);
+  box-shadow: inset 0 calc(var(--ui-indicator-thickness) * -1) 0 0 var(--ui-accent);
 }
 
 /* pill 档：预留（本期仅实现 line；传入 pill 不产生下划线指示） */

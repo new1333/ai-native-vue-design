@@ -1,8 +1,9 @@
 /**
  * useTooltip —— Tooltip 的浮层交互 composable：显示延迟/立即隐藏的状态机。
  * 方向定位（anchored 四向 + token 间距 + 结构性 translate）与 Esc 关闭收口于
- * shared 浮层引擎 useFloatingLayer（anchored 策略）；纯提示浮层不跟随滚动/resize
- * （不启用 followViewport），Esc 映射为 hideNow（立即隐藏）。
+ * shared 浮层引擎 useFloatingLayer（anchored 策略）；打开期间滚动（capture 捕获
+ * 任意祖先滚动容器）/resize 跟随重排（启用 followViewport，策略同 popover 家族），
+ * 页面滚动后浮层不再滞留原视口位置；Esc 映射为 hideNow（立即隐藏）。
  *
  * SSR 安全：模块/setup 顶层不访问任何浏览器 API；setTimeout 只出现在由客户端
  * 生命周期与用户事件触发的函数内部（引擎侧监听只在 onMounted 注册）。
@@ -67,13 +68,16 @@ export function useTooltip(options: UseTooltipOptions): UseTooltipReturn {
   }
 
   // 定位与 Esc 关闭收口于 shared 浮层引擎：anchored 策略（GAP 走 --ui-space-2 token，
-  // calc 内引用）；纯提示浮层不跟随滚动/resize；Esc（打开时）→ hideNow 立即隐藏。
+  // calc 内引用）；打开期间滚动（capture）/resize 跟随重排（followViewport，修复
+  // 「滚动后浮层滞留原视口位置」缺陷——纯提示浮层同样锚定触发元素）；Esc（打开时）→
+  // hideNow 立即隐藏。
   const layer = useFloatingLayer({
     isOpen: () => isOpen.value,
     anchor: options.trigger,
     strategy: 'anchored',
     placement: options.placement,
     gap: TOOLTIP_GAP,
+    followViewport: true,
     onRequestClose: () => hideNow(),
   })
 

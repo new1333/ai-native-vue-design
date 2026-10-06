@@ -18,7 +18,11 @@
  */
 import { cloneVNode, onMounted, ref, useAttrs, useId, useSlots } from 'vue'
 import type { ComponentPublicInstance, VNode } from 'vue'
-import { DROPDOWN_MENU_ALIGN_DEFAULT, DROPDOWN_MENU_HASPOPUP } from './DropdownMenu.constants'
+import {
+  DROPDOWN_MENU_ALIGN_DEFAULT,
+  DROPDOWN_MENU_EMPTY_TEXT_DEFAULT,
+  DROPDOWN_MENU_HASPOPUP,
+} from './DropdownMenu.constants'
 import { useDropdownMenu } from './useDropdownMenu'
 import type {
   DropdownMenuEmits,
@@ -202,6 +206,9 @@ defineExpose<DropdownMenuExpose>({ focus, blur })
             </span>
             <span class="ui-dropdown-menu__item-label">{{ item.label }}</span>
           </button>
+          <div v-if="items.length === 0" class="ui-dropdown-menu__empty">
+            <slot name="empty">{{ DROPDOWN_MENU_EMPTY_TEXT_DEFAULT }}</slot>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -246,10 +253,11 @@ defineExpose<DropdownMenuExpose>({ focus, blur })
   border-color: var(--ui-border-strong);
 }
 
-/* ── 浮层锚盒：fixed 钉在触发器 rect（inline 定位由 useDropdownMenu 写入） ── */
+/* ── 浮层锚盒：fixed 钉在触发器 rect（inline 定位由 useDropdownMenu 写入）；
+   层级走 body 级非模态弹层档 --ui-z-popover（高于 drawer/modal，低于 toast） ── */
 .ui-dropdown-menu__flyout {
   position: fixed;
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
 }
 
 /* ── 面板：surface 底 + sm 圆角 + pop 阴影，锚盒下方弹出（观感对齐 select/ 弹层） ── */
@@ -336,6 +344,15 @@ defineExpose<DropdownMenuExpose>({ focus, blur })
 .ui-dropdown-menu__item-icon :deep(svg) {
   width: 16px;
   height: 16px;
+}
+
+/* ── 空态：items 为空时的弱提示（观感对齐 select/ 家族空态先例） ── */
+.ui-dropdown-menu__empty {
+  padding: var(--ui-space-3);
+  color: var(--ui-text-3);
+  font-size: var(--ui-text-sm);
+  line-height: var(--ui-leading-small);
+  text-align: center;
 }
 
 /* ── 入场动效：时长/缓动走 token（reduced-motion 下时长归零即静止） ── */

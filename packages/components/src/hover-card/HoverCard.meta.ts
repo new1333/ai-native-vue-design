@@ -120,7 +120,7 @@ export const meta: ComponentDefinition = {
   performance:
     '常驻监听只有 scroll（capture）与 resize，回调以 isOpen 守卫、仅在打开时重算 rect；待开启/待关闭计时互斥（同一时刻至多一个），props 变更即时生效于下一次开合；定位为单段测量（触发元素 rect + 结构性 translate），无需测量卡片自身尺寸。入场动效为 token 时长的 opacity 动画，prefers-reduced-motion 下随 --ui-motion-fast 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：层级走 --ui-z-dropdown（锚定卡片层，低于 tooltip 层使卡片内 tooltip 仍可覆盖）、卡片底 --ui-surface、描边 --ui-border、文字 --ui-text-1、圆角 --ui-radius-md、阴影 --ui-shadow-pop、内边距 --ui-space-4、最大宽度由间距标尺推导；浮层视口坐标来自触发元素 rect 测量，与触发元素的间距在 calc 内引用 --ui-space-2。卡片 1px 描边为结构性细线（无 --ui-border-width token，已在任务结果中提出需求）。组件包不引入全局 CSS。',
+    '视觉只消费 --ui-* token（paper.css）：层级走 --ui-z-popover（body 级非模态弹层档/锚定卡片层，高于 drawer/modal、低于 tooltip 层使卡片内 tooltip 仍可覆盖）、卡片底 --ui-surface、描边 --ui-border、文字 --ui-text-1、圆角 --ui-radius-md、阴影 --ui-shadow-pop、内边距 --ui-space-4、最大宽度由间距标尺推导；浮层视口坐标来自触发元素 rect 测量，与触发元素的间距在 calc 内引用 --ui-space-2。卡片 1px 描边为结构性细线（无 --ui-border-width token，已在任务结果中提出需求）。组件包不引入全局 CSS。',
   examples: [
     "<HoverCard placement='bottom'>\n  <template #trigger>\n    <button type='button' class='mention'>@林晚晴</button>\n  </template>\n  <Avatar name='林晚晴' alt='林晚晴的头像' />\n  <p>产品设计师 · 关注纸面设计系统</p>\n</HoverCard>",
     "<HoverCard v-model='open' :open-delay='200' :close-delay='300'>\n  <template #trigger><a href='/items/42'>设计规范 v2</a></template>\n  <p>更新于 3 天前 · 12 个章节</p>\n</HoverCard>",

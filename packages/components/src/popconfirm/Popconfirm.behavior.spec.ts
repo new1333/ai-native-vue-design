@@ -224,6 +224,26 @@ describe('Popconfirm behavior', () => {
     expect(card()?.style.top).toBe('calc(148px - var(--ui-space-2))')
   })
 
+  it('loading=true：确认/取消点击被拦截（不发事件、不关闭）；loading 解除后恢复', async () => {
+    const wrapper = mountPopconfirm({ title: '确认删除？', loading: true })
+    await open(wrapper)
+    confirmBtn()?.click()
+    await nextTick()
+    cancelBtn()?.click()
+    await nextTick()
+    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(wrapper.emitted('cancel')).toBeUndefined()
+    expect(card()).not.toBeNull()
+    // loading 解除：确认路径恢复（发出事件并关闭、焦点回归触发元素）
+    await wrapper.setProps({ loading: false })
+    await nextTick()
+    confirmBtn()?.click()
+    await nextTick()
+    expect(wrapper.emitted('confirm')).toHaveLength(1)
+    expect(card()).toBeNull()
+    expect(document.activeElement).toBe(triggerEl(wrapper).element)
+  })
+
   it('打开状态下卸载：document/window 监听被移除（后续事件不引用已卸载实例，不抛错）', async () => {
     const wrapper = mountPopconfirm({ title: '确认删除？' })
     await open(wrapper)

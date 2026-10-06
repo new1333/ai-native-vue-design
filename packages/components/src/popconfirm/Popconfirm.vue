@@ -4,8 +4,10 @@
  * 锚定于触发元素（trigger 插槽，无包装 DOM）。
  *
  * - 开合：点击触发元素开合（非受控，显隐内部管理）；title 与 description 均为空
- *   时不弹层。确认/取消按钮点击先 emit confirm/cancel 再关闭；Esc（触发元素或
- *   气泡内）、再次点击触发元素、点击气泡之外区域同样关闭（不发事件）。
+ *   时不弹层。确认/取消按钮点击先 emit confirm/cancel 再关闭；loading=true（确认
+ *   进行中）时确认按钮渲染旋转指示并挂 aria-busy，确认/取消点击均被拦截（防重复
+ *   提交，异步完成后由使用方置回 false）；Esc（触发元素或气泡内）、再次点击触发
+ *   元素、点击气泡之外区域同样关闭（不发事件）。
  * - 触发元素经 cloneVNode 克隆合并 id、aria-expanded、aria-controls 与事件监听
  *   （策略同 popover/）；插槽为文本/多根/空时回退内建原生 button 触发器。
  * - 气泡 Teleport 至 body：role="dialog"（非模态、不设 aria-modal），aria-labelledby
@@ -38,6 +40,7 @@ const props = withDefaults(defineProps<PopconfirmProps>(), {
   cancelText: POPCONFIRM_CANCEL_TEXT_DEFAULT,
   danger: false,
   placement: POPCONFIRM_PLACEMENT_DEFAULT,
+  loading: false,
 })
 const emit = defineEmits<PopconfirmEmits>()
 defineSlots<PopconfirmSlots>()
@@ -71,14 +74,16 @@ const { isOpen, floatingStyle, toggle, close, onTriggerKeydown, onCardKeydown } 
   hasContent: () => Boolean(props.title || props.description),
 })
 
-/** 确认：先发出事件，随后关闭气泡并焦点回归触发元素。 */
+/** 确认：先发出事件，随后关闭气泡并焦点回归触发元素；loading 期间拦截（防重复提交）。 */
 function onConfirm(): void {
+  if (props.loading) return
   emit('confirm')
   close(true)
 }
 
-/** 取消：先发出事件，随后关闭气泡并焦点回归触发元素。 */
+/** 取消：先发出事件，随后关闭气泡并焦点回归触发元素；loading 期间拦截（确认未完成前不可撤出）。 */
 function onCancel(): void {
+  if (props.loading) return
   emit('cancel')
   close(true)
 }
@@ -220,6 +225,7 @@ function renderTrigger(): VNode | null {
             ref="cancelRef"
             type="button"
             class="ui-popconfirm__btn ui-popconfirm__btn--cancel"
+            :aria-disabled="loading ? 'true' : undefined"
             @click="onCancel"
           >
             {{ cancelText }}
@@ -228,8 +234,31 @@ function renderTrigger(): VNode | null {
             type="button"
             class="ui-popconfirm__btn"
             :class="danger ? 'ui-popconfirm__btn--danger' : 'ui-popconfirm__btn--confirm'"
+            :aria-busy="loading ? 'true' : undefined"
             @click="onConfirm"
           >
+            <span v-if="loading" class="ui-popconfirm__btn-spinner">
+              <svg
+                class="ui-popconfirm__btn-spinner-svg"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                  stroke-linecap="round"
+                  stroke-dasharray="38"
+                  stroke-dashoffset="12"
+                />
+              </svg>
+            </span>
             {{ confirmText }}
           </button>
         </div>
@@ -276,10 +305,11 @@ function renderTrigger(): VNode | null {
   border-color: var(--ui-border-strong);
 }
 
-/* ── 气泡：surface 底 + md 圆角 + pop 阴影，fixed 定位（坐标来自触发元素 rect） ── */
+/* ── 气泡：surface 底 + md 圆角 + pop 阴影，fixed 定位（坐标来自触发元素 rect）；
+   层级走 body 级非模态弹层档 --ui-z-popover（高于 drawer/modal，低于 toast） ── */
 .ui-popconfirm__card {
   position: fixed;
-  z-index: var(--ui-z-dropdown);
+  z-index: var(--ui-z-popover);
   box-sizing: border-box;
   max-width: calc(var(--ui-space-8) * 6); /* ≈384px；宽度走间距标尺推导（无气泡宽度 token） */
   padding: var(--ui-space-4);
@@ -357,6 +387,7 @@ function renderTrigger(): VNode | null {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  gap: var(--ui-space-1);
   /* 描边宽度 1px 为结构性细线（无 --ui-border-width token，已在任务结果中提出需求） */
   border-width: 1px;
   border-style: solid;
@@ -373,6 +404,27 @@ function renderTrigger(): VNode | null {
     background-color var(--ui-motion-default) var(--ui-ease-out),
     border-color var(--ui-motion-default) var(--ui-ease-out),
     color var(--ui-motion-default) var(--ui-ease-out);
+}
+
+/* ── 确认 loading：旋转指示（currentColor 随确认/危险档文字色，Button 家族同款） ── */
+.ui-popconfirm__btn-spinner {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* 16px 档图标尺寸（Icon Token：16/20/24）；svg 几何数值（dasharray/offset）同 Button 内建加载指示 */
+.ui-popconfirm__btn-spinner-svg {
+  width: 16px;
+  height: 16px;
+  animation: ui-popconfirm-spin calc(var(--ui-motion-default) * 4) linear infinite;
+}
+
+/* 加载旋转：时长由 token 推导（≈720ms）；reduced-motion 时随 --ui-motion-default 归零停转 */
+@keyframes ui-popconfirm-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 确认（常规）：primary 观感（实底强调色） */

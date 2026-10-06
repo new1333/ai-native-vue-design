@@ -6,7 +6,7 @@ import type { ComponentDefinition } from '../shared/meta'
 
 export const meta: ComponentDefinition = {
   id: 'ui-dropdown-menu',
-  version: '0.2.0',
+  version: '0.3.0',
   identity: {
     name: 'DropdownMenu',
     package: '@ui/components',
@@ -41,6 +41,7 @@ export const meta: ComponentDefinition = {
         description:
           '触发器：单个元素/组件 vnode 直接作为触发元素（组件合并 id、aria-haspopup/aria-expanded/aria-controls 与 click/keydown 监听，元素自身即触发器，不再包裹 button——元素须可聚焦，如 Button / 原生 button；组件触发元素须把 attrs 透传到根元素）；文本/多根/空插槽回退为内建原生 button 触发器。应始终有可读 label（如「操作」「更多」）。',
       },
+      { name: 'empty', description: 'items 为空时面板内的空态内容；缺省渲染默认空态文案「暂无选项」（居中弱文字，观感对齐 select/ 家族空态先例）。仅在面板打开时渲染。' },
     ],
     events: [
       { name: 'select', payload: 'string', description: '选中菜单项（点击或菜单内 Enter），载荷为该项 key；disabled 项不触发。选中后菜单自动关闭且焦点还原触发器。' },
@@ -59,7 +60,7 @@ export const meta: ComponentDefinition = {
     preferred: ['动作项保持同族（同层级粒度）', 'danger 项不超过一个且放末位', '触发器 label 描述动作组而非单点动作'],
   },
   states: {
-    default: '关闭态仅渲染触发器（无浮层）；打开态：surface 底、sm 圆角、pop 阴影的面板自触发器下方弹出（start/end 对齐），项观感对齐 select/ 选项（text-md、ghost 底）。',
+    default: '关闭态仅渲染触发器（无浮层）；打开态：surface 底、sm 圆角、pop 阴影的面板自触发器下方弹出（start/end 对齐），项观感对齐 select/ 选项（text-md、ghost 底）；items 为空时面板渲染空态（#empty 插槽或缺省居中弱文字「暂无选项」，观感对齐 select/ 家族空态先例）。',
     hover: '项 hover 转 surface-muted 底；danger 项 hover 转 danger-soft 底并保持 danger 文本色；触发器 hover 同步弱化描边。',
     focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent）；菜单内 roving focus 当前项获得 surface-muted 底（DOM :focus 即高亮）与 tabindex=0。',
     active: '项点击即选中并关闭（无持续按压态）；触发器无按压态。',
@@ -72,10 +73,11 @@ export const meta: ComponentDefinition = {
   performance:
     'onMounted 常驻绑定 document click/scroll（capture）与 window resize 三个监听（open 守卫短路），onBeforeUnmount 统一移除；roving focus 仅在按键时查询锚盒内 menuitem；定位为一次 getBoundingClientRect + inline style 写入；入场动效为 token 时长的 opacity/transform，prefers-reduced-motion 下随 --ui-motion-* 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：层级 --ui-z-dropdown、阴影 --ui-shadow-pop、圆角 --ui-radius-sm/--ui-radius-xs、危险色 --ui-danger/--ui-danger-soft、颜色/字号/间距/动效全 token 化；描边宽度 1px 为结构性细线（已提出 --ui-border-width token 需求）；组件包不引入全局 CSS。',
+    '视觉只消费 --ui-* token（paper.css）：层级 --ui-z-popover（body 级非模态弹层档，高于 drawer/modal、低于 toast）、阴影 --ui-shadow-pop、圆角 --ui-radius-sm/--ui-radius-xs、危险色 --ui-danger/--ui-danger-soft、颜色/字号/间距/动效全 token 化；空态为居中 text-3 弱文字（对齐 select/ 家族空态先例）；描边宽度 1px 为结构性细线（已提出 --ui-border-width token 需求）；组件包不引入全局 CSS。',
   examples: [
     "<DropdownMenu\n  :items=\"[\n    { key: 'edit', label: '编辑', icon: EditIcon },\n    { key: 'copy', label: '复制' },\n    { key: 'delete', label: '删除', danger: true },\n  ]\"\n  @select=\"onSelect\"\n>\n  操作\n</DropdownMenu>",
     "<DropdownMenu align=\"end\" :items=\"items\" @select=\"key => run(key)\">\n  <!-- 单个元素插槽：Button 自身即触发元素（合并 id/aria-haspopup/expanded/controls 与 click/keydown，无嵌套 button） -->\n  <Button variant=\"secondary\">更多</Button>\n</DropdownMenu>",
+    "<DropdownMenu :items=\"actions\" @select=\"onSelect\">\n  <template #empty>该对象暂无可用操作</template>\n  操作\n</DropdownMenu>",
     "<DropdownMenu\n  :items=\"[\n    { key: 'rename', label: '重命名' },\n    { key: 'archive', label: '归档', disabled: true },\n    { key: 'delete', label: '删除', danger: true },\n  ]\"\n  @select=\"onSelect\"\n/>",
   ],
   agent: {

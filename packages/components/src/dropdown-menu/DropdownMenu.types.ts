@@ -44,6 +44,8 @@ export interface DropdownMenuSlots {
    * 文本/多根/空插槽回退为内建原生 button 触发器。应始终有可读 label。
    */
   default?: () => VNode[]
+  /** items 为空时的空态内容；缺省渲染默认空态文案（暂无选项）。仅在面板打开时渲染。 */
+  empty?: () => VNode[]
 }
 
 /** DropdownMenu 对外暴露的实例方法。 */

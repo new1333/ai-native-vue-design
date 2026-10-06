@@ -140,11 +140,11 @@ describe('@ui/tokens · 档位钉子（设计文档 §6.2 规定值）', () => {
       '0 8px 24px rgba(28,27,23,.12)',
     ])
     expect(Object.values(primitive.zIndex).map((t) => t.value)).toEqual([
-      '10', '100', '200', '300', '400', '500',
+      '10', '100', '200', '300', '350', '400', '500',
     ])
     expect(Object.values(primitive.zIndex).map((t) => t.name)).toEqual([
       '--ui-z-sticky', '--ui-z-dropdown', '--ui-z-drawer',
-      '--ui-z-modal', '--ui-z-toast', '--ui-z-tooltip',
+      '--ui-z-modal', '--ui-z-popover', '--ui-z-toast', '--ui-z-tooltip',
     ])
   })
 

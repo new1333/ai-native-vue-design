@@ -2,8 +2,11 @@
 /**
  * Suggestion —— AI 建议追问 chips：推荐提示词以原生 button chips 呈现，
  * 点击/键盘激活上抛 select，由使用方将 item.value 回填输入框（PromptInput）。
- * chips 横向自动换行、间距走 --ui-space-*；视觉只消费 var(--ui-*) token（paper.css）。
+ * chips 横向自动换行、间距走 --ui-space-*；items 为空时渲染空态
+ * （#empty 插槽优先，缺省为默认空态文案，对齐 select/autocomplete 家族先例）；
+ * 视觉只消费 var(--ui-*) token（paper.css）。
  */
+import { SUGGESTION_EMPTY_TEXT_DEFAULT } from './Suggestion.constants'
 import { useSuggestion } from './useSuggestion'
 import type { SuggestionEmits, SuggestionProps, SuggestionSlots } from './Suggestion.types'
 
@@ -26,7 +29,7 @@ const { ariaAttrs, select, onItemKeydown } = useSuggestion({
     <div v-if="$slots.default" class="ui-suggestion__prefix">
       <slot />
     </div>
-    <div class="ui-suggestion__list">
+    <div v-if="items.length > 0" class="ui-suggestion__list">
       <button
         v-for="(item, index) in items"
         :key="item.value"
@@ -38,6 +41,9 @@ const { ariaAttrs, select, onItemKeydown } = useSuggestion({
       >
         <slot name="item" :item="item" :index="index">{{ item.label }}</slot>
       </button>
+    </div>
+    <div v-else class="ui-suggestion__empty">
+      <slot name="empty">{{ SUGGESTION_EMPTY_TEXT_DEFAULT }}</slot>
     </div>
   </div>
 </template>
@@ -112,5 +118,12 @@ const { ariaAttrs, select, onItemKeydown } = useSuggestion({
   color: var(--ui-text-3);
   cursor: not-allowed;
   transform: none;
+}
+
+/* ── 空态：items 为空时的弱提示（#empty 插槽缺省文案；观感对齐 select/ 家族空态先例） ── */
+.ui-suggestion__empty {
+  color: var(--ui-text-3);
+  font-size: var(--ui-text-sm);
+  line-height: var(--ui-leading-small);
 }
 </style>

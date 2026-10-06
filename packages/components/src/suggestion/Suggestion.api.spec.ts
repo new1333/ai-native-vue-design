@@ -27,10 +27,19 @@ describe('Suggestion api', () => {
     expect(chips.map((chip) => chip.text())).toEqual(ITEMS.map((item) => item.label))
   })
 
-  it('items 为空数组时不渲染任何 chip（空态安全）', () => {
+  it('items 为空数组时不渲染任何 chip（空态安全）：空态节点取代空列表容器', () => {
     const wrapper = mount(Suggestion, { props: { items: [] } })
     expect(wrapper.findAll('button')).toHaveLength(0)
-    expect(wrapper.find('.ui-suggestion__list').exists()).toBe(true)
+    expect(wrapper.find('.ui-suggestion__empty').exists()).toBe(true)
+    expect(wrapper.find('.ui-suggestion__list').exists()).toBe(false)
+  })
+
+  it('empty 插槽已声明：空态内容由插槽提供', () => {
+    const wrapper = mount(Suggestion, {
+      props: { items: [] },
+      slots: { empty: () => h('span', { class: 'custom-empty' }, '空空如也') },
+    })
+    expect(wrapper.find('.ui-suggestion__empty .custom-empty').text()).toBe('空空如也')
   })
 
   it('默认：type=button、无原生 disabled、无 aria-busy', () => {

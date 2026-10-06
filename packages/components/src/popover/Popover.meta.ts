@@ -120,7 +120,7 @@ export const meta: ComponentDefinition = {
   performance:
     '常驻监听只有 scroll（capture）与 resize，回调以 isOpen 守卫、仅在打开时重算 rect；hover 待开启/待关闭计时互斥（同一时刻至多一个）；定位为单段测量（触发元素 rect + 结构性 translate），无需测量卡片自身尺寸。入场动效为 token 时长的 opacity 动画，prefers-reduced-motion 下随 --ui-motion-fast 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：层级走 --ui-z-dropdown、卡片底 --ui-surface、描边 --ui-border、文字 --ui-text-1、圆角 --ui-radius-md、阴影 --ui-shadow-pop、内边距 --ui-space-4、最大宽度由间距标尺推导；浮层视口坐标来自触发元素 rect 测量，与触发元素的间距在 calc 内引用 --ui-space-2（箭头尺寸/探出量同源）。scrim 为无底色透明命中层。组件包不引入全局 CSS。',
+    '视觉只消费 --ui-* token（paper.css）：层级走 --ui-z-popover（body 级非模态弹层档，高于 drawer/modal、低于 toast）、卡片底 --ui-surface、描边 --ui-border、文字 --ui-text-1、圆角 --ui-radius-md、阴影 --ui-shadow-pop、内边距 --ui-space-4、最大宽度由间距标尺推导；浮层视口坐标来自触发元素 rect 测量，与触发元素的间距在 calc 内引用 --ui-space-2（箭头尺寸/探出量同源）。scrim 为无底色透明命中层。组件包不引入全局 CSS。',
   examples: [
     "<Popover>\n  <template #trigger>\n    <button type='button'>填写备注</button>\n  </template>\n  <form @submit.prevent='save'>…</form>\n</Popover>",
     "<Popover v-model='open' trigger='hover' placement='right' arrow>\n  <template #trigger><a href='/docs'>文档</a></template>\n  <p>气泡内可以有链接与按钮</p>\n</Popover>",

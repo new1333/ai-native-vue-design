@@ -8,7 +8,8 @@
  *   同时透传使用方写在 <Tooltip> 上的 attrs（class / data-* / 既有监听器链式合并）。
  * - 浮层 Teleport 至 body：role="tooltip"、pointer-events:none（纯提示、不承载交互）；
  *   定位与 Esc 关闭收口于 shared 浮层引擎 useFloatingLayer（anchored 策略：
- *   按触发元素 rect 计算 fixed 坐标 + --ui-space-2 间距 token + 结构性 translate）。
+ *   按触发元素 rect 计算 fixed 坐标 + --ui-space-2 间距 token + 结构性 translate），
+ *   打开期间滚动/resize 跟随重排（followViewport，不滞留原视口位置）。
  * - SSR：不渲染浮层，仅输出 hidden 占位（ui-tooltip 根类）；Teleport 推迟到客户端。
  */
 import { cloneVNode, onBeforeUnmount, onMounted, ref, useAttrs, useId, useSlots } from 'vue'

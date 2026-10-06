@@ -24,3 +24,6 @@ export const DROPDOWN_MENU_KEY_END = 'End'
 
 /** 菜单项元素选择器（roving focus 查询用；DOM 序与 items 一致，含 disabled 项以保序）。 */
 export const DROPDOWN_MENU_ITEM_SELECTOR = '[role="menuitem"]'
+
+/** items 为空时的默认空态文案（对齐 select/ 家族空态先例命名与文案）。 */
+export const DROPDOWN_MENU_EMPTY_TEXT_DEFAULT = '暂无选项' as const

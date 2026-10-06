@@ -97,6 +97,9 @@
   --ui-radius-md: 12px;
   --ui-radius-lg: 16px;
 
+  /* ── Primitive · 指示条厚度（tabs 下划线指示条等线性指示元素） ── */
+  --ui-indicator-thickness: 2px;
+
   /* ── Primitive · 字体 ─────────────────────────────── */
   --ui-font-sans: 'Noto Sans SC', system-ui, sans-serif;
   --ui-font-serif: 'Noto Serif SC', serif;
@@ -127,10 +130,16 @@
   --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* ── Primitive · 层级阶梯 ─────────────────────────── */
+  /* --ui-z-popover：Teleport 到 body 的非模态弹层档（下拉面板/气泡/锚定卡片）。
+     这些弹层与 drawer/modal 的浮层同为 body 直接子元素、z-index 直接可比，必须
+     高于 drawer/modal（在 Dialog/Drawer/CommandPalette 内可正常弹出），低于
+     toast/tooltip（全局通知与悬停提示保持更顶）。--ui-z-dropdown 保留为文档流内
+     浮层基础档（menu 子菜单等未 Teleport 场景，不得提升以免盖住模态）。 */
   --ui-z-sticky: 10;
   --ui-z-dropdown: 100;
   --ui-z-drawer: 200;
   --ui-z-modal: 300;
+  --ui-z-popover: 350;
   --ui-z-toast: 400;
   --ui-z-tooltip: 500;
 
@@ -221,6 +230,9 @@
   --ui-radius-md: 12px;
   --ui-radius-lg: 16px;
 
+  /* ── Primitive · 指示条厚度（tabs 下划线指示条等线性指示元素） ── */
+  --ui-indicator-thickness: 2px;
+
   /* ── Primitive · 字体 ─────────────────────────────── */
   --ui-font-sans: 'Noto Sans SC', system-ui, sans-serif;
   --ui-font-serif: 'Noto Serif SC', serif;
@@ -251,10 +263,13 @@
   --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* ── Primitive · 层级 ─────────────────────────────── */
+  /* --ui-z-popover：Teleport 到 body 的非模态弹层档（下拉面板/气泡/锚定卡片，>modal、<toast）；
+     --ui-z-dropdown 保留为文档流内浮层基础档（menu 子菜单等未 Teleport 场景） */
   --ui-z-sticky: 10;
   --ui-z-dropdown: 100;
   --ui-z-drawer: 200;
   --ui-z-modal: 300;
+  --ui-z-popover: 350;
   --ui-z-toast: 400;
   --ui-z-tooltip: 500;
 
@@ -380,6 +395,9 @@
   --ui-radius-md: 12px;
   --ui-radius-lg: 16px;
 
+  /* ── Primitive · 指示条厚度（tabs 下划线指示条等线性指示元素） ── */
+  --ui-indicator-thickness: 2px;
+
   /* ── Primitive · 字体 ─────────────────────────────── */
   --ui-font-sans: 'Noto Sans SC', system-ui, sans-serif;
   --ui-font-serif: 'Noto Serif SC', serif;
@@ -410,10 +428,13 @@
   --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* ── Primitive · 层级 ─────────────────────────────── */
+  /* --ui-z-popover：Teleport 到 body 的非模态弹层档（下拉面板/气泡/锚定卡片，>modal、<toast）；
+     --ui-z-dropdown 保留为文档流内浮层基础档（menu 子菜单等未 Teleport 场景） */
   --ui-z-sticky: 10;
   --ui-z-dropdown: 100;
   --ui-z-drawer: 200;
   --ui-z-modal: 300;
+  --ui-z-popover: 350;
   --ui-z-toast: 400;
   --ui-z-tooltip: 500;
 

@@ -6,7 +6,7 @@ import type { ComponentDefinition } from '../shared/meta'
 
 export const meta: ComponentDefinition = {
   id: 'ui-suggestion',
-  version: '0.1.0',
+  version: '0.2.0',
   identity: {
     name: 'Suggestion',
     package: '@ui/components',
@@ -15,7 +15,7 @@ export const meta: ComponentDefinition = {
     description: 'AI 建议追问 chips：推荐提示词以原生 button chips 呈现，点击/键盘激活上抛 select，由使用方将 value 回填输入框继续追问。',
   },
   intent: {
-    what: '一组推荐提示词（追问/续写建议）chips：横向换行排布，点击选中即上抛完整建议项，不自行管理输入框内容。',
+    what: '一组推荐提示词（追问/续写建议）chips：横向换行排布，点击选中即上抛完整建议项，不自行管理输入框内容；items 为空时渲染空态（#empty 插槽或缺省文案「暂无建议」）。',
     when: [
       'AI 会话中展示推荐追问 / 引导提示词，点击回填输入框',
       '空态首屏给用户「可以从这里开始」的示例问题',
@@ -39,6 +39,7 @@ export const meta: ComponentDefinition = {
     slots: [
       { name: 'default', description: '前置内容：渲染在 chips 之前的标题/说明（如「推荐追问」标签）；未提供时不渲染前置区。' },
       { name: 'item', scope: '{ item: SuggestionItem; index: number }', description: '单个 chip 内容：按条目作用域定制（如加图标）；缺省渲染 item.label。' },
+      { name: 'empty', description: 'items 为空时的空态内容；缺省渲染默认空态文案「暂无建议」（弱文字，观感对齐 select/autocomplete 家族空态先例）。' },
     ],
     events: [
       { name: 'select', payload: 'SuggestionItem', description: '选中一条建议（点击或键盘 Enter/Space）：载荷为被点击的建议项；由使用方将 item.value 回填输入框。disabled/loading/单项禁用时一律不触发。' },
@@ -54,7 +55,7 @@ export const meta: ComponentDefinition = {
     preferred: ['value 直接给出可发送的完整提示词，避免使用方二次拼接', 'chips 一屏内换行流式排布，不宜过多（≤6 条）'],
   },
   states: {
-    default: 'chip：surface 底 + line 描边 + text-2 文字，radius-md 圆角，text-sm 字号；前置内容 text-2 小字。',
+    default: 'chip：surface 底 + line 描边 + text-2 文字，radius-md 圆角，text-sm 字号；前置内容 text-2 小字；items 为空时空态弱文字（text-3 + text-sm，缺省文案「暂无建议」，#empty 插槽可定制）。',
     hover: 'chip 转 surface-muted 底 + 深描边（border-strong）+ text-1 文字；disabled 项不响应 hover。',
     focusVisible: '焦点环由全局 :focus-visible 约定提供（2px --ui-accent 实线 + 2px 偏移，paper.css）；组件不改写 outline、不改 tabindex。',
     active: '在 hover 基础上 transform: scale(0.98)（≤2% 缩放，token 动效）；disabled 无按压反馈。',
@@ -68,11 +69,12 @@ export const meta: ComponentDefinition = {
   performance:
     '无监听器、无测量、无定时器、无浮层；仅 computed 派生 aria 与 chips 平铺渲染，选中闸门为纯函数。动效只有 background-color/border-color/color/transform 过渡（--ui-motion-* token），prefers-reduced-motion 下随 token 归零。',
   styling:
-    '视觉只消费 --ui-* token（paper.css）：颜色走 semantic 层（surface/surface-muted/border/border-strong/text-1/2/3）、间距 --ui-space-*、圆角 --ui-radius-md、字号 --ui-text-sm、动效 --ui-motion-*/--ui-ease-out。chips 间距由 --ui-space-* gap 提供；无全局 CSS 引入；描边宽度 1px 为结构性细线（无 --ui-border-width token，已提出需求）。',
+    '视觉只消费 --ui-* token（paper.css）：颜色走 semantic 层（surface/surface-muted/border/border-strong/text-1/2/3）、间距 --ui-space-*、圆角 --ui-radius-md、字号 --ui-text-sm、动效 --ui-motion-*/--ui-ease-out。chips 间距由 --ui-space-* gap 提供；空态为 text-3 弱文字（对齐 select/autocomplete 家族空态先例）；无全局 CSS 引入；描边宽度 1px 为结构性细线（无 --ui-border-width token，已提出需求）。',
   examples: [
     "<Suggestion :items='items' @select='(item) => (draft = item.value)' />",
     "<Suggestion :items='items' aria-label='推荐追问'>\n  <template #default>推荐追问</template>\n  <template #item='{ item }'>{{ item.label }}</template>\n</Suggestion>",
     "<Suggestion :items='items' :loading='generating' :disabled='ended' @select='apply' />",
+    "<Suggestion :items='[]'>\n  <template #empty>正在生成建议…</template>\n</Suggestion>",
     "<Suggestion :items='[\n  { label: \"总结要点\", value: \"请总结本次讨论的要点\" },\n  { label: \"给出示例\", value: \"请给出一个可运行的示例\", disabled: true },\n]' @select='apply' />",
   ],
   agent: {
@@ -90,7 +92,7 @@ export const meta: ComponentDefinition = {
     generationNotes: [
       'items.value 需唯一（用作 key），并直接给出可发送的完整提示词',
       '组件不持有选中态：高亮/回填/发送全部由使用方在 @select 中处理',
-      'chip 内容定制走 #item 作用域插槽；标题/说明走 #default',
+      'chip 内容定制走 #item 作用域插槽；标题/说明走 #default；空态定制走 #empty（缺省文案「暂无建议」）',
       '不要用 Suggestion 承载导航链接或多选标签',
     ],
   },
